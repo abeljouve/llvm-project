@@ -216,6 +216,7 @@ uint16_t ELF::convertTripleArchTypeToEMachine(Triple::ArchType ArchType) {
   case Triple::aarch64_32:
     return EM_AARCH64;
   case Triple::arc:
+  case Triple::arceb:
     return EM_ARC;
   case Triple::avr:
     return EM_AVR;

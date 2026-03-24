@@ -16,6 +16,14 @@ def FeatureNORM
     : SubtargetFeature<"norm", "Xnorm", "true",
                        "Enable support for norm instruction.">;
 
+def FeatureARCompact
+    : SubtargetFeature<"arcompact", "IsARCompact", "true",
+                       "ARCompact ISA (ARC600/ARC700)">;
+
+def FeatureBigEndian
+    : SubtargetFeature<"bigendian", "IsBigEndian", "true",
+                       "Big-endian byte order">;
+
 //===----------------------------------------------------------------------===//
 // Registers, calling conventions, instruction descriptions
 //===----------------------------------------------------------------------===//
@@ -23,6 +31,18 @@ def FeatureNORM
 include "ARCRegisterInfo.td"
 include "ARCInstrInfo.td"
 include "ARCCallingConv.td"
+
+//===----------------------------------------------------------------------===//
+// ARCompact (ARC600/ARC700) instruction definitions
+//===----------------------------------------------------------------------===//
+
+include "ARCARCompactInstrFormats.td"
+include "ARCARCompactInstrALU.td"
+include "ARCARCompactInstrBranch.td"
+include "ARCARCompactInstrLoadStore.td"
+include "ARCARCompactInstrSpecial.td"
+include "ARCARCompactInstrExtArith.td"
+include "ARCARCompactInstr16.td"
 
 defm : RemapAllTargetPseudoPointerOperands<GPR32>;
 
@@ -32,6 +52,8 @@ class Proc<string Name, list<SubtargetFeature> Features>
  : Processor<Name, NoItineraries, Features>;
 
 def : Proc<"generic", []>;
+def : Proc<"arc700", [FeatureARCompact, FeatureNORM]>;
+def : Proc<"arc700eb", [FeatureARCompact, FeatureNORM, FeatureBigEndian]>;
 
 def ARC : Target {
   let InstructionSet = ARCInstrInfo;

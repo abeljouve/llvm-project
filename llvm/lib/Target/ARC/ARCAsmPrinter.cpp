@@ -82,4 +82,5 @@ INITIALIZE_PASS(ARCAsmPrinter, "arc-asm-printer", "ARC Assmebly Printer", false,
 // Force static initialization.
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeARCAsmPrinter() {
   RegisterAsmPrinter<ARCAsmPrinter> X(getTheARCTarget());
+  RegisterAsmPrinter<ARCAsmPrinter> Y(getTheARCebTarget());
 }

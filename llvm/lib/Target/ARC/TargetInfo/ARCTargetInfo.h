@@ -14,6 +14,7 @@ namespace llvm {
 class Target;
 
 Target &getTheARCTarget();
+Target &getTheARCebTarget();
 
 } // namespace llvm
 

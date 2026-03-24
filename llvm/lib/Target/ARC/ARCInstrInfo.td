@@ -227,16 +227,19 @@ multiclass ArcBinaryInst<bits<5> major, bits<6> mincode,
 multiclass ArcSpecialDOPInst<bits<6> subop, string opasm, bit F> {
   def _rr : F32_DOP_RR<0b00100, subop, F, (outs), (ins GPR32:$B, GPR32:$C),
                !strconcat(opasm, "\t$B, $C"),
-               []>;
+               []>
+  { let A = 0; }
 
   def _ru6 : F32_DOP_RU6<0b00100, subop, F, (outs), (ins GPR32:$B, i32imm:$U6),
                !strconcat(opasm, "\t$B, $U6"),
-               []>;
+               []>
+  { let A = 0; }
 
   def _rlimm : F32_DOP_RLIMM<0b00100, subop, F, (outs),
                (ins GPR32:$B, i32imm:$LImm),
                !strconcat(opasm, "\t$B, $LImm"),
-               []>;
+               []>
+  { let A = 0; }
 }
 
 // Generic 2-operand unary instructions.
@@ -274,11 +277,11 @@ multiclass MultiPat<SDPatternOperator InFrag,
 def AuxReg : Operand<i32>;
 
 def LR_rs12 : F32_SOP_RS12<0b00100, 0b101010, 0,
-                           (outs GPR32:$B), (ins AuxReg:$C),
-                           "lr\t$B, [$C]", []>;
+                           (outs GPR32:$B), (ins AuxReg:$S12),
+                           "lr\t$B, [$S12]", []>;
 def LR_ru6 : F32_SOP_RU6<0b00100, 0b101010, 0,
-                         (outs GPR32:$B), (ins AuxReg:$C),
-                         "lr\t$B, [$C]", []>;
+                         (outs GPR32:$B), (ins AuxReg:$U6),
+                         "lr\t$B, [$U6]", []>;
 
 def: Pat<(i32 readcyclecounter), (LR_rs12 0x21) >;  // read timer
 
@@ -372,19 +375,23 @@ def MOV_rs12 : F32_DOP_RS12<0b00100, 0b001010, 0,
 
 def MOV_rr : F32_DOP_RR<0b00100, 0b001010, 0,
                 (outs GPR32:$B), (ins GPR32:$C),
-                "mov\t$B, $C", []>;
+                "mov\t$B, $C", []>
+{ let A = 0; }
 
 def MOV_rlimm : F32_DOP_RLIMM<0b00100, 0b001010, 0,
                       (outs GPR32:$B), (ins i32imm:$LImm),
-                      "mov\t$B, $LImm", []>;
+                      "mov\t$B, $LImm", []>
+{ let A = 0; }
 
 def MOV_ru6 : F32_DOP_RU6<0b00100, 0b001010, 0,
                           (outs GPR32:$B), (ins immU6:$U6),
-                          "mov\t$B, $U6", []>;
+                          "mov\t$B, $U6", []>
+{ let A = 0; }
 
 def MOV_f_ru6 : F32_DOP_RU6<0b00100, 0b001010, 1,
                           (outs GPR32:$B), (ins u6:$U6),
                           "mov.f\t$B, $U6", []> {
+  let A = 0;
   let isAsCheapAsAMove=1;
   let Defs = [STATUS32];
 }
@@ -399,12 +406,12 @@ let Uses = [STATUS32], isAsCheapAsAMove = 1, isPredicable=1,
                  [(set GPR32:$B, (cmov i32:$C, i32:$B2, timm:$cc))]>;
 
   def MOV_cc_ru6 : F32_DOP_CC_RU6<0b00100, 0b001010, 0,
-                 (outs GPR32:$B), (ins u6:$C, CCOp:$cc, GPR32:$B2),
-                 "mov.$cc\t$B, $C", []>;
+                 (outs GPR32:$B), (ins u6:$U6, CCOp:$cc, GPR32:$B2),
+                 "mov.$cc\t$B, $U6", []>;
 
   def MOV_cc_f_ru6 : F32_DOP_CC_RU6<0b00100, 0b001010, 1,
-                    (outs GPR32:$B), (ins u6:$C, CCOp:$cc, GPR32:$B2),
-                    "mov.$cc.f\t$B, $C", []> {
+                    (outs GPR32:$B), (ins u6:$U6, CCOp:$cc, GPR32:$B2),
+                    "mov.$cc.f\t$B, $U6", []> {
     let Defs = [STATUS32];
   }
 }
@@ -426,20 +433,24 @@ let isBranch = 1, isTerminator = 1 in {
   // Unconditional branch.
   let isBarrier = 1 in
   def BR : F32_BR0_UCOND_FAR<(outs), (ins btargetS25:$S25),
-                             "b\t$S25", [(br bb:$S25)]>;
+                             "b\t$S25", [(br bb:$S25)]>
+  { let N = 0; }
 
   let Uses=[STATUS32] in
   // Conditional branch.
   def Bcc : F32_BR0_COND<(outs), (ins btargetS21:$S21, ccond:$cc),
-                         "b$cc\t$S21", []>;
+                         "b$cc\t$S21", []>
+  { let N = 0; }
 
   // Compare and branch (limited range).
   def BRcc_rr  : F32_BR1_BCC<(outs),
                              (ins btargetS9:$S9, GPR32:$B, GPR32:$C, brccond:$cc),
-                             "br$cc\t$B, $C, $S9", 0, []>;
+                             "br$cc\t$B, $C, $S9", 0, []>
+  { let N = 0; }
   def BRcc_ru6 : F32_BR1_BCC<(outs),
                              (ins btargetS9:$S9, GPR32:$B, immU6:$C, brccond:$cc),
-                             "br$cc\t$B, $C, $S9", 1, []>;
+                             "br$cc\t$B, $C, $S9", 1, []>
+  { let N = 0; }
 
   // Pseudo compare and branch.
   // After register allocation, this can expand into either a limited range
@@ -464,28 +475,33 @@ let isBranch = 1, isTerminator = 1, isBarrier = 1 in {
   let isIndirectBranch = 1 in
   def J :  F32_DOP_RR<0b00100, 0b100000, 0,
                       (outs), (ins GPR32:$C),
-                      "j\t[$C]", [(brind i32:$C)]>;
+                      "j\t[$C]", [(brind i32:$C)]>
+  { let A = 0; let B = 0; }
 
   // Direct.
   def J_LImm : F32_DOP_RLIMM<0b00100, 0b100000, 0,
                              (outs), (ins i32imm:$LImm),
-                             "j\t$LImm", []>;
+                             "j\t$LImm", []>
+  { let A = 0; let B = 0; }
 }
 
 // Call instructions.
 let isCall = 1, isBarrier = 1, Defs = [BLINK], Uses = [SP] in {
   // Direct unconditional call.
   def BL : F32_BR1_BL_UCOND_FAR<(outs), (ins calltargetS25:$S25),
-                      "bl\t$S25", [(ARCBranchLink tglobaladdr:$S25)]>;
+                      "bl\t$S25", [(ARCBranchLink tglobaladdr:$S25)]>
+  { let N = 0; }
 
   // Indirect unconditional call.
   let isIndirectBranch = 1 in
   def JL : F32_DOP_RR<0b00100, 0b100010, 0, (outs), (ins GPR32:$C),
-                     "jl\t[$C]", [(ARCJumpLink i32:$C)]>;
+                     "jl\t[$C]", [(ARCJumpLink i32:$C)]>
+  { let A = 0; let B = 0; }
 
   // Direct unconditional call.
   def JL_LImm : F32_DOP_RLIMM<0b00100, 0b100010, 0, (outs), (ins i32imm:$LImm),
-                              "jl\t$LImm", []>;
+                              "jl\t$LImm", []>
+  { let A = 0; let B = 0; }
 } // let isCall, isBarrier, Defs, Uses
 
 // Pattern to generate BL instruction.
@@ -559,15 +575,22 @@ class COMPACT_MOV_S :
   let DecoderMethod = "DecodeMoveHRegInstruction";
 }
 
-def COMPACT_MOV_S_limm : COMPACT_MOV_S {
+def COMPACT_MOV_S_limm : InstARC<6, (outs GPR32:$g), (ins i32imm:$LImm),
+                                    "mov_s\t$g, $LImm", []> {
   bits<32> LImm;
   let Inst{47-16} = LImm;
 
+  bits<5> g;
+  let Inst{15-11} = 0b01000;
   bits<5> LImmReg = 0b11110;
   let Inst{7-5} = LImmReg{2-0};
+  let Inst{10-8} = g{2-0};
+  let Inst{4-3} = g{4-3};
+  let Inst{2} = 0b0;
   let Inst{1-0} = LImmReg{4-3};
+  let Inst{9} = 0;
 
-  let Size = 6;
+  let DecoderMethod = "DecodeMoveHRegInstruction";
 }
 
 def COMPACT_MOV_S_hreg : COMPACT_MOV_S;

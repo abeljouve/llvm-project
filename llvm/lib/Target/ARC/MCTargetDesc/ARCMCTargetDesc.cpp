@@ -13,6 +13,7 @@
 #include "ARCMCTargetDesc.h"
 #include "ARCInstPrinter.h"
 #include "ARCMCAsmInfo.h"
+#include "ARCMCCodeEmitter.h"
 #include "ARCTargetStreamer.h"
 #include "TargetInfo/ARCTargetInfo.h"
 #include "llvm/MC/MCDwarf.h"
@@ -81,25 +82,19 @@ static MCTargetStreamer *createTargetAsmStreamer(MCStreamer &S,
   return new ARCTargetStreamer(S);
 }
 
+static void registerARCMCTargetDesc(Target &T) {
+  RegisterMCAsmInfoFn MAI(T, createARCMCAsmInfo);
+  TargetRegistry::RegisterMCInstrInfo(T, createARCMCInstrInfo);
+  TargetRegistry::RegisterMCRegInfo(T, createARCMCRegisterInfo);
+  TargetRegistry::RegisterMCSubtargetInfo(T, createARCMCSubtargetInfo);
+  TargetRegistry::RegisterMCInstPrinter(T, createARCMCInstPrinter);
+  TargetRegistry::RegisterMCCodeEmitter(T, createARCMCCodeEmitter);
+  TargetRegistry::RegisterMCAsmBackend(T, createARCAsmBackend);
+  TargetRegistry::RegisterAsmTargetStreamer(T, createTargetAsmStreamer);
+}
+
 // Force static initialization.
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeARCTargetMC() {
-  // Register the MC asm info.
-  Target &TheARCTarget = getTheARCTarget();
-  RegisterMCAsmInfoFn X(TheARCTarget, createARCMCAsmInfo);
-
-  // Register the MC instruction info.
-  TargetRegistry::RegisterMCInstrInfo(TheARCTarget, createARCMCInstrInfo);
-
-  // Register the MC register info.
-  TargetRegistry::RegisterMCRegInfo(TheARCTarget, createARCMCRegisterInfo);
-
-  // Register the MC subtarget info.
-  TargetRegistry::RegisterMCSubtargetInfo(TheARCTarget,
-                                          createARCMCSubtargetInfo);
-
-  // Register the MCInstPrinter
-  TargetRegistry::RegisterMCInstPrinter(TheARCTarget, createARCMCInstPrinter);
-
-  TargetRegistry::RegisterAsmTargetStreamer(TheARCTarget,
-                                            createTargetAsmStreamer);
+  registerARCMCTargetDesc(getTheARCTarget());
+  registerARCMCTargetDesc(getTheARCebTarget());
 }

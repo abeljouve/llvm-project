@@ -14,10 +14,23 @@
 #define LLVM_LIB_TARGET_ARC_MCTARGETDESC_ARCMCTARGETDESC_H
 
 #include "llvm/Support/DataTypes.h"
+#include <memory>
 
 namespace llvm {
 
+class MCAsmBackend;
+class MCObjectTargetWriter;
+class MCRegisterInfo;
+class MCSubtargetInfo;
+class MCTargetOptions;
 class Target;
+
+MCAsmBackend *createARCAsmBackend(const Target &T, const MCSubtargetInfo &STI,
+                                  const MCRegisterInfo &MRI,
+                                  const MCTargetOptions &Options);
+
+std::unique_ptr<MCObjectTargetWriter>
+createARCELFObjectWriter(uint8_t OSABI, bool IsBigEndian);
 
 } // end namespace llvm
 

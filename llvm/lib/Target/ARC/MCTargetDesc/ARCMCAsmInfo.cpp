@@ -7,11 +7,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "ARCMCAsmInfo.h"
+#include "llvm/TargetParser/Triple.h"
 using namespace llvm;
 
 void ARCMCAsmInfo::anchor() {}
 
 ARCMCAsmInfo::ARCMCAsmInfo(const Triple &TT) {
+  IsLittleEndian = TT.isLittleEndian();
   SupportsDebugInformation = true;
   Data16bitsDirective = "\t.short\t";
   Data32bitsDirective = "\t.word\t";

@@ -36,6 +36,7 @@ class immC<int BSz> : Operand<i32>, PatLeaf<(imm),
 
 def MEMii : Operand<i32> {
   let MIOperandInfo = (ops i32imm, i32imm);
+  let EncoderMethod = "getMemIIOpValue";
 }
 
 def MEMrs9 : Operand<iAny> {
@@ -519,7 +520,9 @@ class F32_LD_LIMM<bit x, bit di, bits<2> zz, dag outs, dag ins,
   InstARC<8, outs, ins, asmstr, pattern> {
   bits<6> LImmReg = 0b111110;
   bits<6> A;
+  bits<64> addr;
   bits<32> LImm;
+  let LImm = addr{31-0};
 
   let Inst{63-32} = LImm;
   let Inst{31-27} = 0b00010;
@@ -609,7 +612,9 @@ class F32_ST_LIMM<bit di, bits<2> zz, dag outs, dag ins,
   InstARC<8, outs, ins, asmstr, pattern> {
   bits<6> LImmReg = 0b111110;
   bits<6> C;
+  bits<64> addr;
   bits<32> LImm;
+  let LImm = addr{31-0};
 
   let Inst{63-32} = LImm;
   let Inst{31-27} = 0b00011;

@@ -54,7 +54,8 @@ public:
     aarch64,     // AArch64 (little endian): aarch64
     aarch64_be,  // AArch64 (big endian): aarch64_be
     aarch64_32,  // AArch64 (little endian) ILP32: aarch64_32
-    arc,         // ARC: Synopsys ARC
+    arc,         // ARC: Synopsys ARC (little endian)
+    arceb,       // ARC: Synopsys ARC (big endian)
     avr,         // AVR: Atmel AVR microcontroller
     bpfel,       // eBPF or extended BPF or 64-bit BPF (little endian)
     bpfeb,       // eBPF or extended BPF or 64-bit BPF (big endian)
@@ -1127,6 +1128,11 @@ public:
 
   /// Tests whether the target is SPARC.
   bool isSPARC() const { return isSPARC32() || isSPARC64(); }
+
+  /// Tests whether the target is ARC.
+  bool isARC() const {
+    return getArch() == Triple::arc || getArch() == Triple::arceb;
+  }
 
   /// Tests whether the target is SystemZ.
   bool isSystemZ() const {

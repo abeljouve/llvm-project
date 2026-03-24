@@ -37,6 +37,12 @@ class ARCSubtarget : public ARCGenSubtargetInfo {
   // ARC processor extensions
   bool Xnorm = false;
 
+  // ISA variant
+  bool IsARCompact = false;
+
+  // Endianness
+  bool IsBigEndian = false;
+
 public:
   /// This constructor initializes the data members to match that
   /// of the specified triple.
@@ -63,6 +69,8 @@ public:
   const SelectionDAGTargetInfo *getSelectionDAGInfo() const override;
 
   bool hasNorm() const { return Xnorm; }
+  bool isARCompact() const { return IsARCompact; }
+  bool isBigEndian() const { return IsBigEndian; }
 };
 
 } // end namespace llvm

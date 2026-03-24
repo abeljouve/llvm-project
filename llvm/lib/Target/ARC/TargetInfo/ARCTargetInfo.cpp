@@ -16,6 +16,13 @@ Target &llvm::getTheARCTarget() {
   return TheARCTarget;
 }
 
+Target &llvm::getTheARCebTarget() {
+  static Target TheARCebTarget;
+  return TheARCebTarget;
+}
+
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeARCTargetInfo() {
   RegisterTarget<Triple::arc> X(getTheARCTarget(), "arc", "ARC", "ARC");
+  RegisterTarget<Triple::arceb> Y(getTheARCebTarget(), "arceb",
+                                  "ARC (big endian)", "ARC");
 }
