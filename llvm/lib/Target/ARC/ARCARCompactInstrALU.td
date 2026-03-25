@@ -28,8 +28,8 @@ def ARC_ABS_b_c : ARCompactInst32_2op<0b00100, 0b001001, "abs",
   let Inst{5-0} = 0b001001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -61,8 +61,8 @@ def ARC_ABS_b_u6 : ARCompactInst32_2op<0b00100, 0b001001, "abs",
   let Inst{5-0} = 0b001001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -123,8 +123,8 @@ def ARC_ABSS_b_c : ARCompactInst32_2op<0b00101, 0b000101, "abss",
   let Inst{5-0} = 0b000101;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -156,8 +156,8 @@ def ARC_ABSS_b_u6 : ARCompactInst32_2op<0b00101, 0b000101, "abss",
   let Inst{5-0} = 0b000101;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -218,8 +218,8 @@ def ARC_ABSSW_b_c : ARCompactInst32_2op<0b00101, 0b000100, "abssw",
   let Inst{5-0} = 0b000100;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -251,8 +251,8 @@ def ARC_ABSSW_b_u6 : ARCompactInst32_2op<0b00101, 0b000100, "abssw",
   let Inst{5-0} = 0b000100;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -312,8 +312,8 @@ def ARC_ACM_a_b_c : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let Inst{23-16} = 0b00101000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -334,8 +334,8 @@ def ARC_ACM_b_c_cc : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -351,8 +351,8 @@ def ARC_ACM_a_b_u6 : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let Inst{23-16} = 0b01101000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -373,8 +373,8 @@ def ARC_ACM_b_u6_cc : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -391,8 +391,8 @@ def ARC_ACM_b_s12 : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -455,8 +455,8 @@ def ARC_ADC_a_b_c : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{23-16} = 0b00000001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -475,8 +475,8 @@ def ARC_ADC_z_b_c : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -495,8 +495,8 @@ def ARC_ADC_b_c_cc : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -512,8 +512,8 @@ def ARC_ADC_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{23-16} = 0b01000001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -532,8 +532,8 @@ def ARC_ADC_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -552,8 +552,8 @@ def ARC_ADC_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -570,8 +570,8 @@ def ARC_ADC_b_s12 : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -782,8 +782,8 @@ def ARC_ADCS_a_b_c : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{23-16} = 0b00100110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -802,8 +802,8 @@ def ARC_ADCS_z_b_c : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -822,8 +822,8 @@ def ARC_ADCS_b_c_cc : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -839,8 +839,8 @@ def ARC_ADCS_a_b_u6 : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{23-16} = 0b01100110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -859,8 +859,8 @@ def ARC_ADCS_z_b_u6 : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -879,8 +879,8 @@ def ARC_ADCS_b_u6_cc : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -897,8 +897,8 @@ def ARC_ADCS_b_s12 : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -1109,8 +1109,8 @@ def ARC_ADD_a_b_c : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{23-16} = 0b00000000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -1129,8 +1129,8 @@ def ARC_ADD_z_b_c : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -1149,8 +1149,8 @@ def ARC_ADD_b_c_cc : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -1166,8 +1166,8 @@ def ARC_ADD_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{23-16} = 0b01000000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -1186,8 +1186,8 @@ def ARC_ADD_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -1206,8 +1206,8 @@ def ARC_ADD_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -1224,8 +1224,8 @@ def ARC_ADD_b_s12 : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -1436,8 +1436,8 @@ def ARC_ADD1_a_b_c : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{23-16} = 0b00010100;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -1456,8 +1456,8 @@ def ARC_ADD1_z_b_c : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -1476,8 +1476,8 @@ def ARC_ADD1_b_c_cc : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -1493,8 +1493,8 @@ def ARC_ADD1_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{23-16} = 0b01010100;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -1513,8 +1513,8 @@ def ARC_ADD1_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -1533,8 +1533,8 @@ def ARC_ADD1_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -1551,8 +1551,8 @@ def ARC_ADD1_b_s12 : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -1763,8 +1763,8 @@ def ARC_ADD2_a_b_c : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{23-16} = 0b00010101;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -1783,8 +1783,8 @@ def ARC_ADD2_z_b_c : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -1803,8 +1803,8 @@ def ARC_ADD2_b_c_cc : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -1820,8 +1820,8 @@ def ARC_ADD2_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{23-16} = 0b01010101;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -1840,8 +1840,8 @@ def ARC_ADD2_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -1860,8 +1860,8 @@ def ARC_ADD2_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -1878,8 +1878,8 @@ def ARC_ADD2_b_s12 : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -2090,8 +2090,8 @@ def ARC_ADD3_a_b_c : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{23-16} = 0b00010110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -2110,8 +2110,8 @@ def ARC_ADD3_z_b_c : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -2130,8 +2130,8 @@ def ARC_ADD3_b_c_cc : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -2147,8 +2147,8 @@ def ARC_ADD3_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{23-16} = 0b01010110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -2167,8 +2167,8 @@ def ARC_ADD3_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -2187,8 +2187,8 @@ def ARC_ADD3_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -2205,8 +2205,8 @@ def ARC_ADD3_b_s12 : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -2417,8 +2417,8 @@ def ARC_ADDQBS_a_b_c : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let Inst{23-16} = 0b00100100;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -2439,8 +2439,8 @@ def ARC_ADDQBS_b_c_cc : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -2456,8 +2456,8 @@ def ARC_ADDQBS_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let Inst{23-16} = 0b01100100;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -2478,8 +2478,8 @@ def ARC_ADDQBS_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -2496,8 +2496,8 @@ def ARC_ADDQBS_b_s12 : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -2560,8 +2560,8 @@ def ARC_ADDS_a_b_c : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{23-16} = 0b00000110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -2580,8 +2580,8 @@ def ARC_ADDS_z_b_c : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -2600,8 +2600,8 @@ def ARC_ADDS_b_c_cc : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -2617,8 +2617,8 @@ def ARC_ADDS_a_b_u6 : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{23-16} = 0b01000110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -2637,8 +2637,8 @@ def ARC_ADDS_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -2657,8 +2657,8 @@ def ARC_ADDS_b_u6_cc : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -2675,8 +2675,8 @@ def ARC_ADDS_b_s12 : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -2887,8 +2887,8 @@ def ARC_ADDSDW_a_b_c : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{23-16} = 0b00101000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -2907,8 +2907,8 @@ def ARC_ADDSDW_z_b_c : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -2927,8 +2927,8 @@ def ARC_ADDSDW_b_c_cc : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -2944,8 +2944,8 @@ def ARC_ADDSDW_a_b_u6 : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{23-16} = 0b01101000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -2964,8 +2964,8 @@ def ARC_ADDSDW_z_b_u6 : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -2984,8 +2984,8 @@ def ARC_ADDSDW_b_u6_cc : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -3002,8 +3002,8 @@ def ARC_ADDSDW_b_s12 : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -3214,8 +3214,8 @@ def ARC_AND_a_b_c : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{23-16} = 0b00000100;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -3234,8 +3234,8 @@ def ARC_AND_z_b_c : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -3254,8 +3254,8 @@ def ARC_AND_b_c_cc : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -3271,8 +3271,8 @@ def ARC_AND_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{23-16} = 0b01000100;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -3291,8 +3291,8 @@ def ARC_AND_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -3311,8 +3311,8 @@ def ARC_AND_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -3329,8 +3329,8 @@ def ARC_AND_b_s12 : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -3542,8 +3542,8 @@ def ARC_ASL_b_c : ARCompactInst32_2op<0b00100, 0b000000, "asl",
   let Inst{5-0} = 0b000000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -3574,8 +3574,8 @@ def ARC_ASL_a_b_c : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{23-16} = 0b00000000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -3594,8 +3594,8 @@ def ARC_ASL_z_b_c : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -3614,8 +3614,8 @@ def ARC_ASL_b_c_cc : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -3632,8 +3632,8 @@ def ARC_ASL_b_u6 : ARCompactInst32_2op<0b00100, 0b000000, "asl",
   let Inst{5-0} = 0b000000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -3664,8 +3664,8 @@ def ARC_ASL_a_b_u6 : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{23-16} = 0b01000000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -3684,8 +3684,8 @@ def ARC_ASL_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -3704,8 +3704,8 @@ def ARC_ASL_b_u6_cc : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -3722,8 +3722,8 @@ def ARC_ASL_b_s12 : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -3963,8 +3963,8 @@ def ARC_ASLS_a_b_c : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{23-16} = 0b00001010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -3983,8 +3983,8 @@ def ARC_ASLS_z_b_c : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -4003,8 +4003,8 @@ def ARC_ASLS_b_c_cc : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -4020,8 +4020,8 @@ def ARC_ASLS_a_b_u6 : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{23-16} = 0b01001010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -4040,8 +4040,8 @@ def ARC_ASLS_z_b_u6 : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -4060,8 +4060,8 @@ def ARC_ASLS_b_u6_cc : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -4078,8 +4078,8 @@ def ARC_ASLS_b_s12 : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -4291,8 +4291,8 @@ def ARC_ASR_b_c : ARCompactInst32_2op<0b00100, 0b000001, "asr",
   let Inst{5-0} = 0b000001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -4323,8 +4323,8 @@ def ARC_ASR_a_b_c : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{23-16} = 0b00000010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -4343,8 +4343,8 @@ def ARC_ASR_z_b_c : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -4363,8 +4363,8 @@ def ARC_ASR_b_c_cc : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -4381,8 +4381,8 @@ def ARC_ASR_b_u6 : ARCompactInst32_2op<0b00100, 0b000001, "asr",
   let Inst{5-0} = 0b000001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -4413,8 +4413,8 @@ def ARC_ASR_a_b_u6 : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{23-16} = 0b01000010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -4433,8 +4433,8 @@ def ARC_ASR_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -4453,8 +4453,8 @@ def ARC_ASR_b_u6_cc : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -4471,8 +4471,8 @@ def ARC_ASR_b_s12 : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -4712,8 +4712,8 @@ def ARC_ASRS_a_b_c : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{23-16} = 0b00001011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -4732,8 +4732,8 @@ def ARC_ASRS_z_b_c : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -4752,8 +4752,8 @@ def ARC_ASRS_b_c_cc : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -4769,8 +4769,8 @@ def ARC_ASRS_a_b_u6 : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{23-16} = 0b01001011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -4789,8 +4789,8 @@ def ARC_ASRS_z_b_u6 : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -4809,8 +4809,8 @@ def ARC_ASRS_b_u6_cc : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -4827,8 +4827,8 @@ def ARC_ASRS_b_s12 : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -5039,8 +5039,8 @@ def ARC_AVGQB_a_b_c : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let Inst{23-16} = 0b00100011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -5061,8 +5061,8 @@ def ARC_AVGQB_b_c_cc : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -5078,8 +5078,8 @@ def ARC_AVGQB_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let Inst{23-16} = 0b01100011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -5100,8 +5100,8 @@ def ARC_AVGQB_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -5118,8 +5118,8 @@ def ARC_AVGQB_b_s12 : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -5182,8 +5182,8 @@ def ARC_BCLR_a_b_c : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{23-16} = 0b00010000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -5202,8 +5202,8 @@ def ARC_BCLR_z_b_c : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -5222,8 +5222,8 @@ def ARC_BCLR_b_c_cc : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -5239,8 +5239,8 @@ def ARC_BCLR_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{23-16} = 0b01010000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -5259,8 +5259,8 @@ def ARC_BCLR_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -5279,8 +5279,8 @@ def ARC_BCLR_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -5297,8 +5297,8 @@ def ARC_BCLR_b_s12 : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -5509,8 +5509,8 @@ def ARC_BIC_a_b_c : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{23-16} = 0b00000110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -5529,8 +5529,8 @@ def ARC_BIC_z_b_c : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -5549,8 +5549,8 @@ def ARC_BIC_b_c_cc : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -5566,8 +5566,8 @@ def ARC_BIC_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{23-16} = 0b01000110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -5586,8 +5586,8 @@ def ARC_BIC_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -5606,8 +5606,8 @@ def ARC_BIC_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -5624,8 +5624,8 @@ def ARC_BIC_b_s12 : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -5836,8 +5836,8 @@ def ARC_BMSK_a_b_c : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{23-16} = 0b00010011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -5856,8 +5856,8 @@ def ARC_BMSK_z_b_c : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -5876,8 +5876,8 @@ def ARC_BMSK_b_c_cc : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -5893,8 +5893,8 @@ def ARC_BMSK_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{23-16} = 0b01010011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -5913,8 +5913,8 @@ def ARC_BMSK_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -5933,8 +5933,8 @@ def ARC_BMSK_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -5951,8 +5951,8 @@ def ARC_BMSK_b_s12 : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -6163,8 +6163,8 @@ def ARC_BSET_a_b_c : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{23-16} = 0b00001111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -6183,8 +6183,8 @@ def ARC_BSET_z_b_c : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -6203,8 +6203,8 @@ def ARC_BSET_b_c_cc : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -6220,8 +6220,8 @@ def ARC_BSET_a_b_u6 : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{23-16} = 0b01001111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -6240,8 +6240,8 @@ def ARC_BSET_z_b_u6 : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -6260,8 +6260,8 @@ def ARC_BSET_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -6278,8 +6278,8 @@ def ARC_BSET_b_s12 : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -6490,8 +6490,8 @@ def ARC_BTST_b_c : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{23-15} = 0b000100011;
   let Inst{5-0} = 0b000000;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -6508,8 +6508,8 @@ def ARC_BTST_b_c_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{5} = 0;
   let isPredicable = 1;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -6525,8 +6525,8 @@ def ARC_BTST_b_u6 : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{23-15} = 0b010100011;
   let Inst{5-0} = 0b000000;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -6543,8 +6543,8 @@ def ARC_BTST_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{5} = 1;
   let isPredicable = 1;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -6559,8 +6559,8 @@ def ARC_BTST_b_s12 : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b100100011;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -6697,8 +6697,8 @@ def ARC_BXOR_a_b_c : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{23-16} = 0b00010010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -6717,8 +6717,8 @@ def ARC_BXOR_z_b_c : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -6737,8 +6737,8 @@ def ARC_BXOR_b_c_cc : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -6754,8 +6754,8 @@ def ARC_BXOR_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{23-16} = 0b01010010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -6774,8 +6774,8 @@ def ARC_BXOR_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -6794,8 +6794,8 @@ def ARC_BXOR_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -6812,8 +6812,8 @@ def ARC_BXOR_b_s12 : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -7024,8 +7024,8 @@ def ARC_CLAMP_a_b_c : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let Inst{23-16} = 0b00101010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -7046,8 +7046,8 @@ def ARC_CLAMP_b_c_cc : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -7063,8 +7063,8 @@ def ARC_CLAMP_a_b_u6 : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let Inst{23-16} = 0b01101010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -7085,8 +7085,8 @@ def ARC_CLAMP_b_u6_cc : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -7103,8 +7103,8 @@ def ARC_CLAMP_b_s12 : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -7167,8 +7167,8 @@ def ARC_CMP_b_c : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{23-15} = 0b000011001;
   let Inst{5-0} = 0b000000;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -7185,8 +7185,8 @@ def ARC_CMP_b_c_cc : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{5} = 0;
   let isPredicable = 1;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -7202,8 +7202,8 @@ def ARC_CMP_b_u6 : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{23-15} = 0b010011001;
   let Inst{5-0} = 0b000000;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -7220,8 +7220,8 @@ def ARC_CMP_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{5} = 1;
   let isPredicable = 1;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -7236,8 +7236,8 @@ def ARC_CMP_b_s12 : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b100011001;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -7374,8 +7374,8 @@ def ARC_DIVAW_a_b_c : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{23-16} = 0b00001000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -7394,8 +7394,8 @@ def ARC_DIVAW_z_b_c : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -7414,8 +7414,8 @@ def ARC_DIVAW_b_c_cc : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -7431,8 +7431,8 @@ def ARC_DIVAW_a_b_u6 : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{23-16} = 0b01001000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -7451,8 +7451,8 @@ def ARC_DIVAW_z_b_u6 : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -7471,8 +7471,8 @@ def ARC_DIVAW_b_u6_cc : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -7489,8 +7489,8 @@ def ARC_DIVAW_b_s12 : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -7702,8 +7702,8 @@ def ARC_EXTB_b_c : ARCompactInst32_2op<0b00100, 0b000111, "extb",
   let Inst{5-0} = 0b000111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -7735,8 +7735,8 @@ def ARC_EXTB_b_u6 : ARCompactInst32_2op<0b00100, 0b000111, "extb",
   let Inst{5-0} = 0b000111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -7797,8 +7797,8 @@ def ARC_EXTW_b_c : ARCompactInst32_2op<0b00100, 0b001000, "extw",
   let Inst{5-0} = 0b001000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -7830,8 +7830,8 @@ def ARC_EXTW_b_u6 : ARCompactInst32_2op<0b00100, 0b001000, "extw",
   let Inst{5-0} = 0b001000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -7891,8 +7891,8 @@ def ARC_FXTR_a_b_c : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let Inst{23-16} = 0b00100110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -7913,8 +7913,8 @@ def ARC_FXTR_b_c_cc : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -7930,8 +7930,8 @@ def ARC_FXTR_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let Inst{23-16} = 0b01100110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -7952,8 +7952,8 @@ def ARC_FXTR_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -7970,8 +7970,8 @@ def ARC_FXTR_b_s12 : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -8034,8 +8034,8 @@ def ARC_IADDR_a_b_c : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let Inst{23-16} = 0b00100111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -8056,8 +8056,8 @@ def ARC_IADDR_b_c_cc : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -8073,8 +8073,8 @@ def ARC_IADDR_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let Inst{23-16} = 0b01100111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -8095,8 +8095,8 @@ def ARC_IADDR_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -8113,8 +8113,8 @@ def ARC_IADDR_b_s12 : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -8178,8 +8178,8 @@ def ARC_LSR_b_c : ARCompactInst32_2op<0b00100, 0b000010, "lsr",
   let Inst{5-0} = 0b000010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -8210,8 +8210,8 @@ def ARC_LSR_a_b_c : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{23-16} = 0b00000001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -8230,8 +8230,8 @@ def ARC_LSR_z_b_c : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -8250,8 +8250,8 @@ def ARC_LSR_b_c_cc : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -8268,8 +8268,8 @@ def ARC_LSR_b_u6 : ARCompactInst32_2op<0b00100, 0b000010, "lsr",
   let Inst{5-0} = 0b000010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -8300,8 +8300,8 @@ def ARC_LSR_a_b_u6 : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{23-16} = 0b01000001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -8320,8 +8320,8 @@ def ARC_LSR_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -8340,8 +8340,8 @@ def ARC_LSR_b_u6_cc : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -8358,8 +8358,8 @@ def ARC_LSR_b_s12 : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -8599,8 +8599,8 @@ def ARC_MAX_a_b_c : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{23-16} = 0b00001000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -8619,8 +8619,8 @@ def ARC_MAX_z_b_c : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -8639,8 +8639,8 @@ def ARC_MAX_b_c_cc : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -8656,8 +8656,8 @@ def ARC_MAX_a_b_u6 : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{23-16} = 0b01001000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -8676,8 +8676,8 @@ def ARC_MAX_z_b_u6 : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -8696,8 +8696,8 @@ def ARC_MAX_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -8714,8 +8714,8 @@ def ARC_MAX_b_s12 : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -8926,8 +8926,8 @@ def ARC_MIN_a_b_c : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{23-16} = 0b00001001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -8946,8 +8946,8 @@ def ARC_MIN_z_b_c : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -8966,8 +8966,8 @@ def ARC_MIN_b_c_cc : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -8983,8 +8983,8 @@ def ARC_MIN_a_b_u6 : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{23-16} = 0b01001001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -9003,8 +9003,8 @@ def ARC_MIN_z_b_u6 : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -9023,8 +9023,8 @@ def ARC_MIN_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -9041,8 +9041,8 @@ def ARC_MIN_b_s12 : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -9253,8 +9253,8 @@ def ARC_MOV_b_c : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{23-16} = 0b00001010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -9286,8 +9286,8 @@ def ARC_MOV_b_c_cc : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let isPredicable = 1;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -9319,8 +9319,8 @@ def ARC_MOV_b_u6 : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{23-16} = 0b01001010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -9352,8 +9352,8 @@ def ARC_MOV_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let isPredicable = 1;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -9385,8 +9385,8 @@ def ARC_MOV_b_s12 : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{23-16} = 0b10001010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -9479,8 +9479,8 @@ def ARC_NEG_a_b : ARCompactInst32_3op<0b00100, 0b001110, "neg",
   let Inst{11-6} = 0b000000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> ra;
   let Inst{5-0} = ra;
 }
@@ -9497,8 +9497,8 @@ def ARC_NEG_z_b : ARCompactInst32_3op<0b00100, 0b001110, "neg",
   let Inst{11-0} = 0b000000000000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
 }
 
 // neg<.f><.cc> b,b 00100bbb11001110FBBB0000001QQQQQ.
@@ -9515,8 +9515,8 @@ def ARC_NEG_b_cc : ARCompactInst32_3op<0b00100, 0b001110, "neg",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
 }
 
 // neg<.f> a,limm 0010011001001110F111000000AAAAAA.
@@ -9560,8 +9560,8 @@ def ARC_NEGS_b_c : ARCompactInst32_2op<0b00101, 0b000111, "negs",
   let Inst{5-0} = 0b000111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -9593,8 +9593,8 @@ def ARC_NEGS_b_u6 : ARCompactInst32_2op<0b00101, 0b000111, "negs",
   let Inst{5-0} = 0b000111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -9655,8 +9655,8 @@ def ARC_NEGSW_b_c : ARCompactInst32_2op<0b00101, 0b000110, "negsw",
   let Inst{5-0} = 0b000110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -9688,8 +9688,8 @@ def ARC_NEGSW_b_u6 : ARCompactInst32_2op<0b00101, 0b000110, "negsw",
   let Inst{5-0} = 0b000110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -9750,8 +9750,8 @@ def ARC_NORM_b_c : ARCompactInst32_2op<0b00101, 0b000001, "norm",
   let Inst{5-0} = 0b000001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -9783,8 +9783,8 @@ def ARC_NORM_b_u6 : ARCompactInst32_2op<0b00101, 0b000001, "norm",
   let Inst{5-0} = 0b000001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -9845,8 +9845,8 @@ def ARC_NORMW_b_c : ARCompactInst32_2op<0b00101, 0b001000, "normw",
   let Inst{5-0} = 0b001000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -9878,8 +9878,8 @@ def ARC_NORMW_b_u6 : ARCompactInst32_2op<0b00101, 0b001000, "normw",
   let Inst{5-0} = 0b001000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -9940,8 +9940,8 @@ def ARC_NOT_b_c : ARCompactInst32_2op<0b00100, 0b001010, "not",
   let Inst{5-0} = 0b001010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -9973,8 +9973,8 @@ def ARC_NOT_b_u6 : ARCompactInst32_2op<0b00100, 0b001010, "not",
   let Inst{5-0} = 0b001010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -10034,8 +10034,8 @@ def ARC_OR_a_b_c : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{23-16} = 0b00000101;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -10054,8 +10054,8 @@ def ARC_OR_z_b_c : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -10074,8 +10074,8 @@ def ARC_OR_b_c_cc : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -10091,8 +10091,8 @@ def ARC_OR_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{23-16} = 0b01000101;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -10111,8 +10111,8 @@ def ARC_OR_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -10131,8 +10131,8 @@ def ARC_OR_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -10149,8 +10149,8 @@ def ARC_OR_b_s12 : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -10361,8 +10361,8 @@ def ARC_PKQB_a_b_c : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let Inst{23-16} = 0b00100000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -10383,8 +10383,8 @@ def ARC_PKQB_b_c_cc : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -10400,8 +10400,8 @@ def ARC_PKQB_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let Inst{23-16} = 0b01100000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -10422,8 +10422,8 @@ def ARC_PKQB_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -10440,8 +10440,8 @@ def ARC_PKQB_b_s12 : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -10504,8 +10504,8 @@ def ARC_RCMP_b_c : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{23-15} = 0b000011011;
   let Inst{5-0} = 0b000000;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -10522,8 +10522,8 @@ def ARC_RCMP_b_c_cc : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{5} = 0;
   let isPredicable = 1;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -10539,8 +10539,8 @@ def ARC_RCMP_b_u6 : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{23-15} = 0b010011011;
   let Inst{5-0} = 0b000000;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -10557,8 +10557,8 @@ def ARC_RCMP_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{5} = 1;
   let isPredicable = 1;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -10573,8 +10573,8 @@ def ARC_RCMP_b_s12 : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b100011011;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -10712,8 +10712,8 @@ def ARC_RLC_b_c : ARCompactInst32_2op<0b00100, 0b001011, "rlc",
   let Inst{5-0} = 0b001011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -10745,8 +10745,8 @@ def ARC_RLC_b_u6 : ARCompactInst32_2op<0b00100, 0b001011, "rlc",
   let Inst{5-0} = 0b001011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -10807,8 +10807,8 @@ def ARC_RND16_b_c : ARCompactInst32_2op<0b00101, 0b000011, "rnd16",
   let Inst{5-0} = 0b000011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -10840,8 +10840,8 @@ def ARC_RND16_b_u6 : ARCompactInst32_2op<0b00101, 0b000011, "rnd16",
   let Inst{5-0} = 0b000011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -10902,8 +10902,8 @@ def ARC_ROR_b_c : ARCompactInst32_2op<0b00100, 0b000011, "ror",
   let Inst{5-0} = 0b000011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -10934,8 +10934,8 @@ def ARC_ROR_a_b_c : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{23-16} = 0b00000011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -10954,8 +10954,8 @@ def ARC_ROR_z_b_c : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -10974,8 +10974,8 @@ def ARC_ROR_b_c_cc : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -10992,8 +10992,8 @@ def ARC_ROR_b_u6 : ARCompactInst32_2op<0b00100, 0b000011, "ror",
   let Inst{5-0} = 0b000011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -11024,8 +11024,8 @@ def ARC_ROR_a_b_u6 : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{23-16} = 0b01000011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -11044,8 +11044,8 @@ def ARC_ROR_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -11064,8 +11064,8 @@ def ARC_ROR_b_u6_cc : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -11082,8 +11082,8 @@ def ARC_ROR_b_s12 : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -11324,8 +11324,8 @@ def ARC_RRC_b_c : ARCompactInst32_2op<0b00100, 0b000100, "rrc",
   let Inst{5-0} = 0b000100;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -11357,8 +11357,8 @@ def ARC_RRC_b_u6 : ARCompactInst32_2op<0b00100, 0b000100, "rrc",
   let Inst{5-0} = 0b000100;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -11418,8 +11418,8 @@ def ARC_RSUB_a_b_c : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{23-16} = 0b00001110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -11438,8 +11438,8 @@ def ARC_RSUB_z_b_c : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -11458,8 +11458,8 @@ def ARC_RSUB_b_c_cc : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -11475,8 +11475,8 @@ def ARC_RSUB_a_b_u6 : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{23-16} = 0b01001110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -11495,8 +11495,8 @@ def ARC_RSUB_z_b_u6 : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -11515,8 +11515,8 @@ def ARC_RSUB_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -11533,8 +11533,8 @@ def ARC_RSUB_b_s12 : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -11746,8 +11746,8 @@ def ARC_SAT16_b_c : ARCompactInst32_2op<0b00101, 0b000010, "sat16",
   let Inst{5-0} = 0b000010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -11779,8 +11779,8 @@ def ARC_SAT16_b_u6 : ARCompactInst32_2op<0b00101, 0b000010, "sat16",
   let Inst{5-0} = 0b000010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -11840,8 +11840,8 @@ def ARC_SBC_a_b_c : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{23-16} = 0b00000011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -11860,8 +11860,8 @@ def ARC_SBC_z_b_c : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -11880,8 +11880,8 @@ def ARC_SBC_b_c_cc : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -11897,8 +11897,8 @@ def ARC_SBC_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{23-16} = 0b01000011;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -11917,8 +11917,8 @@ def ARC_SBC_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -11937,8 +11937,8 @@ def ARC_SBC_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -11955,8 +11955,8 @@ def ARC_SBC_b_s12 : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -12167,8 +12167,8 @@ def ARC_SBCS_a_b_c : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{23-16} = 0b00100111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -12187,8 +12187,8 @@ def ARC_SBCS_z_b_c : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -12207,8 +12207,8 @@ def ARC_SBCS_b_c_cc : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -12224,8 +12224,8 @@ def ARC_SBCS_a_b_u6 : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{23-16} = 0b01100111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -12244,8 +12244,8 @@ def ARC_SBCS_z_b_u6 : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -12264,8 +12264,8 @@ def ARC_SBCS_b_u6_cc : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -12282,8 +12282,8 @@ def ARC_SBCS_b_s12 : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -12495,8 +12495,8 @@ def ARC_SEXB_b_c : ARCompactInst32_2op<0b00100, 0b000101, "sexb",
   let Inst{5-0} = 0b000101;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -12528,8 +12528,8 @@ def ARC_SEXB_b_u6 : ARCompactInst32_2op<0b00100, 0b000101, "sexb",
   let Inst{5-0} = 0b000101;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -12590,8 +12590,8 @@ def ARC_SEXW_b_c : ARCompactInst32_2op<0b00100, 0b000110, "sexw",
   let Inst{5-0} = 0b000110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -12623,8 +12623,8 @@ def ARC_SEXW_b_u6 : ARCompactInst32_2op<0b00100, 0b000110, "sexw",
   let Inst{5-0} = 0b000110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -12684,8 +12684,8 @@ def ARC_SFXTR_a_b_c : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let Inst{23-16} = 0b00101001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -12706,8 +12706,8 @@ def ARC_SFXTR_b_c_cc : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -12723,8 +12723,8 @@ def ARC_SFXTR_a_b_u6 : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let Inst{23-16} = 0b01101001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -12745,8 +12745,8 @@ def ARC_SFXTR_b_u6_cc : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -12763,8 +12763,8 @@ def ARC_SFXTR_b_s12 : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -12827,8 +12827,8 @@ def ARC_SUB_a_b_c : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{23-16} = 0b00000010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -12847,8 +12847,8 @@ def ARC_SUB_z_b_c : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -12867,8 +12867,8 @@ def ARC_SUB_b_c_cc : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -12884,8 +12884,8 @@ def ARC_SUB_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{23-16} = 0b01000010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -12904,8 +12904,8 @@ def ARC_SUB_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -12924,8 +12924,8 @@ def ARC_SUB_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -12942,8 +12942,8 @@ def ARC_SUB_b_s12 : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -13154,8 +13154,8 @@ def ARC_SUB1_a_b_c : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{23-16} = 0b00010111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -13174,8 +13174,8 @@ def ARC_SUB1_z_b_c : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -13194,8 +13194,8 @@ def ARC_SUB1_b_c_cc : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -13211,8 +13211,8 @@ def ARC_SUB1_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{23-16} = 0b01010111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -13231,8 +13231,8 @@ def ARC_SUB1_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -13251,8 +13251,8 @@ def ARC_SUB1_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -13269,8 +13269,8 @@ def ARC_SUB1_b_s12 : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -13481,8 +13481,8 @@ def ARC_SUB2_a_b_c : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{23-16} = 0b00011000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -13501,8 +13501,8 @@ def ARC_SUB2_z_b_c : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -13521,8 +13521,8 @@ def ARC_SUB2_b_c_cc : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -13538,8 +13538,8 @@ def ARC_SUB2_a_b_u6 : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{23-16} = 0b01011000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -13558,8 +13558,8 @@ def ARC_SUB2_z_b_u6 : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -13578,8 +13578,8 @@ def ARC_SUB2_b_u6_cc : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -13596,8 +13596,8 @@ def ARC_SUB2_b_s12 : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -13808,8 +13808,8 @@ def ARC_SUB3_a_b_c : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{23-16} = 0b00011001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -13828,8 +13828,8 @@ def ARC_SUB3_z_b_c : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -13848,8 +13848,8 @@ def ARC_SUB3_b_c_cc : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -13865,8 +13865,8 @@ def ARC_SUB3_a_b_u6 : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{23-16} = 0b01011001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -13885,8 +13885,8 @@ def ARC_SUB3_z_b_u6 : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -13905,8 +13905,8 @@ def ARC_SUB3_b_u6_cc : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -13923,8 +13923,8 @@ def ARC_SUB3_b_s12 : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -14135,8 +14135,8 @@ def ARC_SUBS_a_b_c : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{23-16} = 0b00000111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -14155,8 +14155,8 @@ def ARC_SUBS_z_b_c : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -14175,8 +14175,8 @@ def ARC_SUBS_b_c_cc : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -14192,8 +14192,8 @@ def ARC_SUBS_a_b_u6 : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{23-16} = 0b01000111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -14212,8 +14212,8 @@ def ARC_SUBS_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -14232,8 +14232,8 @@ def ARC_SUBS_b_u6_cc : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -14250,8 +14250,8 @@ def ARC_SUBS_b_s12 : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -14476,8 +14476,8 @@ def ARC_SUBSDW_a_b_c : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{23-16} = 0b00101001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -14496,8 +14496,8 @@ def ARC_SUBSDW_z_b_c : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -14516,8 +14516,8 @@ def ARC_SUBSDW_b_c_cc : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -14533,8 +14533,8 @@ def ARC_SUBSDW_a_b_u6 : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{23-16} = 0b01101001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -14553,8 +14553,8 @@ def ARC_SUBSDW_z_b_u6 : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -14573,8 +14573,8 @@ def ARC_SUBSDW_b_u6_cc : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -14591,8 +14591,8 @@ def ARC_SUBSDW_b_s12 : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -14804,8 +14804,8 @@ def ARC_SWAP_b_c : ARCompactInst32_2op<0b00101, 0b000000, "swap",
   let Inst{5-0} = 0b000000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -14837,8 +14837,8 @@ def ARC_SWAP_b_u6 : ARCompactInst32_2op<0b00101, 0b000000, "swap",
   let Inst{5-0} = 0b000000;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -14899,8 +14899,8 @@ def ARC_SWAPE_b_c : ARCompactInst32_2op<0b00101, 0b001001, "swape",
   let Inst{5-0} = 0b001001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -14932,8 +14932,8 @@ def ARC_SWAPE_b_u6 : ARCompactInst32_2op<0b00101, 0b001001, "swape",
   let Inst{5-0} = 0b001001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -14993,8 +14993,8 @@ def ARC_TST_b_c : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{23-15} = 0b000010111;
   let Inst{5-0} = 0b000000;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -15011,8 +15011,8 @@ def ARC_TST_b_c_cc : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{5} = 0;
   let isPredicable = 1;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -15028,8 +15028,8 @@ def ARC_TST_b_u6 : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{23-15} = 0b010010111;
   let Inst{5-0} = 0b000000;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -15046,8 +15046,8 @@ def ARC_TST_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{5} = 1;
   let isPredicable = 1;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -15062,8 +15062,8 @@ def ARC_TST_b_s12 : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b100010111;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -15200,8 +15200,8 @@ def ARC_UPKQB_a_b_c : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let Inst{23-16} = 0b00100001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -15222,8 +15222,8 @@ def ARC_UPKQB_b_c_cc : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -15239,8 +15239,8 @@ def ARC_UPKQB_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let Inst{23-16} = 0b01100001;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -15261,8 +15261,8 @@ def ARC_UPKQB_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -15279,8 +15279,8 @@ def ARC_UPKQB_b_s12 : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -15343,8 +15343,8 @@ def ARC_XOR_a_b_c : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{23-16} = 0b00000111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -15363,8 +15363,8 @@ def ARC_XOR_z_b_c : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -15383,8 +15383,8 @@ def ARC_XOR_b_c_cc : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -15400,8 +15400,8 @@ def ARC_XOR_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{23-16} = 0b01000111;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -15420,8 +15420,8 @@ def ARC_XOR_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -15440,8 +15440,8 @@ def ARC_XOR_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -15458,8 +15458,8 @@ def ARC_XOR_b_s12 : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
@@ -15670,8 +15670,8 @@ def ARC_XPKQB_a_b_c : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let Inst{23-16} = 0b00100010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
   bits<6> ra;
@@ -15692,8 +15692,8 @@ def ARC_XPKQB_b_c_cc : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -15709,8 +15709,8 @@ def ARC_XPKQB_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let Inst{23-16} = 0b01100010;
   let Defs = [STATUS32];
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
   bits<6> ra;
@@ -15731,8 +15731,8 @@ def ARC_XPKQB_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -15749,8 +15749,8 @@ def ARC_XPKQB_b_s12 : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let Defs = [STATUS32];
   
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};

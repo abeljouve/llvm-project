@@ -1441,6 +1441,10 @@ template <class ELFT> Triple::ArchType ELFObjectFile<ELFT>::getArch() const {
 
   case ELF::EM_VE:
     return Triple::ve;
+  case ELF::EM_ARC_COMPACT:
+  case ELF::EM_ARC_COMPACT2:
+    return IsLittleEndian ? Triple::arc : Triple::arceb;
+
   case ELF::EM_CSKY:
     return Triple::csky;
 

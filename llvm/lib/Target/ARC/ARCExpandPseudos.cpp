@@ -38,6 +38,10 @@ private:
   void expandStore(MachineFunction &, MachineBasicBlock::iterator);
   void expandCTLZ(MachineFunction &, MachineBasicBlock::iterator);
   void expandCTTZ(MachineFunction &, MachineBasicBlock::iterator);
+  void expandLR(MachineFunction &, MachineBasicBlock::iterator);
+  void expandLRImm(MachineFunction &, MachineBasicBlock::iterator);
+  void expandSR(MachineFunction &, MachineBasicBlock::iterator);
+  void expandSRImm(MachineFunction &, MachineBasicBlock::iterator);
 
   const ARCInstrInfo *TII;
 };
@@ -128,6 +132,74 @@ void ARCExpandPseudos::expandCTTZ(MachineFunction &MF,
   MI.eraseFromParent();
 }
 
+void ARCExpandPseudos::expandLR(MachineFunction &MF,
+                                MachineBasicBlock::iterator MII) {
+  // Expand: %dst = ARC_LR_PSEUDO %aux_addr
+  // To:     %dst = ARC_LR_b_c %aux_addr
+  MachineInstr &MI = *MII;
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ARC_LR_b_c))
+      .add(MI.getOperand(0))  // dst
+      .add(MI.getOperand(1)); // aux_addr (register)
+  MI.eraseFromParent();
+}
+
+void ARCExpandPseudos::expandLRImm(MachineFunction &MF,
+                                    MachineBasicBlock::iterator MII) {
+  // Expand: %dst = ARC_LR_IMM_PSEUDO imm
+  // To:     %dst = ARC_LR_b_u6 imm    (if fits in u6)
+  //    or:  %dst = ARC_LR_b_limm imm   (otherwise)
+  MachineInstr &MI = *MII;
+  int64_t AuxAddr = MI.getOperand(1).getImm();
+  unsigned Opc;
+  if (isUInt<6>(AuxAddr))
+    Opc = ARC::ARC_LR_b_u6;
+  else if (isInt<12>(AuxAddr))
+    Opc = ARC::ARC_LR_b_s12;
+  else
+    Opc = ARC::ARC_LR_b_limm;
+
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(Opc))
+      .add(MI.getOperand(0))  // dst
+      .addImm(AuxAddr);       // aux address immediate
+  MI.eraseFromParent();
+}
+
+void ARCExpandPseudos::expandSR(MachineFunction &MF,
+                                MachineBasicBlock::iterator MII) {
+  // Expand: ARC_SR_PSEUDO %val, %aux_addr
+  // To:     ARC_SR_b_c %val, %aux_addr
+  // Note: ARC_SR_b_c has rb_chk as (outs) in the auto-generated def,
+  // but it is actually a source operand in the encoding. We emit it
+  // as the first operand which maps to the B field.
+  MachineInstr &MI = *MII;
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ARC_SR_b_c))
+      .add(MI.getOperand(0))  // val (mapped to rb_chk / B field)
+      .add(MI.getOperand(1)); // aux_addr (register, C field)
+  MI.eraseFromParent();
+}
+
+void ARCExpandPseudos::expandSRImm(MachineFunction &MF,
+                                    MachineBasicBlock::iterator MII) {
+  // Expand: ARC_SR_IMM_PSEUDO %val, imm
+  // To:     ARC_SR_b_u6 %val, imm     (if fits in u6)
+  //    or:  ARC_SR_b_s12 %val, imm    (if fits in s12)
+  //    or:  ARC_SR_b_limm %val, imm   (otherwise)
+  MachineInstr &MI = *MII;
+  int64_t AuxAddr = MI.getOperand(1).getImm();
+  unsigned Opc;
+  if (isUInt<6>(AuxAddr))
+    Opc = ARC::ARC_SR_b_u6;
+  else if (isInt<12>(AuxAddr))
+    Opc = ARC::ARC_SR_b_s12;
+  else
+    Opc = ARC::ARC_SR_b_limm;
+
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(Opc))
+      .add(MI.getOperand(0))  // val (mapped to rb_chk / B field)
+      .addImm(AuxAddr);       // aux address immediate
+  MI.eraseFromParent();
+}
+
 bool ARCExpandPseudos::runOnMachineFunction(MachineFunction &MF) {
   const ARCSubtarget *STI = &MF.getSubtarget<ARCSubtarget>();
   TII = STI->getInstrInfo();
@@ -149,6 +221,22 @@ bool ARCExpandPseudos::runOnMachineFunction(MachineFunction &MF) {
         break;
       case ARC::CTTZ:
         expandCTTZ(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::ARC_LR_PSEUDO:
+        expandLR(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::ARC_LR_IMM_PSEUDO:
+        expandLRImm(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::ARC_SR_PSEUDO:
+        expandSR(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::ARC_SR_IMM_PSEUDO:
+        expandSRImm(MF, MBBI);
         Expanded = true;
         break;
       default:

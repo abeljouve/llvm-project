@@ -82,6 +82,9 @@ void ARCPassConfig::addPreEmitPass() {
   addPass(createARCBranchFinalizePass());
   // Expand HWLOOP_SETUP/HWLOOP_SETUP_IMM pseudos into MOV+NOP+LP sequence.
   addPass(createARCExpandHWLoopsPass());
+  // Replace 32-bit instructions with compact 16-bit equivalents when
+  // optimizing for size (-Os/-Oz). ARCompact (ARC700) only.
+  addPass(createARCSizeReductionPass());
   // Delay slot filler runs after branch finalization, only for ARCompact.
   addPass(createARCDelaySlotFillerPass());
 }
@@ -108,6 +111,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeARCTarget() {
   initializeARCDelaySlotFillerPass(PR);
   initializeARCExpandHWLoopsPass(PR);
   initializeARCHardwareLoopsPass(PR);
+  initializeARCSizeReductionPass(PR);
 }
 
 TargetTransformInfo

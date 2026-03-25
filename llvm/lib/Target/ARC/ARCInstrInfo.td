@@ -57,6 +57,14 @@ def ARCcmov : SDNode<"ARCISD::CMOV", SDT_ARCcmov, [SDNPInGlue]>;
 // Conditional Branch
 def ARCbrcc : SDNode<"ARCISD::BRcc", SDT_ARCbrcc, [SDNPHasChain]>;
 
+// Bit-test branches (ARCompact bbit0/bbit1)
+// Operands: target, reg, bitpos
+def SDT_ARCbbit : SDTypeProfile<0, 3, [SDTCisVT<0, OtherVT>,
+                                        SDTCisVT<1, i32>,
+                                        SDTCisVT<2, i32>]>;
+def ARCbbit0 : SDNode<"ARCISD::BBIT0", SDT_ARCbbit, [SDNPHasChain]>;
+def ARCbbit1 : SDNode<"ARCISD::BBIT1", SDT_ARCbbit, [SDNPHasChain]>;
+
 // Direct Call
 def ARCBranchLink     : SDNode<"ARCISD::BL",SDT_ARCBranchLink,
                             [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue,

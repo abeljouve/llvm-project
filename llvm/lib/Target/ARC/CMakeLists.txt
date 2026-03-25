@@ -30,6 +30,7 @@ add_llvm_target(ARCCodeGen
   ARCOptAddrMode.cpp
   ARCRegisterInfo.cpp
   ARCSelectionDAGInfo.cpp
+  ARCSizeReduction.cpp
   ARCSubtarget.cpp
   ARCTargetMachine.cpp
 

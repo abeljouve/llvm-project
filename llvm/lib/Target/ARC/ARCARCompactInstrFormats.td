@@ -46,6 +46,10 @@ class ARCompactInst32<dag outs, dag ins, string asmstr, list<dag> pattern>
 }
 
 // 3-operand ALU: major[31:27], subop[21:16], F[15], a[5:0], b[26:24,14:12], c[11:6]
+// Register B field is SPLIT: Inst{26-24} = rb{2-0} (low 3), Inst{14-12} = rb{5-3} (high 3).
+// Matches binutils insert_rb(): insn | ((value & 0x07)<<24) | (((value>>3)&0x07)<<12).
+// Register A field: Inst{5-0} = ra{5-0}.
+// Register C field: Inst{11-6} = rc{5-0}.
 class ARCompactInst32_3op<bits<5> major, bits<6> subop, string mnemonic,
                           dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst32<outs, ins, asmstr, pattern> {
@@ -58,6 +62,8 @@ class ARCompactInst32_3op<bits<5> major, bits<6> subop, string mnemonic,
 }
 
 // 2-operand (single-operand) ALU: major[31:27], subop1=0x2F[21:16], subop2[5:0]
+// Register B field is SPLIT: Inst{26-24} = rb{2-0} (low 3), Inst{14-12} = rb{5-3} (high 3).
+// Matches binutils insert_rb(): insn | ((value & 0x07)<<24) | (((value>>3)&0x07)<<12).
 class ARCompactInst32_2op<bits<5> major, bits<6> subop2, string mnemonic,
                           dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst32<outs, ins, asmstr, pattern> {
