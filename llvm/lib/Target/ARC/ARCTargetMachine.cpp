@@ -78,7 +78,11 @@ bool ARCPassConfig::addInstSelector() {
   return false;
 }
 
-void ARCPassConfig::addPreEmitPass() { addPass(createARCBranchFinalizePass()); }
+void ARCPassConfig::addPreEmitPass() {
+  addPass(createARCBranchFinalizePass());
+  // Delay slot filler runs after branch finalization, only for ARCompact.
+  addPass(createARCDelaySlotFillerPass());
+}
 
 void ARCPassConfig::addPreRegAlloc() {
     addPass(createARCExpandPseudosPass());
@@ -98,6 +102,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeARCTarget() {
   PassRegistry &PR = *PassRegistry::getPassRegistry();
   initializeARCAsmPrinterPass(PR);
   initializeARCDAGToDAGISelLegacyPass(PR);
+  initializeARCDelaySlotFillerPass(PR);
 }
 
 TargetTransformInfo

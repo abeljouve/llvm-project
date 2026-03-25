@@ -29,7 +29,10 @@ ARCSubtarget::ARCSubtarget(const Triple &TT, const std::string &CPU,
                            const std::string &FS, const TargetMachine &TM)
     : ARCGenSubtargetInfo(TT, CPU, /*TuneCPU=*/CPU, FS), InstrInfo(*this),
       FrameLowering(*this), TLInfo(TM, *this) {
-  // Detect big-endian from triple.
+  // Parse the subtarget features to set IsARCompact, IsBigEndian, etc.
+  ParseSubtargetFeatures(CPU, /*TuneCPU=*/CPU, FS);
+
+  // Also detect big-endian from triple as a fallback.
   if (TT.getArch() == Triple::arceb)
     IsBigEndian = true;
 

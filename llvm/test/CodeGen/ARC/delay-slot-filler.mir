@@ -1,0 +1,46 @@
+# RUN: llc -mtriple=arceb -mcpu=arc700eb -run-pass=arc-delay-slot-filler -o - %s | FileCheck %s
+# RUN: llc -mtriple=arc -mcpu=generic -run-pass=arc-delay-slot-filler -o - %s | FileCheck %s --check-prefix=ARCV2
+
+# Test that the ARC delay slot filler pass:
+# 1. Inserts NOPs for ARCompact branches with delay slots when no safe
+#    candidate is found
+# 2. Moves a safe instruction into the delay slot when one exists
+# 3. Is a no-op for ARCv2 subtargets
+
+---
+name:            test_delay_slot_nop
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: test_delay_slot_nop
+  ; CHECK:      ARC_B_s25_d %bb.1 {
+  ; CHECK-NEXT:   ARC_NOP_0
+  ; CHECK-NEXT: }
+  ;
+  ; ARCV2-LABEL: name: test_delay_slot_nop
+  ; ARCV2:      ARC_B_s25_d %bb.1
+  ; ARCV2-NOT:  ARC_NOP_0
+  bb.0:
+    ARC_B_s25_d %bb.1
+
+  bb.1:
+    liveins: $r0
+    $r0 = ARC_ADD_a_b_c $r0, $r0, implicit-def $status32
+...
+
+---
+name:            test_delay_slot_fill
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: test_delay_slot_fill
+  ; CHECK:      ARC_B_s25_d %bb.1 {
+  ; CHECK-NEXT:   $r2 = ARC_ADD_a_b_c $r0, $r1, implicit-def $status32
+  ; CHECK-NEXT: }
+  bb.0:
+    liveins: $r0, $r1
+    $r2 = ARC_ADD_a_b_c $r0, $r1, implicit-def $status32
+    ARC_B_s25_d %bb.1
+
+  bb.1:
+    liveins: $r0, $r1, $r2
+    $r0 = ARC_ADD_a_b_c $r2, $r1, implicit-def $status32
+...

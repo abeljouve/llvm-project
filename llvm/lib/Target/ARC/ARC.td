@@ -43,6 +43,7 @@ include "ARCARCompactInstrLoadStore.td"
 include "ARCARCompactInstrSpecial.td"
 include "ARCARCompactInstrExtArith.td"
 include "ARCARCompactInstr16.td"
+include "ARCARCompactPatterns.td"
 
 defm : RemapAllTargetPseudoPointerOperands<GPR32>;
 

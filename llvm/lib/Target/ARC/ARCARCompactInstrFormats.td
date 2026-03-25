@@ -50,6 +50,10 @@ class ARCompactInst32_3op<bits<5> major, bits<6> subop, string mnemonic,
     : ARCompactInst32<outs, ins, asmstr, pattern> {
   let Inst{31-27} = major;
   let Inst{21-16} = subop;
+  // ALU instructions have no side effects and do not access memory.
+  let hasSideEffects = 0;
+  let mayLoad = 0;
+  let mayStore = 0;
 }
 
 // 2-operand (single-operand) ALU: major[31:27], subop1=0x2F[21:16], subop2[5:0]
@@ -59,6 +63,10 @@ class ARCompactInst32_2op<bits<5> major, bits<6> subop2, string mnemonic,
   let Inst{31-27} = major;
   let Inst{21-16} = 0b101111; // 0x2F
   let Inst{5-0} = subop2;
+  // ALU instructions have no side effects and do not access memory.
+  let hasSideEffects = 0;
+  let mayLoad = 0;
+  let mayStore = 0;
 }
 
 // Branch format: major[31:27]
@@ -68,6 +76,9 @@ class ARCompactInstBranch<bits<5> major, string mnemonic,
   let Inst{31-27} = major;
   let isBranch = 1;
   let isTerminator = 1;
+  let hasSideEffects = 0;
+  let mayLoad = 0;
+  let mayStore = 0;
 }
 
 // Jump format
@@ -78,6 +89,9 @@ class ARCompactInstJump<bits<5> major, string mnemonic,
   let isBranch = 1;
   let isTerminator = 1;
   let isIndirectBranch = 1;
+  let hasSideEffects = 0;
+  let mayLoad = 0;
+  let mayStore = 0;
 }
 
 // Load format: major[31:27]
@@ -85,7 +99,9 @@ class ARCompactInstLoad<bits<5> major, string mnemonic,
                         dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst32<outs, ins, asmstr, pattern> {
   let Inst{31-27} = major;
+  let hasSideEffects = 0;
   let mayLoad = 1;
+  let mayStore = 0;
 }
 
 // Store format: major[31:27]
@@ -93,6 +109,8 @@ class ARCompactInstStore<bits<5> major, string mnemonic,
                          dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst32<outs, ins, asmstr, pattern> {
   let Inst{31-27} = major;
+  let hasSideEffects = 0;
+  let mayLoad = 0;
   let mayStore = 1;
 }
 
@@ -129,6 +147,10 @@ class ARCompactInst16_ALU<bits<5> major, string mnemonic,
                           dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst16<outs, ins, asmstr, pattern> {
   let Inst{15-11} = major;
+  // ALU instructions have no side effects and do not access memory.
+  let hasSideEffects = 0;
+  let mayLoad = 0;
+  let mayStore = 0;
 }
 
 // 16-bit Branch
@@ -138,6 +160,9 @@ class ARCompactInst16_Branch<bits<5> major, string mnemonic,
   let Inst{15-11} = major;
   let isBranch = 1;
   let isTerminator = 1;
+  let hasSideEffects = 0;
+  let mayLoad = 0;
+  let mayStore = 0;
 }
 
 // 16-bit Load/Store
@@ -145,6 +170,8 @@ class ARCompactInst16_LS<bits<5> major, string mnemonic,
                          dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst16<outs, ins, asmstr, pattern> {
   let Inst{15-11} = major;
+  // mayLoad/mayStore set per-instruction in the individual defs.
+  let hasSideEffects = 0;
 }
 
 //===----------------------------------------------------------------------===//

@@ -41,11 +41,18 @@ using namespace llvm;
 namespace {
 
 class ARCDAGToDAGISel : public SelectionDAGISel {
+  const ARCSubtarget *Subtarget = nullptr;
+
 public:
   ARCDAGToDAGISel() = delete;
 
   ARCDAGToDAGISel(ARCTargetMachine &TM, CodeGenOptLevel OptLevel)
       : SelectionDAGISel(TM, OptLevel) {}
+
+  bool runOnMachineFunction(MachineFunction &MF) override {
+    Subtarget = &MF.getSubtarget<ARCSubtarget>();
+    return SelectionDAGISel::runOnMachineFunction(MF);
+  }
 
   void Select(SDNode *N) override;
 
