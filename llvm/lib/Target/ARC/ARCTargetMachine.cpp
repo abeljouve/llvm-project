@@ -80,6 +80,8 @@ bool ARCPassConfig::addInstSelector() {
 
 void ARCPassConfig::addPreEmitPass() {
   addPass(createARCBranchFinalizePass());
+  // Expand HWLOOP_SETUP/HWLOOP_SETUP_IMM pseudos into MOV+NOP+LP sequence.
+  addPass(createARCExpandHWLoopsPass());
   // Delay slot filler runs after branch finalization, only for ARCompact.
   addPass(createARCDelaySlotFillerPass());
 }
@@ -104,6 +106,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeARCTarget() {
   initializeARCAsmPrinterPass(PR);
   initializeARCDAGToDAGISelLegacyPass(PR);
   initializeARCDelaySlotFillerPass(PR);
+  initializeARCExpandHWLoopsPass(PR);
   initializeARCHardwareLoopsPass(PR);
 }
 

@@ -18,6 +18,7 @@ add_llvm_target(ARCCodeGen
   ARCAsmPrinter.cpp
   ARCBranchFinalize.cpp
   ARCDelaySlotFiller.cpp
+  ARCExpandHWLoops.cpp
   ARCExpandPseudos.cpp
   ARCFrameLowering.cpp
   ARCHardwareLoops.cpp

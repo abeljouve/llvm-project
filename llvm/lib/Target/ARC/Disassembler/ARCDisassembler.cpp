@@ -183,7 +183,32 @@ static DecodeStatus decodeBranchTarget25(MCInst &Inst, unsigned InsnS,
   return DecodeBranchTargetS<25>(Inst, InsnS, Address, Decoder);
 }
 
+// Branch target decoders for 16-bit compact branch instructions.
+static DecodeStatus decodeBranchTarget7(MCInst &Inst, unsigned InsnS,
+                                        uint64_t Address,
+                                        const MCDisassembler *Decoder) {
+  return DecodeBranchTargetS<7>(Inst, InsnS, Address, Decoder);
+}
+
+static DecodeStatus decodeBranchTarget8(MCInst &Inst, unsigned InsnS,
+                                        uint64_t Address,
+                                        const MCDisassembler *Decoder) {
+  return DecodeBranchTargetS<8>(Inst, InsnS, Address, Decoder);
+}
+
+static DecodeStatus decodeBranchTarget10(MCInst &Inst, unsigned InsnS,
+                                         uint64_t Address,
+                                         const MCDisassembler *Decoder) {
+  return DecodeBranchTargetS<10>(Inst, InsnS, Address, Decoder);
+}
+
 // Call target decoders for ARCompact BL/BL_S instructions.
+static DecodeStatus decodeCallTarget13(MCInst &Inst, unsigned InsnS,
+                                       uint64_t Address,
+                                       const MCDisassembler *Decoder) {
+  return DecodeBranchTargetS<13>(Inst, InsnS, Address, Decoder);
+}
+
 static DecodeStatus decodeCallTarget21(MCInst &Inst, unsigned InsnS,
                                        uint64_t Address,
                                        const MCDisassembler *Decoder) {
