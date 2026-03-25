@@ -26,7 +26,7 @@ namespace {
 
 class ARCELFObjectWriter : public MCELFObjectTargetWriter {
 public:
-  explicit ARCELFObjectWriter(uint8_t OSABI, bool IsBigEndian);
+  explicit ARCELFObjectWriter(uint8_t OSABI, bool IsARCompact);
 
   ~ARCELFObjectWriter() override = default;
 
@@ -39,9 +39,10 @@ protected:
 
 } // end anonymous namespace
 
-ARCELFObjectWriter::ARCELFObjectWriter(uint8_t OSABI, bool IsBigEndian)
+ARCELFObjectWriter::ARCELFObjectWriter(uint8_t OSABI, bool IsARCompact)
     : MCELFObjectTargetWriter(/*Is64Bit=*/false, OSABI,
-                              ELF::EM_ARC_COMPACT2,
+                              IsARCompact ? ELF::EM_ARC_COMPACT
+                                          : ELF::EM_ARC_COMPACT2,
                               /*HasRelocationAddend=*/true) {}
 
 unsigned ARCELFObjectWriter::getRelocType(const MCFixup &Fixup,
@@ -87,6 +88,6 @@ bool ARCELFObjectWriter::needsRelocateWithSymbol(const MCValue &,
 }
 
 std::unique_ptr<MCObjectTargetWriter>
-llvm::createARCELFObjectWriter(uint8_t OSABI, bool IsBigEndian) {
-  return std::make_unique<ARCELFObjectWriter>(OSABI, IsBigEndian);
+llvm::createARCELFObjectWriter(uint8_t OSABI, bool IsARCompact) {
+  return std::make_unique<ARCELFObjectWriter>(OSABI, IsARCompact);
 }

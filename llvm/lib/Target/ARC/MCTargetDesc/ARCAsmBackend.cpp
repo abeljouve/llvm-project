@@ -28,10 +28,11 @@ namespace {
 
 class ARCAsmBackend : public MCAsmBackend {
   uint8_t OSABI;
+  bool IsARCompact;
 
 public:
-  ARCAsmBackend(llvm::endianness Endian, uint8_t OSABI)
-      : MCAsmBackend(Endian), OSABI(OSABI) {}
+  ARCAsmBackend(llvm::endianness Endian, uint8_t OSABI, bool IsARCompact)
+      : MCAsmBackend(Endian), OSABI(OSABI), IsARCompact(IsARCompact) {}
 
   void applyFixup(const MCFragment &, const MCFixup &, const MCValue &Target,
                   uint8_t *Data, uint64_t Value, bool IsResolved) override;
@@ -129,8 +130,7 @@ bool ARCAsmBackend::writeNopData(raw_ostream &OS, uint64_t Count,
 
 std::unique_ptr<MCObjectTargetWriter>
 ARCAsmBackend::createObjectTargetWriter() const {
-  return createARCELFObjectWriter(OSABI,
-                                  Endian == llvm::endianness::big);
+  return createARCELFObjectWriter(OSABI, IsARCompact);
 }
 
 MCAsmBackend *llvm::createARCAsmBackend(const Target &T,
@@ -141,5 +141,6 @@ MCAsmBackend *llvm::createARCAsmBackend(const Target &T,
   llvm::endianness End = TT.isLittleEndian() ? llvm::endianness::little
                                               : llvm::endianness::big;
   uint8_t OSABI = MCELFObjectTargetWriter::getOSABI(TT.getOS());
-  return new ARCAsmBackend(End, OSABI);
+  bool IsARCompact = STI.getCPU().starts_with("arc700");
+  return new ARCAsmBackend(End, OSABI, IsARCompact);
 }

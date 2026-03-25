@@ -30,7 +30,7 @@ MCAsmBackend *createARCAsmBackend(const Target &T, const MCSubtargetInfo &STI,
                                   const MCTargetOptions &Options);
 
 std::unique_ptr<MCObjectTargetWriter>
-createARCELFObjectWriter(uint8_t OSABI, bool IsBigEndian);
+createARCELFObjectWriter(uint8_t OSABI, bool IsARCompact);
 
 } // end namespace llvm
 
