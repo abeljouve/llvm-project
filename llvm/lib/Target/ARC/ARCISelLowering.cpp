@@ -224,6 +224,7 @@ SDValue ARCTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue RHS = Op.getOperand(3);
   SDValue Dest = Op.getOperand(4);
   SDLoc dl(Op);
+
   ARCCC::CondCode arcCC = ISDCCtoARCCC(CC);
   assert(LHS.getValueType() == MVT::i32 && "Only know how to BR_CC i32");
   return DAG.getNode(ARCISD::BRcc, dl, MVT::Other, Chain, Dest, LHS, RHS,

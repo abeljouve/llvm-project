@@ -37,8 +37,8 @@ def ARC_EX_b_c : ARCompactInst32_2op<0b00100, 0b001100, "ex",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b001100;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -54,8 +54,8 @@ def ARC_EX_b_u6 : ARCompactInst32_2op<0b00100, 0b001100, "ex",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b001100;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -225,8 +225,8 @@ def ARC_PREFETCH_b_c : ARCompactInst32_3op<0b00100, 0b110000, "prefetch",
   let Inst{21-15} = 0b1100000;
   let Inst{5-0} = 0b111110;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -243,8 +243,8 @@ def ARC_PREFETCH_b : ARCompactInst32_3op<0b00010, 0b000000, "prefetch",
   let Inst{11} = 0;
   let Inst{8-0} = 0b000111110;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
 }
 
 // prefetch<.aa> b,s9 00010bbbssssssssSBBB0aa000111110.
@@ -258,8 +258,8 @@ def ARC_PREFETCH_b_s9 : ARCompactInstSpecial<"prefetch",
   let Inst{11} = 0;
   let Inst{8-0} = 0b000111110;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<9> simm9_8;
   let Inst{23-16} = simm9_8{8-1};
   let Inst{15} = simm9_8{0};
@@ -535,8 +535,8 @@ def ARC_RTSC_b_z : ARCompactInst32_2op<0b00110, 0b011010, "rtsc",
   let Inst{23-16} = 0b01101111;
   let Inst{11-0} = 0b000000011010;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
 }
 
 // rtsc 0,0 0011011001101111R111000000011010.
@@ -561,8 +561,8 @@ def ARC_RTSC_b_c : ARCompactInst32_2op<0b00110, 0b011010, "rtsc",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b011010;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -592,8 +592,8 @@ def ARC_RTSC_b_u6 : ARCompactInst32_2op<0b00110, 0b011010, "rtsc",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b011010;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }

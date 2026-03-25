@@ -26,8 +26,8 @@ def ARC_LD_a_b : ARCompactInstLoad<0b00010, "ld",
   let Inst{31-27} = 0b00010;
   let Inst{23-15} = 0b000000000;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<8> ra_chk;
   let Inst{10-9} = ra_chk{7-6};
   let Inst{5-0} = ra_chk{5-0};
@@ -43,8 +43,8 @@ def ARC_LD_a_b_c : ARCompactInstLoad<0b00100, "ld",
   let Inst{31-27} = 0b00100;
   let Inst{21-19} = 0b110;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<8> ra_chk;
   let Inst{23-22} = ra_chk{7-6};
   let Inst{5-0} = ra_chk{5-0};
@@ -63,8 +63,8 @@ def ARC_LD_z_b : ARCompactInstLoad<0b00010, "ld",
   let Inst{23-15} = 0b000000000;
   let Inst{5-0} = 0b111110;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
 }
 
 // ld<.di><.aa><.x><zz> 0,b,c 00100bbbaa110ZZXDBBBCCCCCC111110.
@@ -78,8 +78,8 @@ def ARC_LD_z_b_c : ARCompactInstLoad<0b00100, "ld",
   let Inst{21-19} = 0b110;
   let Inst{5-0} = 0b111110;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -93,8 +93,8 @@ def ARC_LD_a_b_s9 : ARCompactInstLoad<0b00010, "ld",
   // Flags: C_ZZ23, C_DI20, C_AA21, C_X25
   let Inst{31-27} = 0b00010;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<9> simm9_8;
   let Inst{23-16} = simm9_8{8-1};
   let Inst{15} = simm9_8{0};
@@ -113,8 +113,8 @@ def ARC_LD_z_b_s9 : ARCompactInstLoad<0b00010, "ld",
   let Inst{31-27} = 0b00010;
   let Inst{5-0} = 0b111110;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<9> simm9_8;
   let Inst{23-16} = simm9_8{8-1};
   let Inst{15} = simm9_8{0};
@@ -297,8 +297,8 @@ def ARC_LLOCK_b_c : ARCompactInst32_2op<0b00100, 0b010000, "llock",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b010000;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -328,8 +328,8 @@ def ARC_LLOCK_b_u6 : ARCompactInst32_2op<0b00100, 0b010000, "llock",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b010000;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -386,8 +386,8 @@ def ARC_SCOND_b_c : ARCompactInst32_2op<0b00100, 0b010001, "scond",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b010001;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -403,8 +403,8 @@ def ARC_SCOND_b_u6 : ARCompactInst32_2op<0b00100, 0b010001, "scond",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b010001;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -474,8 +474,8 @@ def ARC_ST_c_b : ARCompactInstStore<0b00011, "st",
   let Inst{31-27} = 0b00011;
   let Inst{23-15} = 0b000000000;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -489,8 +489,8 @@ def ARC_ST_c_b_s9 : ARCompactInstStore<0b00011, "st",
   // Flags: C_ZZ29, C_DI26, C_AA27
   let Inst{31-27} = 0b00011;
   bits<6> rb;
-  let Inst{26-24} = rb{5-3};
-  let Inst{14-12} = rb{2-0};
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
   bits<9> simm9_8;
   let Inst{23-16} = simm9_8{8-1};
   let Inst{15} = simm9_8{0};

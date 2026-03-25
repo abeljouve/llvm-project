@@ -30,11 +30,13 @@ FunctionPass *createARCBranchFinalizePass();
 FunctionPass *createARCDelaySlotFillerPass();
 FunctionPass *createARCHardwareLoopsPass();
 FunctionPass *createARCExpandHWLoopsPass();
+FunctionPass *createARCSizeReductionPass();
 void initializeARCAsmPrinterPass(PassRegistry &);
 void initializeARCDAGToDAGISelLegacyPass(PassRegistry &);
 void initializeARCDelaySlotFillerPass(PassRegistry &);
 void initializeARCExpandHWLoopsPass(PassRegistry &);
 void initializeARCHardwareLoopsPass(PassRegistry &);
+void initializeARCSizeReductionPass(PassRegistry &);
 
 } // end namespace llvm
 
