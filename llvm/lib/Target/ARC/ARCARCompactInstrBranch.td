@@ -26,6 +26,9 @@ def ARC_B_s25_d : ARCompactInstBranch<0b00000, "b",
   let Inst{31-27} = 0b00000;
   let Inst{16} = 1;
   let hasDelaySlot = 1;
+  bits<20> simm25_a16_5;
+  let Inst{26-17} = simm25_a16_5{19-10};
+  let Inst{15-6} = simm25_a16_5{9-0};
 }
 
 // b<.d><cc> s21 00000ssssssssss0SSSSSSSSSSNQQQQQ.
@@ -39,6 +42,9 @@ def ARC_B_s21_cc_d : ARCompactInstBranch<0b00000, "b",
   let Inst{16} = 0;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<20> simm21_a16_5;
+  let Inst{26-17} = simm21_a16_5{19-10};
+  let Inst{15-6} = simm21_a16_5{9-0};
 }
 
 // bbit0<.d> b,c,s9 00001bbbsssssss1SBBBCCCCCCN01110.
@@ -51,6 +57,14 @@ def ARC_BBIT0_b_c_s9_d : ARCompactInstSpecial<"bbit0",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b01110;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // bbit0<.d> b,u6,s9 00001bbbsssssss1SBBBuuuuuuN11110.
@@ -63,6 +77,14 @@ def ARC_BBIT0_b_u6_s9_d : ARCompactInstSpecial<"bbit0",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b11110;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> uimm6_8;
+  let Inst{11-6} = uimm6_8;
 }
 
 // bbit0 b,limm,s9 00001bbbsssssss1SBBB111110001110.
@@ -75,6 +97,8 @@ def ARC_BBIT0_b_limm_s9 : ARCompactInstSpecial<"bbit0",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{11-0} = 0b111110001110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bbit0 limm,c,s9 00001110sssssss1S111CCCCCC001110.
@@ -88,6 +112,8 @@ def ARC_BBIT0_limm_c_s9 : ARCompactInstSpecial<"bbit0",
   let Inst{16} = 1;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bbit0 limm,u6,s9 00001110sssssss1S111uuuuuu011110.
@@ -101,6 +127,8 @@ def ARC_BBIT0_limm_u6_s9 : ARCompactInstSpecial<"bbit0",
   let Inst{16} = 1;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b011110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bbit0 limm,limm,s9 00001110sssssss1S111111110001110.
@@ -113,6 +141,8 @@ def ARC_BBIT0_limm_s9 : ARCompactInstSpecial<"bbit0",
   let Inst{31-24} = 0b00001110;
   let Inst{16} = 1;
   let Inst{14-0} = 0b111111110001110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bbit1<.d> b,c,s9 00001bbbsssssss1SBBBCCCCCCN01111.
@@ -125,6 +155,14 @@ def ARC_BBIT1_b_c_s9_d : ARCompactInstSpecial<"bbit1",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b01111;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // bbit1<.d> b,u6,s9 00001bbbsssssss1SBBBuuuuuuN11111.
@@ -137,6 +175,14 @@ def ARC_BBIT1_b_u6_s9_d : ARCompactInstSpecial<"bbit1",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b11111;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> uimm6_8;
+  let Inst{11-6} = uimm6_8;
 }
 
 // bbit1 b,limm,s9 00001bbbsssssss1SBBB111110001111.
@@ -149,6 +195,8 @@ def ARC_BBIT1_b_limm_s9 : ARCompactInstSpecial<"bbit1",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{11-0} = 0b111110001111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bbit1 limm,c,s9 00001110sssssss1S111CCCCCC001111.
@@ -162,6 +210,8 @@ def ARC_BBIT1_limm_c_s9 : ARCompactInstSpecial<"bbit1",
   let Inst{16} = 1;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bbit1 limm,u6,s9 00001110sssssss1S111uuuuuu011111.
@@ -175,6 +225,8 @@ def ARC_BBIT1_limm_u6_s9 : ARCompactInstSpecial<"bbit1",
   let Inst{16} = 1;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b011111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bbit1 limm,limm,s9 00001110sssssss1S111111110001111.
@@ -187,6 +239,8 @@ def ARC_BBIT1_limm_s9 : ARCompactInstSpecial<"bbit1",
   let Inst{31-24} = 0b00001110;
   let Inst{16} = 1;
   let Inst{14-0} = 0b111111110001111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bl<.d> s25 00001sssssssss10SSSSSSSSSSNRtttt.
@@ -199,6 +253,9 @@ def ARC_BL_s25_d : ARCompactInstBranch<0b00001, "bl",
   let Inst{31-27} = 0b00001;
   let Inst{17-16} = 0b10;
   let hasDelaySlot = 1;
+  bits<19> simm25_a32_5;
+  let Inst{26-18} = simm25_a32_5{18-10};
+  let Inst{15-6} = simm25_a32_5{9-0};
 }
 
 // bl<.cc><.d> s21 00001sssssssss00SSSSSSSSSSNQQQQQ.
@@ -212,6 +269,9 @@ def ARC_BL_s21_cc_d : ARCompactInstBranch<0b00001, "bl",
   let Inst{17-16} = 0b00;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<19> simm21_a32_5;
+  let Inst{26-18} = simm21_a32_5{18-10};
+  let Inst{15-6} = simm21_a32_5{9-0};
 }
 
 // breq<.d>CC_EQ b,c,s9 00001bbbsssssss1SBBBCCCCCCN00000.
@@ -226,6 +286,14 @@ def ARC_BREQ_b_c_s9_eq_d : ARCompactInstBranch<0b00001, "breq",
   let Inst{4-0} = 0b00000;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // breq<.d>CC_EQ b,u6,s9 00001bbbsssssss1SBBBuuuuuuN10000.
@@ -240,6 +308,14 @@ def ARC_BREQ_b_u6_s9_eq_d : ARCompactInstBranch<0b00001, "breq",
   let Inst{4-0} = 0b10000;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> uimm6_8;
+  let Inst{11-6} = uimm6_8;
 }
 
 // breqCC_EQ b,limm,s9 00001bbbsssssss1SBBB111110000000.
@@ -253,6 +329,8 @@ def ARC_BREQ_b_limm_s9_eq : ARCompactInstBranch<0b00001, "breq",
   let Inst{16} = 1;
   let Inst{11-0} = 0b111110000000;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // breqCC_EQ limm,c,s9 00001110sssssss1S111CCCCCC000000.
@@ -267,6 +345,8 @@ def ARC_BREQ_limm_c_s9_eq : ARCompactInstBranch<0b00001, "breq",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000000;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // breqCC_EQ limm,u6,s9 00001110sssssss1S111uuuuuu010000.
@@ -281,6 +361,8 @@ def ARC_BREQ_limm_u6_s9_eq : ARCompactInstBranch<0b00001, "breq",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b010000;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brge<.d>CC_GE b,c,s9 00001bbbsssssss1SBBBCCCCCCN00011.
@@ -295,6 +377,14 @@ def ARC_BRGE_b_c_s9_ge_d : ARCompactInstBranch<0b00001, "brge",
   let Inst{4-0} = 0b00011;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // brge<.d>CC_GE b,u6,s9 00001bbbsssssss1SBBBuuuuuuN10011.
@@ -309,6 +399,14 @@ def ARC_BRGE_b_u6_s9_ge_d : ARCompactInstBranch<0b00001, "brge",
   let Inst{4-0} = 0b10011;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> uimm6_8;
+  let Inst{11-6} = uimm6_8;
 }
 
 // brgeCC_GE b,limm,s9 00001bbbsssssss1SBBB111110000011.
@@ -322,6 +420,8 @@ def ARC_BRGE_b_limm_s9_ge : ARCompactInstBranch<0b00001, "brge",
   let Inst{16} = 1;
   let Inst{11-0} = 0b111110000011;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brgeCC_GE limm,c,s9 00001110sssssss1S111CCCCCC000011.
@@ -336,6 +436,8 @@ def ARC_BRGE_limm_c_s9_ge : ARCompactInstBranch<0b00001, "brge",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000011;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brgeCC_GE limm,u6,s9 00001110sssssss1S111uuuuuu010011.
@@ -350,6 +452,8 @@ def ARC_BRGE_limm_u6_s9_ge : ARCompactInstBranch<0b00001, "brge",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b010011;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brhs<.d>CC_HS b,c,s9 00001bbbsssssss1SBBBCCCCCCN00101.
@@ -364,6 +468,14 @@ def ARC_BRHS_b_c_s9_hs_d : ARCompactInstBranch<0b00001, "brhs",
   let Inst{4-0} = 0b00101;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // brhs<.d>CC_HS b,u6,s9 00001bbbsssssss1SBBBuuuuuuN10101.
@@ -378,6 +490,14 @@ def ARC_BRHS_b_u6_s9_hs_d : ARCompactInstBranch<0b00001, "brhs",
   let Inst{4-0} = 0b10101;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> uimm6_8;
+  let Inst{11-6} = uimm6_8;
 }
 
 // brhsCC_HS b,limm,s9 00001bbbsssssss1SBBB111110000101.
@@ -391,6 +511,8 @@ def ARC_BRHS_b_limm_s9_hs : ARCompactInstBranch<0b00001, "brhs",
   let Inst{16} = 1;
   let Inst{11-0} = 0b111110000101;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brhsCC_HS limm,c,s9 00001110sssssss1S111CCCCCC000101.
@@ -405,6 +527,8 @@ def ARC_BRHS_limm_c_s9_hs : ARCompactInstBranch<0b00001, "brhs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000101;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brhsCC_HS limm,u6,s9 00001110sssssss1S111uuuuuu010101.
@@ -419,6 +543,8 @@ def ARC_BRHS_limm_u6_s9_hs : ARCompactInstBranch<0b00001, "brhs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b010101;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brlo<.d>CC_LO b,c,s9 00001bbbsssssss1SBBBCCCCCCN00100.
@@ -433,6 +559,14 @@ def ARC_BRLO_b_c_s9_lo_d : ARCompactInstBranch<0b00001, "brlo",
   let Inst{4-0} = 0b00100;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // brlo<.d>CC_LO b,u6,s9 00001bbbsssssss1SBBBuuuuuuN10100.
@@ -447,6 +581,14 @@ def ARC_BRLO_b_u6_s9_lo_d : ARCompactInstBranch<0b00001, "brlo",
   let Inst{4-0} = 0b10100;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> uimm6_8;
+  let Inst{11-6} = uimm6_8;
 }
 
 // brloCC_LO b,limm,s9 00001bbbsssssss1SBBB111110000100.
@@ -460,6 +602,8 @@ def ARC_BRLO_b_limm_s9_lo : ARCompactInstBranch<0b00001, "brlo",
   let Inst{16} = 1;
   let Inst{11-0} = 0b111110000100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brloCC_LO limm,c,s9 00001110sssssss1S111CCCCCC000100.
@@ -474,6 +618,8 @@ def ARC_BRLO_limm_c_s9_lo : ARCompactInstBranch<0b00001, "brlo",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brloCC_LO limm,u6,s9 00001110sssssss1S111uuuuuu010100.
@@ -488,6 +634,8 @@ def ARC_BRLO_limm_u6_s9_lo : ARCompactInstBranch<0b00001, "brlo",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b010100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brlt<.d>CC_LT b,c,s9 00001bbbsssssss1SBBBCCCCCCN00010.
@@ -502,6 +650,14 @@ def ARC_BRLT_b_c_s9_lt_d : ARCompactInstBranch<0b00001, "brlt",
   let Inst{4-0} = 0b00010;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // brlt<.d>CC_LT b,u6,s9 00001bbbsssssss1SBBBuuuuuuN10010.
@@ -516,6 +672,14 @@ def ARC_BRLT_b_u6_s9_lt_d : ARCompactInstBranch<0b00001, "brlt",
   let Inst{4-0} = 0b10010;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> uimm6_8;
+  let Inst{11-6} = uimm6_8;
 }
 
 // brltCC_LT b,limm,s9 00001bbbsssssss1SBBB111110000010.
@@ -529,6 +693,8 @@ def ARC_BRLT_b_limm_s9_lt : ARCompactInstBranch<0b00001, "brlt",
   let Inst{16} = 1;
   let Inst{11-0} = 0b111110000010;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brltCC_LT limm,c,s9 00001110sssssss1S111CCCCCC000010.
@@ -543,6 +709,8 @@ def ARC_BRLT_limm_c_s9_lt : ARCompactInstBranch<0b00001, "brlt",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000010;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brltCC_LT limm,u6,s9 00001110sssssss1S111uuuuuu010010.
@@ -557,6 +725,8 @@ def ARC_BRLT_limm_u6_s9_lt : ARCompactInstBranch<0b00001, "brlt",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b010010;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brne<.d>CC_NE b,c,s9 00001bbbsssssss1SBBBCCCCCCN00001.
@@ -571,6 +741,14 @@ def ARC_BRNE_b_c_s9_ne_d : ARCompactInstBranch<0b00001, "brne",
   let Inst{4-0} = 0b00001;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // brne<.d>CC_NE b,u6,s9 00001bbbsssssss1SBBBUUUUUUN10001.
@@ -585,6 +763,14 @@ def ARC_BRNE_b_u6_s9_ne_d : ARCompactInstBranch<0b00001, "brne",
   let Inst{4-0} = 0b10001;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> uimm6_8;
+  let Inst{11-6} = uimm6_8;
 }
 
 // brneCC_NE b,limm,s9 00001bbbsssssss1SBBB111110000001.
@@ -598,6 +784,8 @@ def ARC_BRNE_b_limm_s9_ne : ARCompactInstBranch<0b00001, "brne",
   let Inst{16} = 1;
   let Inst{11-0} = 0b111110000001;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brneCC_NE limm,c,s9 00001110sssssss1S111CCCCCC000001.
@@ -612,6 +800,8 @@ def ARC_BRNE_limm_c_s9_ne : ARCompactInstBranch<0b00001, "brne",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000001;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // brneCC_NE limm,u6,s9 00001110sssssss1S111uuuuuu010001.
@@ -626,6 +816,8 @@ def ARC_BRNE_limm_u6_s9_ne : ARCompactInstBranch<0b00001, "brne",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b010001;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // j c 00100RRR001000000RRRCCCCCCRRRRRR.
@@ -637,6 +829,8 @@ def ARC_J_c : ARCompactInstJump<0b00100, "j",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001000000;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // j BLINK 00100RRR001000000RRR011111RRRRRR.
@@ -649,6 +843,8 @@ def ARC_J_blink : ARCompactInstJump<0b00100, "j",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001000000;
   let Inst{11-6} = 0b011111;
+  // Operand(s) blink need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // j.F ILINK1 00100RRR001000001RRR011101RRRRRR.
@@ -662,6 +858,8 @@ def ARC_J_ilink1 : ARCompactInstJump<0b00100, "j",
   let Inst{23-15} = 0b001000001;
   let Inst{11-6} = 0b011101;
   let Defs = [STATUS32];
+  // Operand(s) ilink1 need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // j.F ILINK2 00100RRR001000001RRR011110RRRRRR.
@@ -675,6 +873,8 @@ def ARC_J_ilink2 : ARCompactInstJump<0b00100, "j",
   let Inst{23-15} = 0b001000001;
   let Inst{11-6} = 0b011110;
   let Defs = [STATUS32];
+  // Operand(s) ilink2 need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // jcc c 00100RRR111000000RRRCCCCCC0QQQQQ.
@@ -688,6 +888,8 @@ def ARC_J_c_cc : ARCompactInstJump<0b00100, "j",
   let Inst{23-15} = 0b111000000;
   let Inst{5} = 0;
   let isPredicable = 1;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // jcc BLINK 00100RRR111000000RRR0111110QQQQQ.
@@ -701,6 +903,8 @@ def ARC_J_blink_cc : ARCompactInstJump<0b00100, "j",
   let Inst{23-15} = 0b111000000;
   let Inst{11-5} = 0b0111110;
   let isPredicable = 1;
+  // Operand(s) blink need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // j.Fcc ILINK1 00100RRR111000001RRR0111010QQQQQ.
@@ -715,6 +919,8 @@ def ARC_J_ilink1_cc : ARCompactInstJump<0b00100, "j",
   let Inst{11-5} = 0b0111010;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) ilink1 need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // j.Fcc ILINK2 00100RRR111000001RRR0111100QQQQQ.
@@ -729,6 +935,8 @@ def ARC_J_ilink2_cc : ARCompactInstJump<0b00100, "j",
   let Inst{11-5} = 0b0111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) ilink2 need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // j.D c 00100RRR001000010RRRCCCCCCRRRRRR.
@@ -741,6 +949,8 @@ def ARC_J_c_d : ARCompactInstJump<0b00100, "j",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001000010;
   let hasDelaySlot = 1;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // j.D BLINK 00100RRR001000010RRR011111RRRRRR.
@@ -754,6 +964,8 @@ def ARC_J_blink_d : ARCompactInstJump<0b00100, "j",
   let Inst{23-15} = 0b001000010;
   let Inst{11-6} = 0b011111;
   let hasDelaySlot = 1;
+  // Operand(s) blink need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // j.Dcc c 00100RRR111000010RRRCCCCCC0QQQQQ.
@@ -768,6 +980,8 @@ def ARC_J_c_cc_d : ARCompactInstJump<0b00100, "j",
   let Inst{5} = 0;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // j.Dcc BLINK 00100RRR111000010RRR0111110QQQQQ.
@@ -782,6 +996,8 @@ def ARC_J_blink_cc_d : ARCompactInstJump<0b00100, "j",
   let Inst{11-5} = 0b0111110;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  // Operand(s) blink need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // j s12 00100RRR101000000RRRssssssSSSSSS.
@@ -793,6 +1009,9 @@ def ARC_J_s12 : ARCompactInstJump<0b00100, "j",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101000000;
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // j.D s12 00100RRR101000010RRRssssssSSSSSS.
@@ -805,6 +1024,9 @@ def ARC_J_s12_d : ARCompactInstJump<0b00100, "j",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101000010;
   let hasDelaySlot = 1;
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // j u6 00100RRR011000000RRRuuuuuuRRRRRR.
@@ -816,6 +1038,8 @@ def ARC_J_u6 : ARCompactInstJump<0b00100, "j",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b011000000;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // jcc u6 00100RRR111000000RRRuuuuuu1QQQQQ.
@@ -829,6 +1053,8 @@ def ARC_J_u6_cc : ARCompactInstJump<0b00100, "j",
   let Inst{23-15} = 0b111000000;
   let Inst{5} = 1;
   let isPredicable = 1;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // j.D u6 00100RRR011000010RRRuuuuuuRRRRRR.
@@ -841,6 +1067,8 @@ def ARC_J_u6_d : ARCompactInstJump<0b00100, "j",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b011000010;
   let hasDelaySlot = 1;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // j.Dcc u6 00100RRR111000010RRRuuuuuu1QQQQQ.
@@ -855,6 +1083,8 @@ def ARC_J_u6_cc_d : ARCompactInstJump<0b00100, "j",
   let Inst{5} = 1;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // j limm 00100RRR001000000RRR111110RRRRRR.
@@ -867,6 +1097,8 @@ def ARC_J_limm : ARCompactInstJump<0b00100, "j",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001000000;
   let Inst{11-6} = 0b111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // jcc limm 00100RRR111000000RRR1111100QQQQQ.
@@ -880,6 +1112,8 @@ def ARC_J_limm_cc : ARCompactInstJump<0b00100, "j",
   let Inst{23-15} = 0b111000000;
   let Inst{11-5} = 0b1111100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // jl c 00100RRR001000100RRRCCCCCCRRRRRR.
@@ -891,6 +1125,8 @@ def ARC_JL_c : ARCompactInstJump<0b00100, "jl",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001000100;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // jlcc c 00100RRR111000100RRRCCCCCC0QQQQQ.
@@ -904,6 +1140,8 @@ def ARC_JL_c_cc : ARCompactInstJump<0b00100, "jl",
   let Inst{23-15} = 0b111000100;
   let Inst{5} = 0;
   let isPredicable = 1;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // jl.D c 00100RRR001000110RRRCCCCCCRRRRRR.
@@ -916,6 +1154,8 @@ def ARC_JL_c_d : ARCompactInstJump<0b00100, "jl",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001000110;
   let hasDelaySlot = 1;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // jl.Dcc c 00100RRR111000110RRRCCCCCC0QQQQQ.
@@ -930,6 +1170,8 @@ def ARC_JL_c_cc_d : ARCompactInstJump<0b00100, "jl",
   let Inst{5} = 0;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // jl s12 00100RRR101000100RRRssssssSSSSSS.
@@ -941,6 +1183,9 @@ def ARC_JL_s12 : ARCompactInstJump<0b00100, "jl",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101000100;
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // jl.D s12 00100RRR101000110RRRssssssSSSSSS.
@@ -953,6 +1198,9 @@ def ARC_JL_s12_d : ARCompactInstJump<0b00100, "jl",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101000110;
   let hasDelaySlot = 1;
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // jl u6 00100RRR011000100RRRuuuuuuRRRRRR.
@@ -964,6 +1212,8 @@ def ARC_JL_u6 : ARCompactInstJump<0b00100, "jl",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b011000100;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // jlcc u6 00100RRR111000100RRRuuuuuu1QQQQQ.
@@ -977,6 +1227,8 @@ def ARC_JL_u6_cc : ARCompactInstJump<0b00100, "jl",
   let Inst{23-15} = 0b111000100;
   let Inst{5} = 1;
   let isPredicable = 1;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // jl.D u6 00100RRR011000110RRRuuuuuuRRRRRR.
@@ -989,6 +1241,8 @@ def ARC_JL_u6_d : ARCompactInstJump<0b00100, "jl",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b011000110;
   let hasDelaySlot = 1;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // jl.Dcc u6 00100RRR111000110RRRuuuuuu1QQQQQ.
@@ -1003,6 +1257,8 @@ def ARC_JL_u6_cc_d : ARCompactInstJump<0b00100, "jl",
   let Inst{5} = 1;
   let hasDelaySlot = 1;
   let isPredicable = 1;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // jl limm 00100RRR001000100RRR111110RRRRRR.
@@ -1015,6 +1271,8 @@ def ARC_JL_limm : ARCompactInstJump<0b00100, "jl",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001000100;
   let Inst{11-6} = 0b111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // jlcc limm 00100RRR111000100RRR1111100QQQQQ.
@@ -1028,6 +1286,8 @@ def ARC_JL_limm_cc : ARCompactInstJump<0b00100, "jl",
   let Inst{23-15} = 0b111000100;
   let Inst{11-5} = 0b1111100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 } // end let Predicates = [IsARCompact]

@@ -36,6 +36,11 @@ def ARC_EX_b_c : ARCompactInst32_2op<0b00100, 0b001100, "ex",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b001100;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // ex<.di> b,u6 00100bbb01101111DBBBuuuuuu001100.
@@ -48,6 +53,11 @@ def ARC_EX_b_u6 : ARCompactInst32_2op<0b00100, 0b001100, "ex",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b001100;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // ex<.di> b,limm 00100bbb00101111DBBB111110001100.
@@ -60,6 +70,8 @@ def ARC_EX_b_limm : ARCompactInst32_2op<0b00100, 0b001100, "ex",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110001100;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ex<.di> limm,c 0010011000101111D111CCCCCC001100.
@@ -72,6 +84,8 @@ def ARC_EX_limm_c : ARCompactInst32_2op<0b00100, 0b001100, "ex",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001100;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ex<.di> limm,u6 0010011001101111D111uuuuuu001100.
@@ -84,6 +98,8 @@ def ARC_EX_limm_u6 : ARCompactInst32_2op<0b00100, 0b001100, "ex",
   let Inst{31-16} = 0b0010011001101111;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001100;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ex<.di> limm,limm 0010011000101111D111111110001100.
@@ -95,6 +111,8 @@ def ARC_EX_limm : ARCompactInst32_2op<0b00100, 0b001100, "ex",
   // Flags: C_DI16
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110001100;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // flag c 00100RRR001010010RRRCCCCCCRRRRRR.
@@ -106,6 +124,8 @@ def ARC_FLAG_c : ARCompactInst32_3op<0b00100, 0b101001, "flag",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001010010;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // flag<.cc> c 00100RRR111010010RRRCCCCCC0QQQQQ.
@@ -119,6 +139,8 @@ def ARC_FLAG_c_cc : ARCompactInst32_3op<0b00100, 0b101001, "flag",
   let Inst{23-15} = 0b111010010;
   let Inst{5} = 0;
   let isPredicable = 1;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // flag u6 00100RRR011010010RRRuuuuuuRRRRRR.
@@ -130,6 +152,8 @@ def ARC_FLAG_u6 : ARCompactInst32_3op<0b00100, 0b101001, "flag",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b011010010;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // flag<.cc> u6 00100RRR111010010RRRuuuuuu1QQQQQ.
@@ -143,6 +167,8 @@ def ARC_FLAG_u6_cc : ARCompactInst32_3op<0b00100, 0b101001, "flag",
   let Inst{23-15} = 0b111010010;
   let Inst{5} = 1;
   let isPredicable = 1;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // flag s12 00100RRR101010010RRRssssssSSSSSS.
@@ -154,6 +180,9 @@ def ARC_FLAG_s12 : ARCompactInst32_3op<0b00100, 0b101001, "flag",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101010010;
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // flag limm 00100RRR001010010RRR111110RRRRRR.
@@ -166,6 +195,8 @@ def ARC_FLAG_limm : ARCompactInst32_3op<0b00100, 0b101001, "flag",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001010010;
   let Inst{11-6} = 0b111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // flag<.cc> limm 00100RRR111010010RRR1111100QQQQQ.
@@ -179,6 +210,8 @@ def ARC_FLAG_limm_cc : ARCompactInst32_3op<0b00100, 0b101001, "flag",
   let Inst{23-15} = 0b111010010;
   let Inst{11-5} = 0b1111100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // prefetch<.aa> b,c 00100bbbaa1100000BBBCCCCCC111110.
@@ -191,6 +224,11 @@ def ARC_PREFETCH_b_c : ARCompactInst32_3op<0b00100, 0b110000, "prefetch",
   let Inst{31-27} = 0b00100;
   let Inst{21-15} = 0b1100000;
   let Inst{5-0} = 0b111110;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // prefetch b 00010bbb000000000BBB0RR000111110.
@@ -204,6 +242,9 @@ def ARC_PREFETCH_b : ARCompactInst32_3op<0b00010, 0b000000, "prefetch",
   let Inst{23-15} = 0b000000000;
   let Inst{11} = 0;
   let Inst{8-0} = 0b000111110;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
 }
 
 // prefetch<.aa> b,s9 00010bbbssssssssSBBB0aa000111110.
@@ -216,6 +257,12 @@ def ARC_PREFETCH_b_s9 : ARCompactInstSpecial<"prefetch",
   let Inst{31-27} = 0b00010;
   let Inst{11} = 0;
   let Inst{8-0} = 0b000111110;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<9> simm9_8;
+  let Inst{23-16} = simm9_8{8-1};
+  let Inst{15} = simm9_8{0};
 }
 
 // prefetch<.aa> b,limm 00100bbbaa1100000BBB111110111110.
@@ -228,6 +275,8 @@ def ARC_PREFETCH_b_limm : ARCompactInst32_3op<0b00100, 0b110000, "prefetch",
   let Inst{31-27} = 0b00100;
   let Inst{21-15} = 0b1100000;
   let Inst{11-0} = 0b111110111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // prefetch<.aa> limm,c 00100110aa1100000111CCCCCC111110.
@@ -240,6 +289,8 @@ def ARC_PREFETCH_limm_c : ARCompactInst32_3op<0b00100, 0b110000, "prefetch",
   let Inst{31-24} = 0b00100110;
   let Inst{21-12} = 0b1100000111;
   let Inst{5-0} = 0b111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // prefetch limm,c 00100110RR1100000111CCCCCC111110.
@@ -252,6 +303,8 @@ def ARC_PREFETCH_limm_c_v1 : ARCompactInst32_3op<0b00100, 0b110000, "prefetch",
   let Inst{31-24} = 0b00100110;
   let Inst{21-12} = 0b1100000111;
   let Inst{5-0} = 0b111110;
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // prefetch limm 000101100000000001110RR000111110.
@@ -263,6 +316,8 @@ def ARC_PREFETCH_limm : ARCompactInst32_3op<0b00010, 0b000000, "prefetch",
   // Flags: none
   let Inst{31-11} = 0b000101100000000001110;
   let Inst{8-0} = 0b000111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // prefetch<.aa> limm,s9 00010110ssssssssS1110aa000111110.
@@ -275,6 +330,8 @@ def ARC_PREFETCH_limm_s9 : ARCompactInstSpecial<"prefetch",
   let Inst{31-24} = 0b00010110;
   let Inst{14-11} = 0b1110;
   let Inst{8-0} = 0b000111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // prefetch limm,s9 00010110ssssssssS1110RR000111110.
@@ -287,6 +344,8 @@ def ARC_PREFETCH_limm_s9_v1 : ARCompactInstSpecial<"prefetch",
   let Inst{31-24} = 0b00010110;
   let Inst{14-11} = 0b1110;
   let Inst{8-0} = 0b000111110;
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // prefetch<.aa> limm,limm 00100110aa1100000111111110111110.
@@ -298,6 +357,8 @@ def ARC_PREFETCH_limm_v1 : ARCompactInst32_3op<0b00100, 0b110000, "prefetch",
   // Flags: C_AA8
   let Inst{31-24} = 0b00100110;
   let Inst{21-0} = 0b1100000111111110111110;
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // lp s13 00100RRR101010000RRRssssssSSSSSS.
@@ -309,6 +370,9 @@ def ARC_LP_s13 : ARCompactInst32_3op<0b00100, 0b101000, "lp",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101010000;
+  bits<12> simm13_a16_20;
+  let Inst{11-6} = simm13_a16_20{11-6};
+  let Inst{5-0} = simm13_a16_20{5-0};
 }
 
 // lp<cc> u7 00100RRR111010000RRRuuuuuu1QQQQQ.
@@ -322,6 +386,8 @@ def ARC_LP_u7_cc : ARCompactInst32_3op<0b00100, 0b101000, "lp",
   let Inst{23-15} = 0b111010000;
   let Inst{5} = 1;
   let isPredicable = 1;
+  bits<6> uimm7_a16_20;
+  let Inst{11-6} = uimm7_a16_20;
 }
 
 // lr b,c 00100bbb001010100BBBCCCCCCRRRRRR.
@@ -333,6 +399,11 @@ def ARC_LR_b_c : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001010100;
+  bits<6> rb_chk;
+  let Inst{26-24} = rb_chk{5-3};
+  let Inst{14-12} = rb_chk{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // lr 0,c 00100110001010100111CCCCCCRRRRRR.
@@ -343,6 +414,8 @@ def ARC_LR_z_c : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Operands: ZA, BRAKET, RC, BRAKETdup
   // Flags: none
   let Inst{31-12} = 0b00100110001010100111;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // lr b,u6 00100bbb011010100BBBuuuuuu000000.
@@ -355,6 +428,11 @@ def ARC_LR_b_u6 : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b011010100;
   let Inst{5-0} = 0b000000;
+  bits<6> rb_chk;
+  let Inst{26-24} = rb_chk{5-3};
+  let Inst{14-12} = rb_chk{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // lr 0,u6 00100110011010100111uuuuuu000000.
@@ -366,6 +444,8 @@ def ARC_LR_z_u6 : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Flags: none
   let Inst{31-12} = 0b00100110011010100111;
   let Inst{5-0} = 0b000000;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // lr b,s12 00100bbb101010100BBBssssssSSSSSS.
@@ -377,6 +457,12 @@ def ARC_LR_b_s12 : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101010100;
+  bits<6> rb_chk;
+  let Inst{26-24} = rb_chk{5-3};
+  let Inst{14-12} = rb_chk{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // lr 0,s12 00100110101010100111ssssssSSSSSS.
@@ -387,6 +473,9 @@ def ARC_LR_z_s12 : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Operands: ZA, BRAKET, SIMM12_20, BRAKETdup
   // Flags: none
   let Inst{31-12} = 0b00100110101010100111;
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // lr b,limm 00100bbb001010100BBB111110RRRRRR.
@@ -399,6 +488,8 @@ def ARC_LR_b_limm : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001010100;
   let Inst{11-6} = 0b111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lr 0,limm 00100110001010100111111110RRRRRR.
@@ -409,6 +500,8 @@ def ARC_LR_z_limm : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Operands: ZA, BRAKET, LIMM, BRAKETdup
   // Flags: none
   let Inst{31-6} = 0b00100110001010100111111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // nop  00100110010010100111000000000000.
@@ -441,6 +534,9 @@ def ARC_RTSC_b_z : ARCompactInst32_2op<0b00110, 0b011010, "rtsc",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b01101111;
   let Inst{11-0} = 0b000000011010;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
 }
 
 // rtsc 0,0 0011011001101111R111000000011010.
@@ -464,6 +560,11 @@ def ARC_RTSC_b_c : ARCompactInst32_2op<0b00110, 0b011010, "rtsc",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b011010;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // rtsc 0,c 0011011000101111R111CCCCCC011010.
@@ -476,6 +577,8 @@ def ARC_RTSC_z_c : ARCompactInst32_2op<0b00110, 0b011010, "rtsc",
   let Inst{31-16} = 0b0011011000101111;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b011010;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // rtsc b,u6 00110bbb01101111RBBBuuuuuu011010.
@@ -488,6 +591,11 @@ def ARC_RTSC_b_u6 : ARCompactInst32_2op<0b00110, 0b011010, "rtsc",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b011010;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // rtsc 0,u6 0011011001101111R111uuuuuu011010.
@@ -500,6 +608,8 @@ def ARC_RTSC_z_u6 : ARCompactInst32_2op<0b00110, 0b011010, "rtsc",
   let Inst{31-16} = 0b0011011001101111;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b011010;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // rtsc b,limm 00110bbb00101111RBBB111110011010.
@@ -512,6 +622,8 @@ def ARC_RTSC_b_limm : ARCompactInst32_2op<0b00110, 0b011010, "rtsc",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110011010;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rtsc 0,limm 0011011000101111R111111110011010.
@@ -523,6 +635,8 @@ def ARC_RTSC_z_limm : ARCompactInst32_2op<0b00110, 0b011010, "rtsc",
   // Flags: none
   let Inst{31-16} = 0b0011011000101111;
   let Inst{14-0} = 0b111111110011010;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rtsc (no-operand variant removed — duplicate of ARC_RTSC_z_z)
@@ -536,6 +650,8 @@ def ARC_SLEEP_c : ARCompactInst32_2op<0b00100, 0b111111, "sleep",
   // Flags: none
   let Inst{31-12} = 0b00100001001011110000;
   let Inst{5-0} = 0b111111;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sleep u6 00100001011011110000uuuuuu111111.
@@ -547,6 +663,8 @@ def ARC_SLEEP_u6 : ARCompactInst32_2op<0b00100, 0b111111, "sleep",
   // Flags: none
   let Inst{31-12} = 0b00100001011011110000;
   let Inst{5-0} = 0b111111;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sleep limm 00100001001011110000111110111111.
@@ -557,6 +675,8 @@ def ARC_SLEEP_limm : ARCompactInst32_2op<0b00100, 0b111111, "sleep",
   // Operands: LIMM
   // Flags: none
   let Inst{31-0} = 0b00100001001011110000111110111111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sleep 00100001011011110000uuuuuu111111.
@@ -578,6 +698,11 @@ def ARC_SR_b_c : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001010110;
+  bits<6> rb_chk;
+  let Inst{26-24} = rb_chk{5-3};
+  let Inst{14-12} = rb_chk{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sr b,u6 00100bbb011010110BBBuuuuuu000000.
@@ -590,6 +715,11 @@ def ARC_SR_b_u6 : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b011010110;
   let Inst{5-0} = 0b000000;
+  bits<6> rb_chk;
+  let Inst{26-24} = rb_chk{5-3};
+  let Inst{14-12} = rb_chk{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sr b,s12 00100bbb101010110BBBssssssSSSSSS.
@@ -601,6 +731,12 @@ def ARC_SR_b_s12 : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101010110;
+  bits<6> rb_chk;
+  let Inst{26-24} = rb_chk{5-3};
+  let Inst{14-12} = rb_chk{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // sr limm,c 00100110001010110111CCCCCCRRRRRR.
@@ -611,6 +747,8 @@ def ARC_SR_limm_c : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Operands: LIMM, BRAKET, RC, BRAKETdup
   // Flags: none
   let Inst{31-12} = 0b00100110001010110111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sr b,limm 00100bbb001010110BBB111110RRRRRR.
@@ -623,6 +761,8 @@ def ARC_SR_b_limm : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001010110;
   let Inst{11-6} = 0b111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sr limm,u6 00100110011010110111uuuuuu000000.
@@ -634,6 +774,8 @@ def ARC_SR_limm_u6 : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Flags: none
   let Inst{31-12} = 0b00100110011010110111;
   let Inst{5-0} = 0b000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sr limm,s12 00100110101010110111ssssssSSSSSS.
@@ -644,6 +786,8 @@ def ARC_SR_limm_s12 : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Operands: LIMM, BRAKET, SIMM12_20, BRAKETdup
   // Flags: none
   let Inst{31-12} = 0b00100110101010110111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sr limm,limm 00100110001010110111111110RRRRRR.
@@ -654,6 +798,8 @@ def ARC_SR_limm : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Operands: LIMM, BRAKET, LIMMdup, BRAKETdup
   // Flags: none
   let Inst{31-6} = 0b00100110001010110111111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sync  00100011011011110000000000111111.

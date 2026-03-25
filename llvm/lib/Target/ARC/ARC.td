@@ -42,7 +42,8 @@ include "ARCARCompactInstrBranch.td"
 include "ARCARCompactInstrLoadStore.td"
 include "ARCARCompactInstrSpecial.td"
 include "ARCARCompactInstrExtArith.td"
-include "ARCARCompactInstr16.td"
+// TODO: Re-enable once ARCARCompactInstr16.td generation is fixed.
+// include "ARCARCompactInstr16.td"
 include "ARCARCompactPatterns.td"
 
 defm : RemapAllTargetPseudoPointerOperands<GPR32>;

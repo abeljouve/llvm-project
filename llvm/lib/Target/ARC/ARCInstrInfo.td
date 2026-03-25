@@ -1041,6 +1041,36 @@ def : Pat<(truncstorei8 i32:$C, AddrModeS9:$addr),
 def : Pat<(truncstorei8 i32:$C, AddrModeImm:$addr),
           (STB_limm i32:$C, AddrModeImm:$addr)>;
 
+//===----------------------------------------------------------------------===//
+// ARCompact Zero-Overhead Loop pseudo instructions.
+// These are inserted by the ARCHardwareLoops pass and expanded later.
+// No TableGen predicate needed; the C++ pass checks isARCompact().
+//===----------------------------------------------------------------------===//
+
+let isNotDuplicable = 1 in {
+  // Pseudo for setting up a zero-overhead loop from a register trip count.
+  // Expands to: MOV LP_COUNT, $count; NOP; LP $loopend
+  def HWLOOP_SETUP : PseudoInstARC<(outs),
+      (ins GPR32:$count, i32imm:$loopend),
+      "# HWLOOP_SETUP $count, $loopend", []> {
+    let Size = 12; // MOV(4) + NOP(4) + LP(4)
+  }
+
+  // Pseudo for setting up a zero-overhead loop from an immediate trip count.
+  def HWLOOP_SETUP_IMM : PseudoInstARC<(outs),
+      (ins i32imm:$count, i32imm:$loopend),
+      "# HWLOOP_SETUP_IMM $count, $loopend", []> {
+    let Size = 12; // MOV(4) + NOP(4) + LP(4)
+  }
+
+  // End-of-loop marker. Emits no code; serves as the target label for LP.
+  // Placed at the first instruction after the loop body.
+  def HWLOOP_END : PseudoInstARC<(outs), (ins),
+      "# HWLOOP_END", []> {
+    let Size = 0;
+  }
+}
+
 def getPostIncOpcode : InstrMapping {
   let FilterClass = "ArcLdStRel";
   let RowFields = [ "BaseOpcode", "ZZ", "DI", "X"];

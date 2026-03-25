@@ -69,6 +69,18 @@ public:
                            SmallVectorImpl<MCFixup> &Fixups,
                            const MCSubtargetInfo &STI) const;
 
+  // getBranchTargetEncoding - Return binary encoding for a branch target
+  // operand (ARCompact branch/conditional branch instructions).
+  unsigned getBranchTargetEncoding(const MCInst &MI, unsigned OpNo,
+                                   SmallVectorImpl<MCFixup> &Fixups,
+                                   const MCSubtargetInfo &STI) const;
+
+  // getCallTargetEncoding - Return binary encoding for a call target
+  // operand (ARCompact BL/BL_S instructions).
+  unsigned getCallTargetEncoding(const MCInst &MI, unsigned OpNo,
+                                  SmallVectorImpl<MCFixup> &Fixups,
+                                  const MCSubtargetInfo &STI) const;
+
   void encodeInstruction(const MCInst &MI, SmallVectorImpl<char> &CB,
                          SmallVectorImpl<MCFixup> &Fixups,
                          const MCSubtargetInfo &STI) const override;
@@ -112,6 +124,30 @@ uint64_t ARCMCCodeEmitter::getMemIIOpValue(const MCInst &MI, unsigned OpNo,
     Value |= static_cast<uint64_t>(static_cast<uint32_t>(Offset.getImm()));
 
   return Value;
+}
+
+unsigned ARCMCCodeEmitter::getBranchTargetEncoding(
+    const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
+    const MCSubtargetInfo &STI) const {
+  const MCOperand &MO = MI.getOperand(OpNo);
+  if (MO.isImm())
+    return static_cast<unsigned>(MO.getImm());
+
+  // Expression operand -- will need a fixup for relocation.
+  // TODO: Add proper ARCompact branch fixup kinds.
+  return 0;
+}
+
+unsigned ARCMCCodeEmitter::getCallTargetEncoding(
+    const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
+    const MCSubtargetInfo &STI) const {
+  const MCOperand &MO = MI.getOperand(OpNo);
+  if (MO.isImm())
+    return static_cast<unsigned>(MO.getImm());
+
+  // Expression operand -- will need a fixup for relocation.
+  // TODO: Add proper ARCompact call fixup kinds.
+  return 0;
 }
 
 void ARCMCCodeEmitter::encodeInstruction(const MCInst &MI,

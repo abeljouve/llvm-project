@@ -25,6 +25,10 @@ def ARC_ABS_S_b_c : ARCompactInst16_ALU<0b01111, "abs_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b10001;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // add1_s b,b,c 01111bbbccc10100.
@@ -37,6 +41,10 @@ def ARC_ADD1_S_b_c : ARCompactInst16_ALU<0b01111, "add1_s",
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b10100;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // add2_s b,b,c 01111bbbccc10101.
@@ -49,6 +57,10 @@ def ARC_ADD2_S_b_c : ARCompactInst16_ALU<0b01111, "add2_s",
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b10101;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // add3_s b,b,c 01111bbbccc10110.
@@ -61,6 +73,10 @@ def ARC_ADD3_S_b_c : ARCompactInst16_ALU<0b01111, "add3_s",
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b10110;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // add_s a,b,c 01100bbbccc11aaa.
@@ -72,6 +88,12 @@ def ARC_ADD_S_ra_s_b_c : ARCompactInst16_ALU<0b01100, "add_s",
   // Flags: none
   let Inst{15-11} = 0b01100;
   let Inst{4-3} = 0b11;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<3> ra_s;
+  let Inst{2-0} = ra_s;
 }
 
 // add_s b,b,h 01110bbbhhh00HHH.
@@ -84,6 +106,11 @@ def ARC_ADD_S_b_h : ARCompactInst16_ALU<0b01110, "add_s",
   let Inst{15-11} = 0b01110;
   let Inst{4-3} = 0b00;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<6> r6h;
+  let Inst{7-5} = r6h{5-3};
+  let Inst{2-0} = r6h{2-0};
 }
 
 // add_s c,b,u3 01101bbbccc00uuu.
@@ -95,6 +122,12 @@ def ARC_ADD_S_c_b_u3 : ARCompactInst16_ALU<0b01101, "add_s",
   // Flags: none
   let Inst{15-11} = 0b01101;
   let Inst{4-3} = 0b00;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<3> uimm3_13_s;
+  let Inst{2-0} = uimm3_13_s;
 }
 
 // add_s b,sp,u7 11000bbb100uuuuu.
@@ -106,6 +139,8 @@ def ARC_ADD_S_b_sp_u7 : ARCompactInst16_ALU<0b11000, "add_s",
   // Flags: none
   let Inst{15-11} = 0b11000;
   let Inst{7-5} = 0b100;
+  // Operand(s) sp_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add_s b,b,u7 11100bbb0uuuuuuu.
@@ -118,6 +153,10 @@ def ARC_ADD_S_b_u7 : ARCompactInst16_ALU<0b11100, "add_s",
   let Inst{15-11} = 0b11100;
   let Inst{7} = 0;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<7> uimm7_9_s;
+  let Inst{6-0} = uimm7_9_s;
 }
 
 // add_s SP,SP,u7 11000000101uuuuu.
@@ -128,6 +167,8 @@ def ARC_ADD_S_sp_sp_u7 : ARCompactInst16_ALU<0b11000, "add_s",
   // Operands: SP_S, SP_Sdup, UIMM7_A32_11_S
   // Flags: none
   let Inst{15-5} = 0b11000000101;
+  // Operand(s) sp_s, sp_sdup need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add_s R0,GP,s11 1100111sssssssss.
@@ -138,6 +179,8 @@ def ARC_ADD_S_r0_gp_s11 : ARCompactInst16_ALU<0b11001, "add_s",
   // Operands: R0_S, GP_S, SIMM11_A32_7_S
   // Flags: none
   let Inst{15-9} = 0b1100111;
+  // Operand(s) gp_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add_s b,b,limm 01110bbb11000111.
@@ -150,6 +193,8 @@ def ARC_ADD_S_b_limm : ARCompactInst16_ALU<0b01110, "add_s",
   let Inst{15-11} = 0b01110;
   let Inst{7-0} = 0b11000111;
   
+  // Operand(s) limm_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and_s b,b,c 01111bbbccc00100.
@@ -162,6 +207,10 @@ def ARC_AND_S_b_c : ARCompactInst16_ALU<0b01111, "and_s",
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b00100;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // asl_s b,c 01111bbbccc11011.
@@ -173,6 +222,10 @@ def ARC_ASL_S_b_c : ARCompactInst16_ALU<0b01111, "asl_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b11011;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // asl_s b,b,c 01111bbbccc11000.
@@ -185,6 +238,8 @@ def ARC_ASL_S_b_c_v1 : ARCompactInst16_ALU<0b01111, "asl_s",
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b11000;
   
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // asl_s c,b,u3 01101bbbccc10uuu.
@@ -196,6 +251,12 @@ def ARC_ASL_S_c_b_u3 : ARCompactInst16_ALU<0b01101, "asl_s",
   // Flags: none
   let Inst{15-11} = 0b01101;
   let Inst{4-3} = 0b10;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<3> uimm3_13_s;
+  let Inst{2-0} = uimm3_13_s;
 }
 
 // asl_s b,b,u5 10111bbb000uuuuu.
@@ -208,6 +269,10 @@ def ARC_ASL_S_b_u5 : ARCompactInst16_ALU<0b10111, "asl_s",
   let Inst{15-11} = 0b10111;
   let Inst{7-5} = 0b000;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<5> uimm5_11_s;
+  let Inst{4-0} = uimm5_11_s;
 }
 
 // asr_s b,c 01111bbbccc11100.
@@ -219,6 +284,10 @@ def ARC_ASR_S_b_c : ARCompactInst16_ALU<0b01111, "asr_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b11100;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // asr_s b,b,c 01111bbbccc11010.
@@ -231,6 +300,8 @@ def ARC_ASR_S_b_c_v1 : ARCompactInst16_ALU<0b01111, "asr_s",
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b11010;
   
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // asr_s c,b,u3 01101bbbccc11uuu.
@@ -242,6 +313,12 @@ def ARC_ASR_S_c_b_u3 : ARCompactInst16_ALU<0b01101, "asr_s",
   // Flags: none
   let Inst{15-11} = 0b01101;
   let Inst{4-3} = 0b11;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<3> uimm3_13_s;
+  let Inst{2-0} = uimm3_13_s;
 }
 
 // asr_s b,b,u5 10111bbb010uuuuu.
@@ -254,6 +331,10 @@ def ARC_ASR_S_b_u5 : ARCompactInst16_ALU<0b10111, "asr_s",
   let Inst{15-11} = 0b10111;
   let Inst{7-5} = 0b010;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<5> uimm5_11_s;
+  let Inst{4-0} = uimm5_11_s;
 }
 
 // bclr_s b,b,u5 10111bbb101uuuuu.
@@ -266,6 +347,10 @@ def ARC_BCLR_S_b_u5 : ARCompactInst16_ALU<0b10111, "bclr_s",
   let Inst{15-11} = 0b10111;
   let Inst{7-5} = 0b101;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<5> uimm5_11_s;
+  let Inst{4-0} = uimm5_11_s;
 }
 
 // beq_sCC_EQ s10 1111001sssssssss.
@@ -277,6 +362,8 @@ def ARC_BEQ_S_s10_eq : ARCompactInst16_Branch<0b11110, "beq_s",
   // Flags: C_CC_EQ
   let Inst{15-9} = 0b1111001;
   let isPredicable = 1;
+  bits<9> simm10_a16_7_s;
+  let Inst{8-0} = simm10_a16_7_s;
 }
 
 // bge_sCC_GE s7 1111011001ssssss.
@@ -288,6 +375,8 @@ def ARC_BGE_S_s7_ge : ARCompactInst16_Branch<0b11110, "bge_s",
   // Flags: C_CC_GE
   let Inst{15-6} = 0b1111011001;
   let isPredicable = 1;
+  bits<6> simm7_a16_10_s;
+  let Inst{5-0} = simm7_a16_10_s;
 }
 
 // bgt_sCC_GT s7 1111011000ssssss.
@@ -299,6 +388,8 @@ def ARC_BGT_S_s7_gt : ARCompactInst16_Branch<0b11110, "bgt_s",
   // Flags: C_CC_GT
   let Inst{15-6} = 0b1111011000;
   let isPredicable = 1;
+  bits<6> simm7_a16_10_s;
+  let Inst{5-0} = simm7_a16_10_s;
 }
 
 // bhi_sCC_HI s7 1111011100ssssss.
@@ -310,6 +401,8 @@ def ARC_BHI_S_s7_hi : ARCompactInst16_Branch<0b11110, "bhi_s",
   // Flags: C_CC_HI
   let Inst{15-6} = 0b1111011100;
   let isPredicable = 1;
+  bits<6> simm7_a16_10_s;
+  let Inst{5-0} = simm7_a16_10_s;
 }
 
 // bhs_sCC_HS s7 1111011101ssssss.
@@ -321,6 +414,8 @@ def ARC_BHS_S_s7_hs : ARCompactInst16_Branch<0b11110, "bhs_s",
   // Flags: C_CC_HS
   let Inst{15-6} = 0b1111011101;
   let isPredicable = 1;
+  bits<6> simm7_a16_10_s;
+  let Inst{5-0} = simm7_a16_10_s;
 }
 
 // bic_s b,b,c 01111bbbccc00110.
@@ -333,6 +428,10 @@ def ARC_BIC_S_b_c : ARCompactInst16_ALU<0b01111, "bic_s",
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b00110;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // ble_sCC_LE s7 1111011011ssssss.
@@ -344,6 +443,8 @@ def ARC_BLE_S_s7_le : ARCompactInst16_Branch<0b11110, "ble_s",
   // Flags: C_CC_LE
   let Inst{15-6} = 0b1111011011;
   let isPredicable = 1;
+  bits<6> simm7_a16_10_s;
+  let Inst{5-0} = simm7_a16_10_s;
 }
 
 // blo_sCC_LO s7 1111011110ssssss.
@@ -355,6 +456,8 @@ def ARC_BLO_S_s7_lo : ARCompactInst16_Branch<0b11110, "blo_s",
   // Flags: C_CC_LO
   let Inst{15-6} = 0b1111011110;
   let isPredicable = 1;
+  bits<6> simm7_a16_10_s;
+  let Inst{5-0} = simm7_a16_10_s;
 }
 
 // bls_sCC_LS s7 1111011111ssssss.
@@ -366,6 +469,8 @@ def ARC_BLS_S_s7_ls : ARCompactInst16_Branch<0b11110, "bls_s",
   // Flags: C_CC_LS
   let Inst{15-6} = 0b1111011111;
   let isPredicable = 1;
+  bits<6> simm7_a16_10_s;
+  let Inst{5-0} = simm7_a16_10_s;
 }
 
 // blt_sCC_LT s7 1111011010ssssss.
@@ -377,6 +482,8 @@ def ARC_BLT_S_s7_lt : ARCompactInst16_Branch<0b11110, "blt_s",
   // Flags: C_CC_LT
   let Inst{15-6} = 0b1111011010;
   let isPredicable = 1;
+  bits<6> simm7_a16_10_s;
+  let Inst{5-0} = simm7_a16_10_s;
 }
 
 // bl_s s13 11111sssssssssss.
@@ -387,6 +494,8 @@ def ARC_BL_S_s13 : ARCompactInst16_Branch<0b11111, "bl_s",
   // Operands: SIMM13_A32_5_S
   // Flags: none
   let Inst{15-11} = 0b11111;
+  bits<11> simm13_a32_5_s;
+  let Inst{10-0} = simm13_a32_5_s;
 }
 
 // bmsk_s b,b,u5 10111bbb110uuuuu.
@@ -399,6 +508,10 @@ def ARC_BMSK_S_b_u5 : ARCompactInst16_ALU<0b10111, "bmsk_s",
   let Inst{15-11} = 0b10111;
   let Inst{7-5} = 0b110;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<5> uimm5_11_s;
+  let Inst{4-0} = uimm5_11_s;
 }
 
 // bne_sCC_NE s10 1111010sssssssss.
@@ -410,6 +523,8 @@ def ARC_BNE_S_s10_ne : ARCompactInst16_Branch<0b11110, "bne_s",
   // Flags: C_CC_NE
   let Inst{15-9} = 0b1111010;
   let isPredicable = 1;
+  bits<9> simm10_a16_7_s;
+  let Inst{8-0} = simm10_a16_7_s;
 }
 
 // breq_sCC_EQ b,0,s8 11101bbb0sssssss.
@@ -422,6 +537,10 @@ def ARC_BREQ_S_b_z_s8_eq : ARCompactInst16_Branch<0b11101, "breq_s",
   let Inst{15-11} = 0b11101;
   let Inst{7} = 0;
   let isPredicable = 1;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<7> simm8_a16_9_s;
+  let Inst{6-0} = simm8_a16_9_s;
 }
 
 // brk_s  0111111111111111.
@@ -444,6 +563,10 @@ def ARC_BRNE_S_b_z_s8_ne : ARCompactInst16_Branch<0b11101, "brne_s",
   let Inst{15-11} = 0b11101;
   let Inst{7} = 1;
   let isPredicable = 1;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<7> simm8_a16_9_s;
+  let Inst{6-0} = simm8_a16_9_s;
 }
 
 // bset_s b,b,u5 10111bbb100uuuuu.
@@ -456,6 +579,10 @@ def ARC_BSET_S_b_u5 : ARCompactInst16_ALU<0b10111, "bset_s",
   let Inst{15-11} = 0b10111;
   let Inst{7-5} = 0b100;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<5> uimm5_11_s;
+  let Inst{4-0} = uimm5_11_s;
 }
 
 // btst_s b,u5 10111bbb111uuuuu.
@@ -467,6 +594,10 @@ def ARC_BTST_S_b_u5 : ARCompactInst16_ALU<0b10111, "btst_s",
   // Flags: none
   let Inst{15-11} = 0b10111;
   let Inst{7-5} = 0b111;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<5> uimm5_11_s;
+  let Inst{4-0} = uimm5_11_s;
 }
 
 // b_s s10 1111000sssssssss.
@@ -477,6 +608,8 @@ def ARC_B_S_s10 : ARCompactInst16_Branch<0b11110, "b_s",
   // Operands: SIMM10_A16_7_S
   // Flags: none
   let Inst{15-9} = 0b1111000;
+  bits<9> simm10_a16_7_s;
+  let Inst{8-0} = simm10_a16_7_s;
 }
 
 // cmp_s b,h 01110bbbhhh10HHH.
@@ -488,6 +621,11 @@ def ARC_CMP_S_b_h : ARCompactInst16_ALU<0b01110, "cmp_s",
   // Flags: none
   let Inst{15-11} = 0b01110;
   let Inst{4-3} = 0b10;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<6> r6h;
+  let Inst{7-5} = r6h{5-3};
+  let Inst{2-0} = r6h{2-0};
 }
 
 // cmp_s b,u7 11100bbb1uuuuuuu.
@@ -499,6 +637,10 @@ def ARC_CMP_S_b_u7 : ARCompactInst16_ALU<0b11100, "cmp_s",
   // Flags: none
   let Inst{15-11} = 0b11100;
   let Inst{7} = 1;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<7> uimm7_9_s;
+  let Inst{6-0} = uimm7_9_s;
 }
 
 // cmp_s b,limm 01110bbb11010111.
@@ -510,6 +652,8 @@ def ARC_CMP_S_b_limm : ARCompactInst16_ALU<0b01110, "cmp_s",
   // Flags: none
   let Inst{15-11} = 0b01110;
   let Inst{7-0} = 0b11010111;
+  // Operand(s) limm_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // extb_s b,c 01111bbbccc01111.
@@ -521,6 +665,10 @@ def ARC_EXTB_S_b_c : ARCompactInst16_ALU<0b01111, "extb_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b01111;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // extw_s b,c 01111bbbccc10000.
@@ -532,6 +680,10 @@ def ARC_EXTW_S_b_c : ARCompactInst16_ALU<0b01111, "extw_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b10000;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // jeq_sCC_EQ BLINK 0111110011100000.
@@ -543,6 +695,8 @@ def ARC_JEQ_S_blink_eq : ARCompactInst16_ALU<0b01111, "jeq_s",
   // Flags: C_CC_EQ
   let Inst{15-0} = 0b0111110011100000;
   let isPredicable = 1;
+  // Operand(s) blink_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // jl_s b 01111bbb01000000.
@@ -554,6 +708,8 @@ def ARC_JL_S_b : ARCompactInst16_ALU<0b01111, "jl_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{7-0} = 0b01000000;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
 }
 
 // jl_s.D b 01111bbb01100000.
@@ -566,6 +722,8 @@ def ARC_JL_S_b_d : ARCompactInst16_ALU<0b01111, "jl_s",
   let Inst{15-11} = 0b01111;
   let Inst{7-0} = 0b01100000;
   let hasDelaySlot = 1;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
 }
 
 // jne_sCC_NE BLINK 0111110111100000.
@@ -577,6 +735,8 @@ def ARC_JNE_S_blink_ne : ARCompactInst16_ALU<0b01111, "jne_s",
   // Flags: C_CC_NE
   let Inst{15-0} = 0b0111110111100000;
   let isPredicable = 1;
+  // Operand(s) blink_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // j_s b 01111bbb00000000.
@@ -588,6 +748,8 @@ def ARC_J_S_b : ARCompactInst16_ALU<0b01111, "j_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{7-0} = 0b00000000;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
 }
 
 // j_s.D b 01111bbb00100000.
@@ -600,6 +762,8 @@ def ARC_J_S_b_d : ARCompactInst16_ALU<0b01111, "j_s",
   let Inst{15-11} = 0b01111;
   let Inst{7-0} = 0b00100000;
   let hasDelaySlot = 1;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
 }
 
 // j_s BLINK 0111111011100000.
@@ -610,6 +774,8 @@ def ARC_J_S_blink : ARCompactInst16_ALU<0b01111, "j_s",
   // Operands: BRAKET, BLINK_S, BRAKETdup
   // Flags: none
   let Inst{15-0} = 0b0111111011100000;
+  // Operand(s) blink_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // j_s.D BLINK 0111111111100000.
@@ -621,6 +787,8 @@ def ARC_J_S_blink_d : ARCompactInst16_ALU<0b01111, "j_s",
   // Flags: C_DHARD
   let Inst{15-0} = 0b0111111111100000;
   let hasDelaySlot = 1;
+  // Operand(s) blink_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ldb_s a,b,c 01100bbbccc01aaa.
@@ -632,6 +800,12 @@ def ARC_LDB_S_ra_s_b_c : ARCompactInst16_LS<0b01100, "ldb_s",
   // Flags: C_ZZ_B
   let Inst{15-11} = 0b01100;
   let Inst{4-3} = 0b01;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<3> ra_s;
+  let Inst{2-0} = ra_s;
 }
 
 // ldb_s c,b,u5 10001bbbcccuuuuu.
@@ -642,6 +816,12 @@ def ARC_LDB_S_c_b_u5 : ARCompactInst16_LS<0b10001, "ldb_s",
   // Operands: RC_S, BRAKET, RB_S, UIMM5_11_S, BRAKETdup
   // Flags: C_ZZ_B
   let Inst{15-11} = 0b10001;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<5> uimm5_11_s;
+  let Inst{4-0} = uimm5_11_s;
 }
 
 // ldb_s b,SP,u7 11000bbb001uuuuu.
@@ -653,6 +833,8 @@ def ARC_LDB_S_b_sp_u7 : ARCompactInst16_LS<0b11000, "ldb_s",
   // Flags: C_ZZ_B
   let Inst{15-11} = 0b11000;
   let Inst{7-5} = 0b001;
+  // Operand(s) sp_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ldb_s R0,GP,s9 1100101sssssssss.
@@ -663,6 +845,8 @@ def ARC_LDB_S_r0_gp_s9 : ARCompactInst16_LS<0b11001, "ldb_s",
   // Operands: R0_S, BRAKET, GP_S, SIMM9_7_S, BRAKETdup
   // Flags: C_ZZ_B
   let Inst{15-9} = 0b1100101;
+  // Operand(s) gp_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ldw_sZZ_H a,b,c 01100bbbccc10aaa.
@@ -674,6 +858,12 @@ def ARC_LDW_S_ra_s_b_c : ARCompactInst16_LS<0b01100, "ldw_s",
   // Flags: C_ZZ_H
   let Inst{15-11} = 0b01100;
   let Inst{4-3} = 0b10;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<3> ra_s;
+  let Inst{2-0} = ra_s;
 }
 
 // ldw_sZZ_H c,b,u6 10010bbbcccuuuuu.
@@ -684,6 +874,12 @@ def ARC_LDW_S_c_b_u6 : ARCompactInst16_LS<0b10010, "ldw_s",
   // Operands: RC_S, BRAKET, RB_S, UIMM6_A16_11_S, BRAKETdup
   // Flags: C_ZZ_H
   let Inst{15-11} = 0b10010;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<5> uimm6_a16_11_s;
+  let Inst{4-0} = uimm6_a16_11_s;
 }
 
 // ldw_sZZ_H.X c,b,u6 10011bbbcccuuuuu.
@@ -694,6 +890,8 @@ def ARC_LDW_S_c_b_u6_v1 : ARCompactInst16_LS<0b10011, "ldw_s",
   // Operands: RC_S, BRAKET, RB_S, UIMM6_A16_11_S, BRAKETdup
   // Flags: C_XHARD, C_ZZ_H
   let Inst{15-11} = 0b10011;
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // ldw_s R0,GP,s10 1100110sssssssss.
@@ -704,6 +902,8 @@ def ARC_LDW_S_r0_gp_s10 : ARCompactInst16_LS<0b11001, "ldw_s",
   // Operands: R0_S, BRAKET, GP_S, SIMM10_A16_7_Sbis, BRAKETdup
   // Flags: C_ZZ_H
   let Inst{15-9} = 0b1100110;
+  // Operand(s) gp_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ld_s a,b,c 01100bbbccc00aaa.
@@ -715,6 +915,12 @@ def ARC_LD_S_ra_s_b_c : ARCompactInst16_LS<0b01100, "ld_s",
   // Flags: none
   let Inst{15-11} = 0b01100;
   let Inst{4-3} = 0b00;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<3> ra_s;
+  let Inst{2-0} = ra_s;
 }
 
 // ld_s b,SP,u7 11000bbb000uuuuu.
@@ -726,6 +932,8 @@ def ARC_LD_S_b_sp_u7 : ARCompactInst16_LS<0b11000, "ld_s",
   // Flags: none
   let Inst{15-11} = 0b11000;
   let Inst{7-5} = 0b000;
+  // Operand(s) sp_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ld_s c,b,u7 10000bbbcccuuuuu.
@@ -736,6 +944,12 @@ def ARC_LD_S_c_b_u7 : ARCompactInst16_LS<0b10000, "ld_s",
   // Operands: RC_S, BRAKET, RB_S, UIMM7_A32_11_S, BRAKETdup
   // Flags: none
   let Inst{15-11} = 0b10000;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<5> uimm7_a32_11_s;
+  let Inst{4-0} = uimm7_a32_11_s;
 }
 
 // ld_s b,PCL,u10 11010bbbuuuuuuuu.
@@ -746,6 +960,8 @@ def ARC_LD_S_b_pcl_u10 : ARCompactInst16_LS<0b11010, "ld_s",
   // Operands: RB_S, BRAKET, PCL_S, UIMM10_A32_8_S, BRAKETdup
   // Flags: none
   let Inst{15-11} = 0b11010;
+  // Operand(s) pcl_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ld_s R0,GP,s11 1100100sssssssss.
@@ -756,6 +972,8 @@ def ARC_LD_S_r0_gp_s11 : ARCompactInst16_LS<0b11001, "ld_s",
   // Operands: R0_S, BRAKET, GP_S, SIMM11_A32_7_S, BRAKETdup
   // Flags: none
   let Inst{15-9} = 0b1100100;
+  // Operand(s) gp_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr_s b,c 01111bbbccc11101.
@@ -767,6 +985,10 @@ def ARC_LSR_S_b_c : ARCompactInst16_ALU<0b01111, "lsr_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b11101;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // lsr_s b,b,c 01111bbbccc11001.
@@ -779,6 +1001,8 @@ def ARC_LSR_S_b_c_v1 : ARCompactInst16_ALU<0b01111, "lsr_s",
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b11001;
   
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // lsr_s b,b,u5 10111bbb001uuuuu.
@@ -791,6 +1015,10 @@ def ARC_LSR_S_b_u5 : ARCompactInst16_ALU<0b10111, "lsr_s",
   let Inst{15-11} = 0b10111;
   let Inst{7-5} = 0b001;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<5> uimm5_11_s;
+  let Inst{4-0} = uimm5_11_s;
 }
 
 // mov_s b,h 01110bbbhhh01HHH.
@@ -802,6 +1030,11 @@ def ARC_MOV_S_b_h : ARCompactInst16_ALU<0b01110, "mov_s",
   // Flags: none
   let Inst{15-11} = 0b01110;
   let Inst{4-3} = 0b01;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<6> r6h;
+  let Inst{7-5} = r6h{5-3};
+  let Inst{2-0} = r6h{2-0};
 }
 
 // mov_s h,b 01110bbbhhh11HHH.
@@ -813,6 +1046,11 @@ def ARC_MOV_S_h_b : ARCompactInst16_ALU<0b01110, "mov_s",
   // Flags: none
   let Inst{15-11} = 0b01110;
   let Inst{4-3} = 0b11;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<6> r6h;
+  let Inst{7-5} = r6h{5-3};
+  let Inst{2-0} = r6h{2-0};
 }
 
 // mov_s 0,b 01110bbb1101111H.
@@ -824,6 +1062,8 @@ def ARC_MOV_S_z_b : ARCompactInst16_ALU<0b01110, "mov_s",
   // Flags: none
   let Inst{15-11} = 0b01110;
   let Inst{7-1} = 0b1101111;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
 }
 
 // mov_s b,u8 11011bbbuuuuuuuu.
@@ -834,6 +1074,10 @@ def ARC_MOV_S_b_u8 : ARCompactInst16_ALU<0b11011, "mov_s",
   // Operands: RB_S, UIMM8_8_S
   // Flags: none
   let Inst{15-11} = 0b11011;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<8> uimm8_8_s;
+  let Inst{7-0} = uimm8_8_s;
 }
 
 // mov_s b,limm 01110bbb11001111.
@@ -845,6 +1089,8 @@ def ARC_MOV_S_b_limm : ARCompactInst16_ALU<0b01110, "mov_s",
   // Flags: none
   let Inst{15-11} = 0b01110;
   let Inst{7-0} = 0b11001111;
+  // Operand(s) limm_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // neg_s b,c 01111bbbccc10011.
@@ -856,6 +1102,10 @@ def ARC_NEG_S_b_c : ARCompactInst16_ALU<0b01111, "neg_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b10011;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // nop_s  0111100011100000.
@@ -877,6 +1127,10 @@ def ARC_NOT_S_b_c : ARCompactInst16_ALU<0b01111, "not_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b10010;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // or_s b,b,c 01111bbbccc00101.
@@ -889,6 +1143,10 @@ def ARC_OR_S_b_c : ARCompactInst16_ALU<0b01111, "or_s",
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b00101;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // pop_sAA_AB b 11000bbb11000001.
@@ -900,6 +1158,8 @@ def ARC_POP_S_b : ARCompactInst16_ALU<0b11000, "pop_s",
   // Flags: C_AA_AB
   let Inst{15-11} = 0b11000;
   let Inst{7-0} = 0b11000001;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
 }
 
 // pop_sAA_AB BLINK 11000RRR11010001.
@@ -911,6 +1171,8 @@ def ARC_POP_S_blink : ARCompactInst16_ALU<0b11000, "pop_s",
   // Flags: C_AA_AB
   let Inst{15-11} = 0b11000;
   let Inst{7-0} = 0b11010001;
+  // Operand(s) blink_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // push_sAA_AW b 11000bbb11100001.
@@ -922,6 +1184,8 @@ def ARC_PUSH_S_b : ARCompactInst16_ALU<0b11000, "push_s",
   // Flags: C_AA_AW
   let Inst{15-11} = 0b11000;
   let Inst{7-0} = 0b11100001;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
 }
 
 // push_sAA_AW blink 11000RRR11110001.
@@ -933,6 +1197,8 @@ def ARC_PUSH_S_blink : ARCompactInst16_ALU<0b11000, "push_s",
   // Flags: C_AA_AW
   let Inst{15-11} = 0b11000;
   let Inst{7-0} = 0b11110001;
+  // Operand(s) blink_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sexb_s b,c 01111bbbccc01101.
@@ -944,6 +1210,10 @@ def ARC_SEXB_S_b_c : ARCompactInst16_ALU<0b01111, "sexb_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b01101;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // sexw_s b,c 01111bbbccc01110.
@@ -955,6 +1225,10 @@ def ARC_SEXW_S_b_c : ARCompactInst16_ALU<0b01111, "sexw_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b01110;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // stb_s c,b,u5 10101bbbcccuuuuu.
@@ -965,6 +1239,12 @@ def ARC_STB_S_c_b_u5 : ARCompactInst16_LS<0b10101, "stb_s",
   // Operands: RC_S, BRAKET, RB_S, UIMM5_11_S, BRAKETdup
   // Flags: C_ZZ_B
   let Inst{15-11} = 0b10101;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<5> uimm5_11_s;
+  let Inst{4-0} = uimm5_11_s;
 }
 
 // stb_sZZ_B b,SP,u7 11000bbb011uuuuu.
@@ -976,6 +1256,8 @@ def ARC_STB_S_b_sp_u7 : ARCompactInst16_LS<0b11000, "stb_s",
   // Flags: C_ZZ_B
   let Inst{15-11} = 0b11000;
   let Inst{7-5} = 0b011;
+  // Operand(s) sp_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // stw_sZZ_H c,b,u6 10110bbbcccuuuuu.
@@ -986,6 +1268,12 @@ def ARC_STW_S_c_b_u6 : ARCompactInst16_LS<0b10110, "stw_s",
   // Operands: RC_S, BRAKET, RB_S, UIMM6_A16_11_S, BRAKETdup
   // Flags: C_ZZ_H
   let Inst{15-11} = 0b10110;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<5> uimm6_a16_11_s;
+  let Inst{4-0} = uimm6_a16_11_s;
 }
 
 // st_s b,SP,u7 11000bbb010uuuuu.
@@ -997,6 +1285,8 @@ def ARC_ST_S_b_sp_u7 : ARCompactInst16_LS<0b11000, "st_s",
   // Flags: none
   let Inst{15-11} = 0b11000;
   let Inst{7-5} = 0b010;
+  // Operand(s) sp_s need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // st_s c,b,u7 10100bbbcccuuuuu.
@@ -1007,6 +1297,12 @@ def ARC_ST_S_c_b_u7 : ARCompactInst16_LS<0b10100, "st_s",
   // Operands: RC_S, BRAKET, RB_S, UIMM7_A32_11_S, BRAKETdup
   // Flags: none
   let Inst{15-11} = 0b10100;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<5> uimm7_a32_11_s;
+  let Inst{4-0} = uimm7_a32_11_s;
 }
 
 // sub_s b,b,c 01111bbbccc00010.
@@ -1019,6 +1315,10 @@ def ARC_SUB_S_b_c : ARCompactInst16_ALU<0b01111, "sub_s",
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b00010;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // sub_s c,b,u3 01101bbbccc01uuu.
@@ -1030,6 +1330,12 @@ def ARC_SUB_S_c_b_u3 : ARCompactInst16_ALU<0b01101, "sub_s",
   // Flags: none
   let Inst{15-11} = 0b01101;
   let Inst{4-3} = 0b01;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<3> uimm3_13_s;
+  let Inst{2-0} = uimm3_13_s;
 }
 
 // sub_s b,b,u5 10111bbb011uuuuu.
@@ -1042,6 +1348,10 @@ def ARC_SUB_S_b_u5 : ARCompactInst16_ALU<0b10111, "sub_s",
   let Inst{15-11} = 0b10111;
   let Inst{7-5} = 0b011;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<5> uimm5_11_s;
+  let Inst{4-0} = uimm5_11_s;
 }
 
 // sub_s SP,SP,u7 11000001101uuuuu.
@@ -1052,6 +1362,8 @@ def ARC_SUB_S_sp_sp_u7 : ARCompactInst16_ALU<0b11000, "sub_s",
   // Operands: SP_S, SP_Sdup, UIMM7_A32_11_S
   // Flags: none
   let Inst{15-5} = 0b11000001101;
+  // Operand(s) sp_s, sp_sdup need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub_s.ne b,b,b 01111bbb11000000.
@@ -1065,6 +1377,8 @@ def ARC_SUB_S_b_ne : ARCompactInst16_ALU<0b01111, "sub_s",
   let Inst{7-0} = 0b11000000;
   let isPredicable = 1;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
 }
 
 // trap_s u6 01111uuuuuu11110.
@@ -1076,6 +1390,8 @@ def ARC_TRAP_S_u6 : ARCompactInst16_ALU<0b01111, "trap_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b11110;
+  bits<6> uimm6_5_s;
+  let Inst{10-5} = uimm6_5_s;
 }
 
 // tst_s b,c 01111bbbccc01011.
@@ -1087,6 +1403,10 @@ def ARC_TST_S_b_c : ARCompactInst16_ALU<0b01111, "tst_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b01011;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // unimp_s  0111100111100000.
@@ -1109,6 +1429,10 @@ def ARC_XOR_S_b_c : ARCompactInst16_ALU<0b01111, "xor_s",
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b00111;
   
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 } // end let Predicates = [IsARCompact]

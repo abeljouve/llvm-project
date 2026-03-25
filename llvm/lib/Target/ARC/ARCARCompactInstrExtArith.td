@@ -13,8 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 // 887 instruction variants
+//
+// DSP/extension arithmetic instructions. These share sub-opcodes with base ALU
+// instructions (e.g. CMACRDW shares 0x26 with ADCS). Marked isCodeGenOnly to
+// avoid disassembler decoding conflicts -- the disassembler will decode these
+// encodings as the base ALU mnemonics instead.
 
-let Predicates = [IsARCompact] in {
+let Predicates = [IsARCompact], isCodeGenOnly = 1 in {
 
 // cmacrdw<.f> a,b,c 00101bbb00100110FBBBCCCCCCAAAAAA.
 def ARC_CMACRDW_a_b_c : ARCompactInst32_3op<0b00101, 0b100110, "cmacrdw",

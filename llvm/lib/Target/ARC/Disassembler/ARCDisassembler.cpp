@@ -153,6 +153,67 @@ static DecodeStatus DecodeGBR32ShortRegister(MCInst &Inst, unsigned RegNo,
   return DecodeGPR32RegisterClass(Inst, RegNo, Address, Decoder);
 }
 
+//===----------------------------------------------------------------------===//
+// ARCompact-specific decoder functions
+//===----------------------------------------------------------------------===//
+
+// Branch target decoders for ARCompact branch instructions.
+// These decode sign-extended PC-relative offsets of various widths.
+static DecodeStatus decodeBranchTarget9(MCInst &Inst, unsigned InsnS,
+                                        uint64_t Address,
+                                        const MCDisassembler *Decoder) {
+  return DecodeBranchTargetS<9>(Inst, InsnS, Address, Decoder);
+}
+
+static DecodeStatus decodeBranchTarget13(MCInst &Inst, unsigned InsnS,
+                                         uint64_t Address,
+                                         const MCDisassembler *Decoder) {
+  return DecodeBranchTargetS<13>(Inst, InsnS, Address, Decoder);
+}
+
+static DecodeStatus decodeBranchTarget21(MCInst &Inst, unsigned InsnS,
+                                         uint64_t Address,
+                                         const MCDisassembler *Decoder) {
+  return DecodeBranchTargetS<21>(Inst, InsnS, Address, Decoder);
+}
+
+static DecodeStatus decodeBranchTarget25(MCInst &Inst, unsigned InsnS,
+                                         uint64_t Address,
+                                         const MCDisassembler *Decoder) {
+  return DecodeBranchTargetS<25>(Inst, InsnS, Address, Decoder);
+}
+
+// Call target decoders for ARCompact BL/BL_S instructions.
+static DecodeStatus decodeCallTarget21(MCInst &Inst, unsigned InsnS,
+                                       uint64_t Address,
+                                       const MCDisassembler *Decoder) {
+  return DecodeBranchTargetS<21>(Inst, InsnS, Address, Decoder);
+}
+
+static DecodeStatus decodeCallTarget25(MCInst &Inst, unsigned InsnS,
+                                       uint64_t Address,
+                                       const MCDisassembler *Decoder) {
+  return DecodeBranchTargetS<25>(Inst, InsnS, Address, Decoder);
+}
+
+// GPR_S register class decoder for ARCompact 16-bit instructions.
+// The compact register set maps 3-bit encoding to r0-r3, r12-r15.
+static const uint16_t GPR_SDecoderTable[] = {
+    ARC::R0, ARC::R1, ARC::R2,  ARC::R3,
+    ARC::R12, ARC::R13, ARC::R14, ARC::R15,
+};
+
+static DecodeStatus DecodeGPR_SRegisterClass(MCInst &Inst, unsigned RegNo,
+                                             uint64_t /*Address*/,
+                                             const MCDisassembler * /*Decoder*/) {
+  if (RegNo >= std::size(GPR_SDecoderTable))
+    return MCDisassembler::Fail;
+
+  unsigned Reg = GPR_SDecoderTable[RegNo];
+  Inst.addOperand(MCOperand::createReg(Reg));
+  return MCDisassembler::Success;
+}
+
 #include "ARCGenDisassemblerTables.inc"
 
 static unsigned decodeCField(unsigned Insn) {
@@ -382,7 +443,14 @@ DecodeStatus ARCDisassembler::getInstruction(MCInst &Instr, uint64_t &Size,
     if (!readInstruction32(Bytes, Address, Size, Insn32)) {
       return Fail;
     }
-    // Calling the auto-generated decoder function.
+    // Try ARCompact 32-bit decoder table first (separate DecoderNamespace).
+    Result = decodeInstruction(DecoderTableARCompact3232, Instr, Insn32,
+                               Address, this, STI);
+    if (Success == Result) {
+      LLVM_DEBUG(dbgs() << "Decoded ARCompact 32-bit instruction.");
+      return Result;
+    }
+    // Fall back to default (ARCv2) 32-bit decoder table.
     return decodeInstruction(DecoderTable32, Instr, Insn32, Address, this, STI);
   } else {
     if (Bytes.size() >= 6) {

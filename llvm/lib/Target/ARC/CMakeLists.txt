@@ -20,6 +20,7 @@ add_llvm_target(ARCCodeGen
   ARCDelaySlotFiller.cpp
   ARCExpandPseudos.cpp
   ARCFrameLowering.cpp
+  ARCHardwareLoops.cpp
   ARCInstrInfo.cpp
   ARCISelDAGToDAG.cpp
   ARCISelLowering.cpp

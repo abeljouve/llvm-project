@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "ARC.h"
+#include "ARCInstrInfo.h"
 #include "ARCMCInstLower.h"
 #include "ARCSubtarget.h"
 #include "ARCTargetMachine.h"
@@ -61,6 +62,16 @@ void ARCAsmPrinter::emitInstruction(const MachineInstr *MI) {
   case ARC::DBG_VALUE:
     llvm_unreachable("Should be handled target independently");
     break;
+  case ARC::HWLOOP_END:
+    // End-of-loop marker: no code emitted. The label at this position
+    // is the LP_END target for the zero-overhead loop.
+    return;
+  case ARC::HWLOOP_SETUP:
+  case ARC::HWLOOP_SETUP_IMM:
+    // These pseudos should have been expanded before reaching the
+    // AsmPrinter. If they reach here, emit as comments for debugging.
+    OutStreamer->AddComment("HWLOOP_SETUP (not expanded)");
+    return;
   }
 
   MCInst TmpInst;

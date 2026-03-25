@@ -25,6 +25,12 @@ def ARC_LD_a_b : ARCompactInstLoad<0b00010, "ld",
   // Flags: C_ZZ23, C_DI20, C_AA21, C_X25
   let Inst{31-27} = 0b00010;
   let Inst{23-15} = 0b000000000;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> ra_chk;
+  let Inst{10-9} = ra_chk{7-6};
+  let Inst{5-0} = ra_chk{5-0};
 }
 
 // ld<.di><.aa><.x><zz> a,b,c 00100bbbaa110ZZXDBBBCCCCCCAAAAAA.
@@ -36,6 +42,14 @@ def ARC_LD_a_b_c : ARCompactInstLoad<0b00100, "ld",
   // Flags: C_ZZ13, C_DI16, C_AA8, C_X15
   let Inst{31-27} = 0b00100;
   let Inst{21-19} = 0b110;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<8> ra_chk;
+  let Inst{23-22} = ra_chk{7-6};
+  let Inst{5-0} = ra_chk{5-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // ld<.di><.aa><.x><zz> 0,b 00010bbb000000000BBBDaaZZX111110.
@@ -48,6 +62,9 @@ def ARC_LD_z_b : ARCompactInstLoad<0b00010, "ld",
   let Inst{31-27} = 0b00010;
   let Inst{23-15} = 0b000000000;
   let Inst{5-0} = 0b111110;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
 }
 
 // ld<.di><.aa><.x><zz> 0,b,c 00100bbbaa110ZZXDBBBCCCCCC111110.
@@ -60,6 +77,11 @@ def ARC_LD_z_b_c : ARCompactInstLoad<0b00100, "ld",
   let Inst{31-27} = 0b00100;
   let Inst{21-19} = 0b110;
   let Inst{5-0} = 0b111110;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // ld<.di><.aa><.x><zz> a,b,s9 00010bbbssssssssSBBBDaaZZXAAAAAA.
@@ -70,6 +92,15 @@ def ARC_LD_a_b_s9 : ARCompactInstLoad<0b00010, "ld",
   // Operands: RA_CHK, BRAKET, RB, SIMM9_8, BRAKETdup
   // Flags: C_ZZ23, C_DI20, C_AA21, C_X25
   let Inst{31-27} = 0b00010;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<9> simm9_8;
+  let Inst{23-16} = simm9_8{8-1};
+  let Inst{15} = simm9_8{0};
+  bits<8> ra_chk;
+  let Inst{10-9} = ra_chk{7-6};
+  let Inst{5-0} = ra_chk{5-0};
 }
 
 // ld<.di><.aa><.x><zz> 0,b,s9 00010bbbssssssssSBBBDaaZZX111110.
@@ -81,6 +112,12 @@ def ARC_LD_z_b_s9 : ARCompactInstLoad<0b00010, "ld",
   // Flags: C_ZZ23, C_DI20, C_AA21, C_X25
   let Inst{31-27} = 0b00010;
   let Inst{5-0} = 0b111110;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<9> simm9_8;
+  let Inst{23-16} = simm9_8{8-1};
+  let Inst{15} = simm9_8{0};
 }
 
 // ld<.di><.x><zz> a,limm 00010110000000000111DRRZZXAAAAAA.
@@ -91,6 +128,8 @@ def ARC_LD_a_limm : ARCompactInstLoad<0b00010, "ld",
   // Operands: RA_CHK, BRAKET, LIMM, BRAKETdup
   // Flags: C_ZZ23, C_DI20, C_X25
   let Inst{31-12} = 0b00010110000000000111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ld<.di><.aa><.x><zz> a,b,limm 00100bbbaa110ZZXDBBB111110AAAAAA.
@@ -103,6 +142,8 @@ def ARC_LD_a_b_limm : ARCompactInstLoad<0b00100, "ld",
   let Inst{31-27} = 0b00100;
   let Inst{21-19} = 0b110;
   let Inst{11-6} = 0b111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ld<.di><.aa><.x><zz> a,limm,c 00100110aa110ZZXD111CCCCCCAAAAAA.
@@ -115,6 +156,8 @@ def ARC_LD_a_limm_c : ARCompactInstLoad<0b00100, "ld",
   let Inst{31-24} = 0b00100110;
   let Inst{21-19} = 0b110;
   let Inst{14-12} = 0b111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ld<.di><.x><zz> a,limm,c 00100110RR110ZZXD111CCCCCCAAAAAA.
@@ -127,6 +170,8 @@ def ARC_LD_a_limm_c_v1 : ARCompactInstLoad<0b00100, "ld",
   let Inst{31-24} = 0b00100110;
   let Inst{21-19} = 0b110;
   let Inst{14-12} = 0b111;
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // ld<.di><.x><zz> 0,limm 00010110000000000111DRRZZX111110.
@@ -138,6 +183,8 @@ def ARC_LD_z_limm : ARCompactInstLoad<0b00010, "ld",
   // Flags: C_ZZ23, C_DI20, C_X25
   let Inst{31-12} = 0b00010110000000000111;
   let Inst{5-0} = 0b111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ld<.di><.aa><.x><zz> 0,b,limm 00100bbbaa110ZZXDBBB111110111110.
@@ -150,6 +197,8 @@ def ARC_LD_z_b_limm : ARCompactInstLoad<0b00100, "ld",
   let Inst{31-27} = 0b00100;
   let Inst{21-19} = 0b110;
   let Inst{11-0} = 0b111110111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ld<.di><.aa><.x><zz> 0,limm,c 00100110aa110ZZXD111CCCCCC111110.
@@ -163,6 +212,8 @@ def ARC_LD_z_limm_c : ARCompactInstLoad<0b00100, "ld",
   let Inst{21-19} = 0b110;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ld<.di><.x><zz> 0,limm,c 00100110RR110ZZXD111CCCCCC111110.
@@ -176,6 +227,8 @@ def ARC_LD_z_limm_c_v1 : ARCompactInstLoad<0b00100, "ld",
   let Inst{21-19} = 0b110;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // ld<.di><.aa><.x><zz> a,limm,s9 00010110ssssssssS111DaaZZXAAAAAA.
@@ -187,6 +240,8 @@ def ARC_LD_a_limm_s9 : ARCompactInstLoad<0b00010, "ld",
   // Flags: C_ZZ23, C_DI20, C_AA21, C_X25
   let Inst{31-24} = 0b00010110;
   let Inst{14-12} = 0b111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ld<.di><.aa><.x><zz> 0,limm,s9 00010110ssssssssS111DaaZZX111110.
@@ -199,6 +254,8 @@ def ARC_LD_z_limm_s9 : ARCompactInstLoad<0b00010, "ld",
   let Inst{31-24} = 0b00010110;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ld<.di><.aa><.x><zz> a,limm,limm 00100110aa110ZZXD111111110AAAAAA.
@@ -211,6 +268,8 @@ def ARC_LD_a_limm_v1 : ARCompactInstLoad<0b00100, "ld",
   let Inst{31-24} = 0b00100110;
   let Inst{21-19} = 0b110;
   let Inst{14-6} = 0b111111110;
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // ld<.di><.aa><.x><zz> 0,limm,limm 00100110aa110ZZXD111111110111110.
@@ -223,6 +282,8 @@ def ARC_LD_z_limm_v1 : ARCompactInstLoad<0b00100, "ld",
   let Inst{31-24} = 0b00100110;
   let Inst{21-19} = 0b110;
   let Inst{14-0} = 0b111111110111110;
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // llock<.di> b,c 00100bbb00101111DBBBCCCCCC010000.
@@ -235,6 +296,11 @@ def ARC_LLOCK_b_c : ARCompactInst32_2op<0b00100, 0b010000, "llock",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b010000;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // llock<.di> 0,c 0010011000101111D111CCCCCC010000.
@@ -247,6 +313,8 @@ def ARC_LLOCK_z_c : ARCompactInst32_2op<0b00100, 0b010000, "llock",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b010000;
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // llock<.di> b,u6 00100bbb01101111DBBBuuuuuu010000.
@@ -259,6 +327,11 @@ def ARC_LLOCK_b_u6 : ARCompactInst32_2op<0b00100, 0b010000, "llock",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b010000;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // llock<.di> 0,u6 0010011001101111D111uuuuuu010000.
@@ -271,6 +344,8 @@ def ARC_LLOCK_z_u6 : ARCompactInst32_2op<0b00100, 0b010000, "llock",
   let Inst{31-16} = 0b0010011001101111;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b010000;
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // llock<.di> b,limm 00100bbb00101111DBBB111110010000.
@@ -283,6 +358,8 @@ def ARC_LLOCK_b_limm : ARCompactInst32_2op<0b00100, 0b010000, "llock",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110010000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // llock<.di> 0,limm 0010011000101111D111111110010000.
@@ -294,6 +371,8 @@ def ARC_LLOCK_z_limm : ARCompactInst32_2op<0b00100, 0b010000, "llock",
   // Flags: C_DI16
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110010000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // scond<.di> b,c 00100bbb00101111DBBBCCCCCC010001.
@@ -306,6 +385,11 @@ def ARC_SCOND_b_c : ARCompactInst32_2op<0b00100, 0b010001, "scond",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b010001;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // scond<.di> b,u6 00100bbb01101111DBBBuuuuuu010001.
@@ -318,6 +402,11 @@ def ARC_SCOND_b_u6 : ARCompactInst32_2op<0b00100, 0b010001, "scond",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b010001;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // scond<.di> b,limm 00100bbb00101111DBBB111110010001.
@@ -330,6 +419,8 @@ def ARC_SCOND_b_limm : ARCompactInst32_2op<0b00100, 0b010001, "scond",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110010001;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // scond<.di> limm,c 0010011000101111D111CCCCCC010001.
@@ -342,6 +433,8 @@ def ARC_SCOND_limm_c : ARCompactInst32_2op<0b00100, 0b010001, "scond",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b010001;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // scond<.di> limm,u6 0010011001101111D111uuuuuu010001.
@@ -354,6 +447,8 @@ def ARC_SCOND_limm_u6 : ARCompactInst32_2op<0b00100, 0b010001, "scond",
   let Inst{31-16} = 0b0010011001101111;
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b010001;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // scond<.di> limm,limm 0010011000101111D111111110010001.
@@ -365,6 +460,8 @@ def ARC_SCOND_limm : ARCompactInst32_2op<0b00100, 0b010001, "scond",
   // Flags: C_DI16
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110010001;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // st<.di><.aa><zz> c,b 00011bbb000000000BBBCCCCCCDaaZZR.
@@ -376,6 +473,11 @@ def ARC_ST_c_b : ARCompactInstStore<0b00011, "st",
   // Flags: C_ZZ29, C_DI26, C_AA27
   let Inst{31-27} = 0b00011;
   let Inst{23-15} = 0b000000000;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // st<.di><.aa><zz> c,b,s9 00011bbbssssssssSBBBCCCCCCDaaZZR.
@@ -386,6 +488,14 @@ def ARC_ST_c_b_s9 : ARCompactInstStore<0b00011, "st",
   // Operands: RC, BRAKET, RB, SIMM9_8, BRAKETdup
   // Flags: C_ZZ29, C_DI26, C_AA27
   let Inst{31-27} = 0b00011;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<9> simm9_8;
+  let Inst{23-16} = simm9_8{8-1};
+  let Inst{15} = simm9_8{0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // st<.di><zz> c,limm 00011110000000000111CCCCCCDRRZZR.
@@ -396,6 +506,8 @@ def ARC_ST_c_limm : ARCompactInstStore<0b00011, "st",
   // Operands: RC, BRAKET, LIMM, BRAKETdup
   // Flags: C_ZZ29, C_DI26
   let Inst{31-12} = 0b00011110000000000111;
+  // Decoding conflict with overlapping encoding.
+  let isCodeGenOnly = 1;
 }
 
 // st<.di><.aa><zz> limm,b,s9 00011bbbssssssssSBBB111110DaaZZR.
@@ -407,6 +519,8 @@ def ARC_ST_limm_b_s9 : ARCompactInstStore<0b00011, "st",
   // Flags: C_ZZ29, C_DI26, C_AA27
   let Inst{31-27} = 0b00011;
   let Inst{11-6} = 0b111110;
+  // Decoding conflict with overlapping encoding.
+  let isCodeGenOnly = 1;
 }
 
 // st<.di><.aa><zz> limm,limm,s9 00011110ssssssssS111111110DaaZZR.
@@ -418,6 +532,8 @@ def ARC_ST_limm_s9 : ARCompactInstStore<0b00011, "st",
   // Flags: C_ZZ29, C_DI26, C_AA27
   let Inst{31-24} = 0b00011110;
   let Inst{14-6} = 0b111111110;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 } // end let Predicates = [IsARCompact]

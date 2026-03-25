@@ -27,6 +27,11 @@ def ARC_ABS_b_c : ARCompactInst32_2op<0b00100, 0b001001, "abs",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b001001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // abs<.f> 0,c 0010011000101111F111CCCCCC001001.
@@ -40,6 +45,8 @@ def ARC_ABS_z_c : ARCompactInst32_2op<0b00100, 0b001001, "abs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001001;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // abs<.f> b,u6 00100bbb01101111FBBBuuuuuu001001.
@@ -53,6 +60,11 @@ def ARC_ABS_b_u6 : ARCompactInst32_2op<0b00100, 0b001001, "abs",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b001001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // abs<.f> 0,u6 0010011001101111F111uuuuuu001001.
@@ -66,6 +78,8 @@ def ARC_ABS_z_u6 : ARCompactInst32_2op<0b00100, 0b001001, "abs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001001;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // abs<.f> b,limm 00100bbb00101111FBBB111110001001.
@@ -79,6 +93,8 @@ def ARC_ABS_b_limm : ARCompactInst32_2op<0b00100, 0b001001, "abs",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110001001;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // abs<.f> 0,limm 0010011000101111F111111110001001.
@@ -91,6 +107,8 @@ def ARC_ABS_z_limm : ARCompactInst32_2op<0b00100, 0b001001, "abs",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110001001;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // abss<.f> b,c 00101bbb00101111FBBBCCCCCC000101.
@@ -104,6 +122,11 @@ def ARC_ABSS_b_c : ARCompactInst32_2op<0b00101, 0b000101, "abss",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000101;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // abss<.f> 0,c 0010111000101111F111CCCCCC000101.
@@ -117,6 +140,8 @@ def ARC_ABSS_z_c : ARCompactInst32_2op<0b00101, 0b000101, "abss",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000101;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // abss<.f> b,u6 00101bbb01101111FBBBuuuuuu000101.
@@ -130,6 +155,11 @@ def ARC_ABSS_b_u6 : ARCompactInst32_2op<0b00101, 0b000101, "abss",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000101;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // abss<.f> 0,u6 0010111001101111F111uuuuuu000101.
@@ -143,6 +173,8 @@ def ARC_ABSS_z_u6 : ARCompactInst32_2op<0b00101, 0b000101, "abss",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000101;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // abss<.f> b,limm 00101bbb00101111FBBB111110000101.
@@ -156,6 +188,8 @@ def ARC_ABSS_b_limm : ARCompactInst32_2op<0b00101, 0b000101, "abss",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000101;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // abss<.f> 0,limm 0010111000101111F111111110000101.
@@ -168,6 +202,8 @@ def ARC_ABSS_z_limm : ARCompactInst32_2op<0b00101, 0b000101, "abss",
   let Inst{31-16} = 0b0010111000101111;
   let Inst{14-0} = 0b111111110000101;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // abssw<.f> b,c 00101bbb00101111FBBBCCCCCC000100.
@@ -181,6 +217,11 @@ def ARC_ABSSW_b_c : ARCompactInst32_2op<0b00101, 0b000100, "abssw",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000100;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // abssw<.f> 0,c 0010111000101111F111CCCCCC000100.
@@ -194,6 +235,8 @@ def ARC_ABSSW_z_c : ARCompactInst32_2op<0b00101, 0b000100, "abssw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000100;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // abssw<.f> b,u6 00101bbb01101111FBBBuuuuuu000100.
@@ -207,6 +250,11 @@ def ARC_ABSSW_b_u6 : ARCompactInst32_2op<0b00101, 0b000100, "abssw",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000100;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // abssw<.f> 0,u6 0010111001101111F111uuuuuu000100.
@@ -220,6 +268,8 @@ def ARC_ABSSW_z_u6 : ARCompactInst32_2op<0b00101, 0b000100, "abssw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000100;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // abssw<.f> b,limm 00101bbb00101111FBBB111110000100.
@@ -233,6 +283,8 @@ def ARC_ABSSW_b_limm : ARCompactInst32_2op<0b00101, 0b000100, "abssw",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000100;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // abssw<.f> 0,limm 0010111000101111F111111110000100.
@@ -245,6 +297,8 @@ def ARC_ABSSW_z_limm : ARCompactInst32_2op<0b00101, 0b000100, "abssw",
   let Inst{31-16} = 0b0010111000101111;
   let Inst{14-0} = 0b111111110000100;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // acm<.f> a,b,c 00110bbb00101000FBBBCCCCCCAAAAAA.
@@ -257,6 +311,13 @@ def ARC_ACM_a_b_c : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b00101000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // acm<.f><.cc> b,b,c 00110bbb11101000FBBBCCCCCC0QQQQQ.
@@ -272,6 +333,11 @@ def ARC_ACM_b_c_cc : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // acm<.f> a,b,u6 00110bbb01101000FBBBuuuuuuAAAAAA.
@@ -284,6 +350,13 @@ def ARC_ACM_a_b_u6 : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b01101000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // acm<.f><.cc> b,b,u6 00110bbb11101000FBBBuuuuuu1QQQQQ.
@@ -299,6 +372,11 @@ def ARC_ACM_b_u6_cc : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // acm<.f> b,b,s12 00110bbb10101000FBBBssssssSSSSSS.
@@ -312,6 +390,12 @@ def ARC_ACM_b_s12 : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let Inst{23-16} = 0b10101000;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // acm<.f> a,limm,c 0011011000101000F111CCCCCCAAAAAA.
@@ -324,6 +408,8 @@ def ARC_ACM_a_limm_c : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let Inst{31-16} = 0b0011011000101000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // acm<.f> a,b,limm 00110bbb00101000FBBB111110AAAAAA.
@@ -337,6 +423,8 @@ def ARC_ACM_a_b_limm : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let Inst{23-16} = 0b00101000;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // acm<.f><.cc> b,b,limm 00110bbb11101000FBBB1111100QQQQQ.
@@ -352,6 +440,8 @@ def ARC_ACM_b_limm_cc : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adc<.f> a,b,c 00100bbb00000001FBBBCCCCCCAAAAAA.
@@ -364,6 +454,13 @@ def ARC_ADC_a_b_c : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00000001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // adc<.f> 0,b,c 00100bbb00000001FBBBCCCCCC111110.
@@ -377,6 +474,11 @@ def ARC_ADC_z_b_c : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{23-16} = 0b00000001;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // adc<.f><.cc> b,b,c 00100bbb11000001FBBBCCCCCC0QQQQQ.
@@ -392,6 +494,11 @@ def ARC_ADC_b_c_cc : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // adc<.f> a,b,u6 00100bbb01000001FBBBuuuuuuAAAAAA.
@@ -404,6 +511,13 @@ def ARC_ADC_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01000001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // adc<.f> 0,b,u6 00100bbb01000001FBBBuuuuuu111110.
@@ -417,6 +531,11 @@ def ARC_ADC_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{23-16} = 0b01000001;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // adc<.f><.cc> b,b,u6 00100bbb11000001FBBBuuuuuu1QQQQQ.
@@ -432,6 +551,11 @@ def ARC_ADC_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // adc<.f> b,b,s12 00100bbb10000001FBBBssssssSSSSSS.
@@ -445,6 +569,12 @@ def ARC_ADC_b_s12 : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{23-16} = 0b10000001;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // adc<.f> a,limm,c 0010011000000001F111CCCCCCAAAAAA.
@@ -457,6 +587,8 @@ def ARC_ADC_a_limm_c : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{31-16} = 0b0010011000000001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adc<.f> a,b,limm 00100bbb00000001FBBB111110AAAAAA.
@@ -470,6 +602,8 @@ def ARC_ADC_a_b_limm : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{23-16} = 0b00000001;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adc<.f> 0,limm,c 0010011000000001F111CCCCCC111110.
@@ -483,6 +617,8 @@ def ARC_ADC_z_limm_c : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adc<.f> 0,b,limm 00100bbb00000001FBBB111110111110.
@@ -496,6 +632,8 @@ def ARC_ADC_z_b_limm : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{23-16} = 0b00000001;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adc<.f><.cc> b,b,limm 00100bbb11000001FBBB1111100QQQQQ.
@@ -511,6 +649,8 @@ def ARC_ADC_b_limm_cc : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adc<.f><.cc> 0,limm,c 0010011011000001F111CCCCCC0QQQQQ.
@@ -525,6 +665,8 @@ def ARC_ADC_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adc<.f> a,limm,u6 0010011001000001F111uuuuuuAAAAAA.
@@ -537,6 +679,8 @@ def ARC_ADC_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{31-16} = 0b0010011001000001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adc<.f> 0,limm,u6 0010011001000001F111uuuuuu111110.
@@ -550,6 +694,8 @@ def ARC_ADC_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adc<.f><.cc> 0,limm,u6 0010011011000001F111uuuuuu1QQQQQ.
@@ -564,6 +710,8 @@ def ARC_ADC_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adc<.f> 0,limm,s12 0010011010000001F111ssssssSSSSSS.
@@ -576,6 +724,8 @@ def ARC_ADC_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{31-16} = 0b0010011010000001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adc<.f> a,limm,limm 0010011000000001F111111110AAAAAA.
@@ -588,6 +738,8 @@ def ARC_ADC_a_limm : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{31-16} = 0b0010011000000001;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adc<.f> 0,limm,limm 0010011000000001F111111110111110.
@@ -600,6 +752,8 @@ def ARC_ADC_z_limm : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{31-16} = 0b0010011000000001;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adc<.f><.cc> 0,limm,limm 0010011011000001F1111111100QQQQQ.
@@ -613,6 +767,8 @@ def ARC_ADC_z_limm_cc : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adcs<.f> a,b,c 00101bbb00100110FBBBCCCCCCAAAAAA.
@@ -625,6 +781,13 @@ def ARC_ADCS_a_b_c : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b00100110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // adcs<.f> 0,b,c 00101bbb00100110FBBBCCCCCC111110.
@@ -638,6 +801,11 @@ def ARC_ADCS_z_b_c : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{23-16} = 0b00100110;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // adcs<.f><.cc> b,b,c 00101bbb11100110FBBBCCCCCC0QQQQQ.
@@ -653,6 +821,11 @@ def ARC_ADCS_b_c_cc : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // adcs<.f> a,b,u6 00101bbb01100110FBBBuuuuuuAAAAAA.
@@ -665,6 +838,13 @@ def ARC_ADCS_a_b_u6 : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01100110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // adcs<.f> 0,b,u6 00101bbb01100110FBBBuuuuuu111110.
@@ -678,6 +858,11 @@ def ARC_ADCS_z_b_u6 : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{23-16} = 0b01100110;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // adcs<.f><.cc> b,b,u6 00101bbb11100110FBBBuuuuuu1QQQQQ.
@@ -693,6 +878,11 @@ def ARC_ADCS_b_u6_cc : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // adcs<.f> b,b,s12 00101bbb10100110FBBBssssssSSSSSS.
@@ -706,6 +896,12 @@ def ARC_ADCS_b_s12 : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{23-16} = 0b10100110;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // adcs<.f> a,limm,c 0010111000100110F111CCCCCCAAAAAA.
@@ -718,6 +914,8 @@ def ARC_ADCS_a_limm_c : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{31-16} = 0b0010111000100110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adcs<.f> a,b,limm 00101bbb00100110FBBB111110AAAAAA.
@@ -731,6 +929,8 @@ def ARC_ADCS_a_b_limm : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{23-16} = 0b00100110;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adcs<.f> 0,limm,c 0010111001100110F111CCCCCC111110.
@@ -744,6 +944,8 @@ def ARC_ADCS_z_limm_c : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adcs<.f> 0,b,limm 00101bbb00100110FBBB111110111110.
@@ -757,6 +959,8 @@ def ARC_ADCS_z_b_limm : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{23-16} = 0b00100110;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adcs<.f><.cc> b,b,limm 00101bbb11100110FBBB1111100QQQQQ.
@@ -772,6 +976,8 @@ def ARC_ADCS_b_limm_cc : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adcs<.f><.cc> 0,limm,c 0010111011100110F111CCCCCC0QQQQQ.
@@ -786,6 +992,8 @@ def ARC_ADCS_z_limm_c_cc : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adcs<.f> a,limm,u6 0010111001100110F111uuuuuuAAAAAA.
@@ -798,6 +1006,8 @@ def ARC_ADCS_a_limm_u6 : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{31-16} = 0b0010111001100110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adcs<.f> 0,limm,u6 0010111001100110F111uuuuuu111110.
@@ -811,6 +1021,8 @@ def ARC_ADCS_z_limm_u6 : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Decoding conflict with overlapping encoding.
+  let isCodeGenOnly = 1;
 }
 
 // adcs<.f><.cc> 0,limm,u6 0010111011100110F111uuuuuu1QQQQQ.
@@ -825,6 +1037,8 @@ def ARC_ADCS_z_limm_u6_cc : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adcs<.f> 0,limm,s12 0010111010100110F111ssssssSSSSSS.
@@ -837,6 +1051,8 @@ def ARC_ADCS_z_limm_s12 : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{31-16} = 0b0010111010100110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adcs<.f> a,limm,limm 0010111000100110F111111110AAAAAA.
@@ -849,6 +1065,8 @@ def ARC_ADCS_a_limm : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{31-16} = 0b0010111000100110;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adcs<.f> 0,limm,limm 0010111000100110F111111110111110.
@@ -861,6 +1079,8 @@ def ARC_ADCS_z_limm : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{31-16} = 0b0010111000100110;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adcs<.f><.cc> 0,limm,limm 0010111011100110F1111111100QQQQQ.
@@ -874,6 +1094,8 @@ def ARC_ADCS_z_limm_cc : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add<.f> a,b,c 00100bbb00000000FBBBCCCCCCAAAAAA.
@@ -886,6 +1108,13 @@ def ARC_ADD_a_b_c : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00000000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // add<.f> 0,b,c 00100bbb00000000FBBBCCCCCC111110.
@@ -899,6 +1128,11 @@ def ARC_ADD_z_b_c : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{23-16} = 0b00000000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // add<.f><.cc> b,b,c 00100bbb11000000FBBBCCCCCC0QQQQQ.
@@ -914,6 +1148,11 @@ def ARC_ADD_b_c_cc : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // add<.f> a,b,u6 00100bbb01000000FBBBuuuuuuAAAAAA.
@@ -926,6 +1165,13 @@ def ARC_ADD_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01000000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // add<.f> 0,b,u6 00100bbb01000000FBBBuuuuuu111110.
@@ -939,6 +1185,11 @@ def ARC_ADD_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{23-16} = 0b01000000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // add<.f><.cc> b,b,u6 00100bbb11000000FBBBuuuuuu1QQQQQ.
@@ -954,6 +1205,11 @@ def ARC_ADD_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // add<.f> b,b,s12 00100bbb10000000FBBBssssssSSSSSS.
@@ -967,6 +1223,12 @@ def ARC_ADD_b_s12 : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{23-16} = 0b10000000;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // add<.f> a,limm,c 0010011000000000F111CCCCCCAAAAAA.
@@ -979,6 +1241,8 @@ def ARC_ADD_a_limm_c : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{31-16} = 0b0010011000000000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add<.f> a,b,limm 00100bbb00000000FBBB111110AAAAAA.
@@ -992,6 +1256,8 @@ def ARC_ADD_a_b_limm : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{23-16} = 0b00000000;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add<.f> 0,limm,c 0010011000000000F111CCCCCC111110.
@@ -1005,6 +1271,8 @@ def ARC_ADD_z_limm_c : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add<.f> 0,b,limm 00100bbb00000000FBBB111110111110.
@@ -1018,6 +1286,8 @@ def ARC_ADD_z_b_limm : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{23-16} = 0b00000000;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add<.f><.cc> b,b,limm 00100bbb11000000FBBB1111100QQQQQ.
@@ -1033,6 +1303,8 @@ def ARC_ADD_b_limm_cc : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add<.f><.cc> 0,limm,c 0010011011000000F111CCCCCC0QQQQQ.
@@ -1047,6 +1319,8 @@ def ARC_ADD_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add<.f> a,limm,u6 0010011001000000F111uuuuuuAAAAAA.
@@ -1059,6 +1333,8 @@ def ARC_ADD_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{31-16} = 0b0010011001000000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add<.f> 0,limm,u6 0010011001000000F111uuuuuu111110.
@@ -1072,6 +1348,8 @@ def ARC_ADD_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add<.f><.cc> 0,limm,u6 0010011011000000F111uuuuuu1QQQQQ.
@@ -1086,6 +1364,8 @@ def ARC_ADD_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add<.f> 0,limm,s12 0010011010000000F111ssssssSSSSSS.
@@ -1098,6 +1378,8 @@ def ARC_ADD_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{31-16} = 0b0010011010000000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add<.f> a,limm,limm 0010011000000000F111111110AAAAAA.
@@ -1110,6 +1392,8 @@ def ARC_ADD_a_limm : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{31-16} = 0b0010011000000000;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add<.f> 0,limm,limm 0010011000000000F111111110111110.
@@ -1122,6 +1406,8 @@ def ARC_ADD_z_limm : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{31-16} = 0b0010011000000000;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add<.f><.cc> 0,limm,limm 0010011011000000F1111111100QQQQQ.
@@ -1135,6 +1421,8 @@ def ARC_ADD_z_limm_cc : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add1<.f> a,b,c 00100bbb00010100FBBBCCCCCCAAAAAA.
@@ -1147,6 +1435,13 @@ def ARC_ADD1_a_b_c : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00010100;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // add1<.f> 0,b,c 00100bbb00010100FBBBCCCCCC111110.
@@ -1160,6 +1455,11 @@ def ARC_ADD1_z_b_c : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{23-16} = 0b00010100;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // add1<.f><.cc> b,b,c 00100bbb11010100FBBBCCCCCC0QQQQQ.
@@ -1175,6 +1475,11 @@ def ARC_ADD1_b_c_cc : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // add1<.f> a,b,u6 00100bbb01010100FBBBuuuuuuAAAAAA.
@@ -1187,6 +1492,13 @@ def ARC_ADD1_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01010100;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // add1<.f> 0,b,u6 00100bbb01010100FBBBuuuuuu111110.
@@ -1200,6 +1512,11 @@ def ARC_ADD1_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{23-16} = 0b01010100;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // add1<.f><.cc> b,b,u6 00100bbb11010100FBBBuuuuuu1QQQQQ.
@@ -1215,6 +1532,11 @@ def ARC_ADD1_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // add1<.f> b,b,s12 00100bbb10010100FBBBssssssSSSSSS.
@@ -1228,6 +1550,12 @@ def ARC_ADD1_b_s12 : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{23-16} = 0b10010100;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // add1<.f> a,limm,c 0010011000010100F111CCCCCCAAAAAA.
@@ -1240,6 +1568,8 @@ def ARC_ADD1_a_limm_c : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{31-16} = 0b0010011000010100;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add1<.f> a,b,limm 00100bbb00010100FBBB111110AAAAAA.
@@ -1253,6 +1583,8 @@ def ARC_ADD1_a_b_limm : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{23-16} = 0b00010100;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add1<.f> 0,limm,c 0010011000010100F111CCCCCC111110.
@@ -1266,6 +1598,8 @@ def ARC_ADD1_z_limm_c : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add1<.f> 0,b,limm 00100bbb00010100FBBB111110111110.
@@ -1279,6 +1613,8 @@ def ARC_ADD1_z_b_limm : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{23-16} = 0b00010100;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add1<.f><.cc> b,b,limm 00100bbb11010100FBBB1111100QQQQQ.
@@ -1294,6 +1630,8 @@ def ARC_ADD1_b_limm_cc : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add1<.f><.cc> 0,limm,c 0010011011010100F111CCCCCC0QQQQQ.
@@ -1308,6 +1646,8 @@ def ARC_ADD1_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add1<.f> a,limm,u6 0010011001010100F111uuuuuuAAAAAA.
@@ -1320,6 +1660,8 @@ def ARC_ADD1_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{31-16} = 0b0010011001010100;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add1<.f> 0,limm,u6 0010011001010100F111uuuuuu111110.
@@ -1333,6 +1675,8 @@ def ARC_ADD1_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add1<.f><.cc> 0,limm,u6 0010011011010100F111uuuuuu1QQQQQ.
@@ -1347,6 +1691,8 @@ def ARC_ADD1_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add1<.f> 0,limm,s12 0010011010010100F111ssssssSSSSSS.
@@ -1359,6 +1705,8 @@ def ARC_ADD1_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{31-16} = 0b0010011010010100;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add1<.f> a,limm,limm 0010011000010100F111111110AAAAAA.
@@ -1371,6 +1719,8 @@ def ARC_ADD1_a_limm : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{31-16} = 0b0010011000010100;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add1<.f> 0,limm,limm 0010011000010100F111111110111110.
@@ -1383,6 +1733,8 @@ def ARC_ADD1_z_limm : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{31-16} = 0b0010011000010100;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add1<.f><.cc> 0,limm,limm 0010011011010100F1111111100QQQQQ.
@@ -1396,6 +1748,8 @@ def ARC_ADD1_z_limm_cc : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add2<.f> a,b,c 00100bbb00010101FBBBCCCCCCAAAAAA.
@@ -1408,6 +1762,13 @@ def ARC_ADD2_a_b_c : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00010101;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // add2<.f> 0,b,c 00100bbb00010101FBBBCCCCCC111110.
@@ -1421,6 +1782,11 @@ def ARC_ADD2_z_b_c : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{23-16} = 0b00010101;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // add2<.f><.cc> b,b,c 00100bbb11010101FBBBCCCCCC0QQQQQ.
@@ -1436,6 +1802,11 @@ def ARC_ADD2_b_c_cc : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // add2<.f> a,b,u6 00100bbb01010101FBBBuuuuuuAAAAAA.
@@ -1448,6 +1819,13 @@ def ARC_ADD2_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01010101;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // add2<.f> 0,b,u6 00100bbb01010101FBBBuuuuuu111110.
@@ -1461,6 +1839,11 @@ def ARC_ADD2_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{23-16} = 0b01010101;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // add2<.f><.cc> b,b,u6 00100bbb11010101FBBBuuuuuu1QQQQQ.
@@ -1476,6 +1859,11 @@ def ARC_ADD2_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // add2<.f> b,b,s12 00100bbb10010101FBBBssssssSSSSSS.
@@ -1489,6 +1877,12 @@ def ARC_ADD2_b_s12 : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{23-16} = 0b10010101;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // add2<.f> a,limm,c 0010011000010101F111CCCCCCAAAAAA.
@@ -1501,6 +1895,8 @@ def ARC_ADD2_a_limm_c : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{31-16} = 0b0010011000010101;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add2<.f> a,b,limm 00100bbb00010101FBBB111110AAAAAA.
@@ -1514,6 +1910,8 @@ def ARC_ADD2_a_b_limm : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{23-16} = 0b00010101;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add2<.f> 0,limm,c 0010011000010101F111CCCCCC111110.
@@ -1527,6 +1925,8 @@ def ARC_ADD2_z_limm_c : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add2<.f> 0,b,limm 00100bbb00010101FBBB111110111110.
@@ -1540,6 +1940,8 @@ def ARC_ADD2_z_b_limm : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{23-16} = 0b00010101;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add2<.f><.cc> b,b,limm 00100bbb11010101FBBB1111100QQQQQ.
@@ -1555,6 +1957,8 @@ def ARC_ADD2_b_limm_cc : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add2<.f><.cc> 0,limm,c 0010011011010101F111CCCCCC0QQQQQ.
@@ -1569,6 +1973,8 @@ def ARC_ADD2_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add2<.f> a,limm,u6 0010011001010101F111uuuuuuAAAAAA.
@@ -1581,6 +1987,8 @@ def ARC_ADD2_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{31-16} = 0b0010011001010101;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add2<.f> 0,limm,u6 0010011001010101F111uuuuuu111110.
@@ -1594,6 +2002,8 @@ def ARC_ADD2_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add2<.f><.cc> 0,limm,u6 0010011011010101F111uuuuuu1QQQQQ.
@@ -1608,6 +2018,8 @@ def ARC_ADD2_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add2<.f> 0,limm,s12 0010011010010101F111ssssssSSSSSS.
@@ -1620,6 +2032,8 @@ def ARC_ADD2_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{31-16} = 0b0010011010010101;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add2<.f> a,limm,limm 0010011000010101F111111110AAAAAA.
@@ -1632,6 +2046,8 @@ def ARC_ADD2_a_limm : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{31-16} = 0b0010011000010101;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add2<.f> 0,limm,limm 0010011000010101F111111110111110.
@@ -1644,6 +2060,8 @@ def ARC_ADD2_z_limm : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{31-16} = 0b0010011000010101;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add2<.f><.cc> 0,limm,limm 0010011011010101F1111111100QQQQQ.
@@ -1657,6 +2075,8 @@ def ARC_ADD2_z_limm_cc : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add3<.f> a,b,c 00100bbb00010110FBBBCCCCCCAAAAAA.
@@ -1669,6 +2089,13 @@ def ARC_ADD3_a_b_c : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00010110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // add3<.f> 0,b,c 00100bbb00010110FBBBCCCCCC111110.
@@ -1682,6 +2109,11 @@ def ARC_ADD3_z_b_c : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{23-16} = 0b00010110;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // add3<.f><.cc> b,b,c 00100bbb11010110FBBBCCCCCC0QQQQQ.
@@ -1697,6 +2129,11 @@ def ARC_ADD3_b_c_cc : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // add3<.f> a,b,u6 00100bbb01010110FBBBuuuuuuAAAAAA.
@@ -1709,6 +2146,13 @@ def ARC_ADD3_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01010110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // add3<.f> 0,b,u6 00100bbb01010110FBBBuuuuuu111110.
@@ -1722,6 +2166,11 @@ def ARC_ADD3_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{23-16} = 0b01010110;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // add3<.f><.cc> b,b,u6 00100bbb11010110FBBBuuuuuu1QQQQQ.
@@ -1737,6 +2186,11 @@ def ARC_ADD3_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // add3<.f> b,b,s12 00100bbb10010110FBBBssssssSSSSSS.
@@ -1750,6 +2204,12 @@ def ARC_ADD3_b_s12 : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{23-16} = 0b10010110;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // add3<.f> a,limm,c 0010011000010110F111CCCCCCAAAAAA.
@@ -1762,6 +2222,8 @@ def ARC_ADD3_a_limm_c : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{31-16} = 0b0010011000010110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add3<.f> a,b,limm 00100bbb00010110FBBB111110AAAAAA.
@@ -1775,6 +2237,8 @@ def ARC_ADD3_a_b_limm : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{23-16} = 0b00010110;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add3<.f> 0,limm,c 0010011000010110F111CCCCCC111110.
@@ -1788,6 +2252,8 @@ def ARC_ADD3_z_limm_c : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add3<.f> 0,b,limm 00100bbb00010110FBBB111110111110.
@@ -1801,6 +2267,8 @@ def ARC_ADD3_z_b_limm : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{23-16} = 0b00010110;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add3<.f><.cc> b,b,limm 00100bbb11010110FBBB1111100QQQQQ.
@@ -1816,6 +2284,8 @@ def ARC_ADD3_b_limm_cc : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add3<.f><.cc> 0,limm,c 0010011011010110F111CCCCCC0QQQQQ.
@@ -1830,6 +2300,8 @@ def ARC_ADD3_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add3<.f> a,limm,u6 0010011001010110F111uuuuuuAAAAAA.
@@ -1842,6 +2314,8 @@ def ARC_ADD3_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{31-16} = 0b0010011001010110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add3<.f> 0,limm,u6 0010011001010110F111uuuuuu111110.
@@ -1855,6 +2329,8 @@ def ARC_ADD3_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add3<.f><.cc> 0,limm,u6 0010011011010110F111uuuuuu1QQQQQ.
@@ -1869,6 +2345,8 @@ def ARC_ADD3_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add3<.f> 0,limm,s12 0010011010010110F111ssssssSSSSSS.
@@ -1881,6 +2359,8 @@ def ARC_ADD3_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{31-16} = 0b0010011010010110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add3<.f> a,limm,limm 0010011000010110F111111110AAAAAA.
@@ -1893,6 +2373,8 @@ def ARC_ADD3_a_limm : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{31-16} = 0b0010011000010110;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add3<.f> 0,limm,limm 0010011000010110F111111110111110.
@@ -1905,6 +2387,8 @@ def ARC_ADD3_z_limm : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{31-16} = 0b0010011000010110;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // add3<.f><.cc> 0,limm,limm 0010011011010110F1111111100QQQQQ.
@@ -1918,6 +2402,8 @@ def ARC_ADD3_z_limm_cc : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addqbs<.f> a,b,c 00110bbb00100100FBBBCCCCCCAAAAAA.
@@ -1930,6 +2416,13 @@ def ARC_ADDQBS_a_b_c : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b00100100;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // addqbs<.f><.cc> b,b,c 00110bbb11100100FBBBCCCCCC0QQQQQ.
@@ -1945,6 +2438,11 @@ def ARC_ADDQBS_b_c_cc : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // addqbs<.f> a,b,u6 00110bbb01100100FBBBuuuuuuAAAAAA.
@@ -1957,6 +2455,13 @@ def ARC_ADDQBS_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b01100100;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // addqbs<.f><.cc> b,b,u6 00110bbb11100100FBBBuuuuuu1QQQQQ.
@@ -1972,6 +2477,11 @@ def ARC_ADDQBS_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // addqbs<.f> b,b,s12 00110bbb10100100FBBBssssssSSSSSS.
@@ -1985,6 +2495,12 @@ def ARC_ADDQBS_b_s12 : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let Inst{23-16} = 0b10100100;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // addqbs<.f> a,limm,c 0011011000100100F111CCCCCCAAAAAA.
@@ -1997,6 +2513,8 @@ def ARC_ADDQBS_a_limm_c : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let Inst{31-16} = 0b0011011000100100;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addqbs<.f> a,b,limm 00110bbb00100100FBBB111110AAAAAA.
@@ -2010,6 +2528,8 @@ def ARC_ADDQBS_a_b_limm : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let Inst{23-16} = 0b00100100;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addqbs<.f><.cc> b,b,limm 00110bbb11100100FBBB1111100QQQQQ.
@@ -2025,6 +2545,8 @@ def ARC_ADDQBS_b_limm_cc : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adds<.f> a,b,c 00101bbb00000110FBBBCCCCCCAAAAAA.
@@ -2037,6 +2559,13 @@ def ARC_ADDS_a_b_c : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b00000110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // adds<.f> 0,b,c 00101bbb00000110FBBBCCCCCC111110.
@@ -2050,6 +2579,11 @@ def ARC_ADDS_z_b_c : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{23-16} = 0b00000110;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // adds<.f><.cc> b,b,c 00101bbb11000110FBBBCCCCCC0QQQQQ.
@@ -2065,6 +2599,11 @@ def ARC_ADDS_b_c_cc : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // adds<.f> a,b,u6 00101bbb01000110FBBBuuuuuuAAAAAA.
@@ -2077,6 +2616,13 @@ def ARC_ADDS_a_b_u6 : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01000110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // adds<.f> 0,b,u6 00101bbb01000110FBBBuuuuuu111110.
@@ -2090,6 +2636,11 @@ def ARC_ADDS_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{23-16} = 0b01000110;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // adds<.f><.cc> b,b,u6 00101bbb11000110FBBBuuuuuu1QQQQQ.
@@ -2105,6 +2656,11 @@ def ARC_ADDS_b_u6_cc : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // adds<.f> b,b,s12 00101bbb10000110FBBBssssssSSSSSS.
@@ -2118,6 +2674,12 @@ def ARC_ADDS_b_s12 : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{23-16} = 0b10000110;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // adds<.f> a,limm,c 0010111000000110F111CCCCCCAAAAAA.
@@ -2130,6 +2692,8 @@ def ARC_ADDS_a_limm_c : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{31-16} = 0b0010111000000110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adds<.f> a,b,limm 00101bbb00000110FBBB111110AAAAAA.
@@ -2143,6 +2707,8 @@ def ARC_ADDS_a_b_limm : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{23-16} = 0b00000110;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adds<.f> 0,limm,c 0010111000000110F111CCCCCC111110.
@@ -2156,6 +2722,8 @@ def ARC_ADDS_z_limm_c : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adds<.f> 0,b,limm 00101bbb00000110FBBB111110111110.
@@ -2169,6 +2737,8 @@ def ARC_ADDS_z_b_limm : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{23-16} = 0b00000110;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adds<.f><.cc> b,b,limm 00101bbb11000110FBBB1111100QQQQQ.
@@ -2184,6 +2754,8 @@ def ARC_ADDS_b_limm_cc : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adds<.f><.cc> 0,limm,c 0010111011000110F111CCCCCC0QQQQQ.
@@ -2198,6 +2770,8 @@ def ARC_ADDS_z_limm_c_cc : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adds<.f> a,limm,u6 0010111001000110F111uuuuuuAAAAAA.
@@ -2210,6 +2784,8 @@ def ARC_ADDS_a_limm_u6 : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{31-16} = 0b0010111001000110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adds<.f> 0,limm,u6 0010111001000110F111uuuuuu111110.
@@ -2223,6 +2799,8 @@ def ARC_ADDS_z_limm_u6 : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adds<.f><.cc> 0,limm,u6 0010111011000110F111uuuuuu1QQQQQ.
@@ -2237,6 +2815,8 @@ def ARC_ADDS_z_limm_u6_cc : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adds<.f> 0,limm,s12 0010111010000110F111ssssssSSSSSS.
@@ -2249,6 +2829,8 @@ def ARC_ADDS_z_limm_s12 : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{31-16} = 0b0010111010000110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adds<.f> a,limm,limm 0010111000000110F111111110AAAAAA.
@@ -2261,6 +2843,8 @@ def ARC_ADDS_a_limm : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{31-16} = 0b0010111000000110;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adds<.f> 0,limm,limm 0010111000000110F111111110111110.
@@ -2273,6 +2857,8 @@ def ARC_ADDS_z_limm : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{31-16} = 0b0010111000000110;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // adds<.f><.cc> 0,limm,limm 0010111011000110F1111111100QQQQQ.
@@ -2286,6 +2872,8 @@ def ARC_ADDS_z_limm_cc : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addsdw<.f> a,b,c 00101bbb00101000FBBBCCCCCCAAAAAA.
@@ -2298,6 +2886,13 @@ def ARC_ADDSDW_a_b_c : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b00101000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // addsdw<.f> 0,b,c 00101bbb00101000FBBBCCCCCC111110.
@@ -2311,6 +2906,11 @@ def ARC_ADDSDW_z_b_c : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{23-16} = 0b00101000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // addsdw<.f><.cc> b,b,c 00101bbb11101000FBBBCCCCCC0QQQQQ.
@@ -2326,6 +2926,11 @@ def ARC_ADDSDW_b_c_cc : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // addsdw<.f> a,b,u6 00101bbb01101000FBBBuuuuuuAAAAAA.
@@ -2338,6 +2943,13 @@ def ARC_ADDSDW_a_b_u6 : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01101000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // addsdw<.f> 0,b,u6 00101bbb01101000FBBBuuuuuu111110.
@@ -2351,6 +2963,11 @@ def ARC_ADDSDW_z_b_u6 : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{23-16} = 0b01101000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // addsdw<.f><.cc> b,b,u6 00101bbb11101000FBBBuuuuuu1QQQQQ.
@@ -2366,6 +2983,11 @@ def ARC_ADDSDW_b_u6_cc : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // addsdw<.f> b,b,s12 00101bbb10101000FBBBssssssSSSSSS.
@@ -2379,6 +3001,12 @@ def ARC_ADDSDW_b_s12 : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{23-16} = 0b10101000;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // addsdw<.f> a,limm,c 0010111000101000F111CCCCCCAAAAAA.
@@ -2391,6 +3019,8 @@ def ARC_ADDSDW_a_limm_c : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{31-16} = 0b0010111000101000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addsdw<.f> a,b,limm 00101bbb00101000FBBB111110AAAAAA.
@@ -2404,6 +3034,8 @@ def ARC_ADDSDW_a_b_limm : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{23-16} = 0b00101000;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addsdw<.f> 0,limm,c 0010111000101000F111CCCCCC111110.
@@ -2417,6 +3049,8 @@ def ARC_ADDSDW_z_limm_c : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addsdw<.f> 0,b,limm 00101bbb00101000FBBB111110111110.
@@ -2430,6 +3064,8 @@ def ARC_ADDSDW_z_b_limm : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{23-16} = 0b00101000;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addsdw<.f><.cc> b,b,limm 00101bbb11101000FBBB1111100QQQQQ.
@@ -2445,6 +3081,8 @@ def ARC_ADDSDW_b_limm_cc : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addsdw<.f><.cc> 0,limm,c 0010111011101000F111CCCCCC0QQQQQ.
@@ -2459,6 +3097,8 @@ def ARC_ADDSDW_z_limm_c_cc : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addsdw<.f> a,limm,u6 0010111001101000F111uuuuuuAAAAAA.
@@ -2471,6 +3111,8 @@ def ARC_ADDSDW_a_limm_u6 : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{31-16} = 0b0010111001101000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addsdw<.f> 0,limm,u6 0010111001101000F111uuuuuu111110.
@@ -2484,6 +3126,8 @@ def ARC_ADDSDW_z_limm_u6 : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addsdw<.f><.cc> 0,limm,u6 0010111011101000F111uuuuuu1QQQQQ.
@@ -2498,6 +3142,8 @@ def ARC_ADDSDW_z_limm_u6_cc : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addsdw<.f> 0,limm,s12 0010111010101000F111ssssssSSSSSS.
@@ -2510,6 +3156,8 @@ def ARC_ADDSDW_z_limm_s12 : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{31-16} = 0b0010111010101000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addsdw<.f> a,limm,limm 0010111000101000F111111110AAAAAA.
@@ -2522,6 +3170,8 @@ def ARC_ADDSDW_a_limm : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{31-16} = 0b0010111000101000;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addsdw<.f> 0,limm,limm 0010111000101000F111111110111110.
@@ -2534,6 +3184,8 @@ def ARC_ADDSDW_z_limm : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{31-16} = 0b0010111000101000;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // addsdw<.f><.cc> 0,limm,limm 0010111011101000F1111111100QQQQQ.
@@ -2547,6 +3199,8 @@ def ARC_ADDSDW_z_limm_cc : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and<.f> a,b,c 00100bbb00000100FBBBCCCCCCAAAAAA.
@@ -2559,6 +3213,13 @@ def ARC_AND_a_b_c : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00000100;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // and<.f> 0,b,c 00100bbb00000100FBBBCCCCCC111110.
@@ -2572,6 +3233,11 @@ def ARC_AND_z_b_c : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{23-16} = 0b00000100;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // and<.f><.cc> b,b,c 00100bbb11000100FBBBCCCCCC0QQQQQ.
@@ -2587,6 +3253,11 @@ def ARC_AND_b_c_cc : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // and<.f> a,b,u6 00100bbb01000100FBBBuuuuuuAAAAAA.
@@ -2599,6 +3270,13 @@ def ARC_AND_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01000100;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // and<.f> 0,b,u6 00100bbb01000100FBBBuuuuuu111110.
@@ -2612,6 +3290,11 @@ def ARC_AND_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{23-16} = 0b01000100;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // and<.f><.cc> b,b,u6 00100bbb11000100FBBBuuuuuu1QQQQQ.
@@ -2627,6 +3310,11 @@ def ARC_AND_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // and<.f> b,b,s12 00100bbb10000100FBBBssssssSSSSSS.
@@ -2640,6 +3328,12 @@ def ARC_AND_b_s12 : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{23-16} = 0b10000100;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // and<.f> a,limm,c 0010011000000100F111CCCCCCAAAAAA.
@@ -2652,6 +3346,8 @@ def ARC_AND_a_limm_c : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{31-16} = 0b0010011000000100;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and<.f> a,b,limm 00100bbb00000100FBBB111110AAAAAA.
@@ -2665,6 +3361,8 @@ def ARC_AND_a_b_limm : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{23-16} = 0b00000100;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and<.f> 0,limm,c 0010011000000100F111CCCCCC111110.
@@ -2678,6 +3376,8 @@ def ARC_AND_z_limm_c : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and<.f> 0,b,limm 00100bbb00000100FBBB111110111110.
@@ -2691,6 +3391,8 @@ def ARC_AND_z_b_limm : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{23-16} = 0b00000100;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and<.f><.cc> b,b,limm 00100bbb11000100FBBB1111100QQQQQ.
@@ -2706,6 +3408,8 @@ def ARC_AND_b_limm_cc : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and<.f><.cc> 0,limm,c 0010011011000100F111CCCCCC0QQQQQ.
@@ -2720,6 +3424,8 @@ def ARC_AND_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and<.f> a,limm,u6 0010011001000100F111uuuuuuAAAAAA.
@@ -2732,6 +3438,8 @@ def ARC_AND_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{31-16} = 0b0010011001000100;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and<.f> 0,limm,u6 0010011001000100F111uuuuuu111110.
@@ -2745,6 +3453,8 @@ def ARC_AND_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and<.f><.cc> 0,limm,u6 0010011011000100F111uuuuuu1QQQQQ.
@@ -2759,6 +3469,8 @@ def ARC_AND_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and<.f> 0,limm,s12 0010011010000100F111ssssssSSSSSS.
@@ -2771,6 +3483,8 @@ def ARC_AND_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{31-16} = 0b0010011010000100;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and<.f> a,limm,limm 0010011000000100F111111110AAAAAA.
@@ -2783,6 +3497,8 @@ def ARC_AND_a_limm : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{31-16} = 0b0010011000000100;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and<.f> 0,limm,limm 0010011000000100F111111110111110.
@@ -2795,6 +3511,8 @@ def ARC_AND_z_limm : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{31-16} = 0b0010011000000100;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // and<.f><.cc> 0,limm,limm 0010011011000100F1111111100QQQQQ.
@@ -2808,6 +3526,8 @@ def ARC_AND_z_limm_cc : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f> b,c 00100bbb00101111FBBBCCCCCC000000.
@@ -2821,6 +3541,11 @@ def ARC_ASL_b_c : ARCompactInst32_2op<0b00100, 0b000000, "asl",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // asl<.f> 0,c 0010011000101111F111CCCCCC000000.
@@ -2834,6 +3559,8 @@ def ARC_ASL_z_c : ARCompactInst32_2op<0b00100, 0b000000, "asl",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000000;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // asl<.f> a,b,c 00101bbb00000000FBBBCCCCCCAAAAAA.
@@ -2846,6 +3573,13 @@ def ARC_ASL_a_b_c : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b00000000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // asl<.f> 0,b,c 00101bbb00000000FBBBCCCCCC111110.
@@ -2859,6 +3593,11 @@ def ARC_ASL_z_b_c : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{23-16} = 0b00000000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // asl<.f><.cc> b,b,c 00101bbb11000000FBBBCCCCCC0QQQQQ.
@@ -2874,6 +3613,11 @@ def ARC_ASL_b_c_cc : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // asl<.f> b,u6 00100bbb01101111FBBBuuuuuu000000.
@@ -2887,6 +3631,11 @@ def ARC_ASL_b_u6 : ARCompactInst32_2op<0b00100, 0b000000, "asl",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // asl<.f> 0,u6 0010011001101111F111uuuuuu000000.
@@ -2900,6 +3649,8 @@ def ARC_ASL_z_u6 : ARCompactInst32_2op<0b00100, 0b000000, "asl",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000000;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // asl<.f> a,b,u6 00101bbb01000000FBBBuuuuuuAAAAAA.
@@ -2912,6 +3663,13 @@ def ARC_ASL_a_b_u6 : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01000000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // asl<.f> 0,b,u6 00101bbb01000000FBBBuuuuuu111110.
@@ -2925,6 +3683,11 @@ def ARC_ASL_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{23-16} = 0b01000000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // asl<.f><.cc> b,b,u6 00101bbb11000000FBBBuuuuuu1QQQQQ.
@@ -2940,6 +3703,11 @@ def ARC_ASL_b_u6_cc : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // asl<.f> b,b,s12 00101bbb10000000FBBBssssssSSSSSS.
@@ -2953,6 +3721,12 @@ def ARC_ASL_b_s12 : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{23-16} = 0b10000000;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // asl<.f> b,limm 00100bbb00101111FBBB111110000000.
@@ -2966,6 +3740,8 @@ def ARC_ASL_b_limm : ARCompactInst32_2op<0b00100, 0b000000, "asl",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000000;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f> 0,limm 0010011000101111F111111110000000.
@@ -2978,6 +3754,8 @@ def ARC_ASL_z_limm : ARCompactInst32_2op<0b00100, 0b000000, "asl",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110000000;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f> a,limm,c 0010111000000000F111CCCCCCAAAAAA.
@@ -2990,6 +3768,8 @@ def ARC_ASL_a_limm_c : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{31-16} = 0b0010111000000000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f> a,b,limm 00101bbb00000000FBBB111110AAAAAA.
@@ -3003,6 +3783,8 @@ def ARC_ASL_a_b_limm : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{23-16} = 0b00000000;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f> 0,limm,c 0010111000000000F111CCCCCC111110.
@@ -3016,6 +3798,8 @@ def ARC_ASL_z_limm_c : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f> 0,b,limm 00101bbb00000000FBBB111110111110.
@@ -3029,6 +3813,8 @@ def ARC_ASL_z_b_limm : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{23-16} = 0b00000000;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f><.cc> b,b,limm 00101bbb11000000FBBB1111100QQQQQ.
@@ -3044,6 +3830,8 @@ def ARC_ASL_b_limm_cc : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f><.cc> 0,limm,c 0010111011000000F111CCCCCC0QQQQQ.
@@ -3058,6 +3846,8 @@ def ARC_ASL_z_limm_c_cc : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f> a,limm,u6 0010111001000000F111uuuuuuAAAAAA.
@@ -3070,6 +3860,8 @@ def ARC_ASL_a_limm_u6 : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{31-16} = 0b0010111001000000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f> 0,limm,u6 0010111001000000F111uuuuuu111110.
@@ -3083,6 +3875,8 @@ def ARC_ASL_z_limm_u6 : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f><.cc> 0,limm,u6 0010111011000000F111uuuuuu1QQQQQ.
@@ -3097,6 +3891,8 @@ def ARC_ASL_z_limm_u6_cc : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f> 0,limm,s12 0010111010000000F111ssssssSSSSSS.
@@ -3109,6 +3905,8 @@ def ARC_ASL_z_limm_s12 : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{31-16} = 0b0010111010000000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f> a,limm,limm 0010111000000000F111111110AAAAAA.
@@ -3121,6 +3919,8 @@ def ARC_ASL_a_limm : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{31-16} = 0b0010111000000000;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f> 0,limm,limm 0010111000000000F111111110111110.
@@ -3133,6 +3933,8 @@ def ARC_ASL_z_limm_v1 : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{31-16} = 0b0010111000000000;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // asl<.f><.cc> 0,limm,limm 0010111011000000F1111111100QQQQQ.
@@ -3146,6 +3948,8 @@ def ARC_ASL_z_limm_cc : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asls<.f> a,b,c 00101bbb00001010FBBBCCCCCCAAAAAA.
@@ -3158,6 +3962,13 @@ def ARC_ASLS_a_b_c : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b00001010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // asls<.f> 0,b,c 00101bbb00001010FBBBCCCCCC111110.
@@ -3171,6 +3982,11 @@ def ARC_ASLS_z_b_c : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{23-16} = 0b00001010;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // asls<.f><.cc> b,b,c 00101bbb11001010FBBBCCCCCC0QQQQQ.
@@ -3186,6 +4002,11 @@ def ARC_ASLS_b_c_cc : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // asls<.f> a,b,u6 00101bbb01001010FBBBuuuuuuAAAAAA.
@@ -3198,6 +4019,13 @@ def ARC_ASLS_a_b_u6 : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01001010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // asls<.f> 0,b,u6 00101bbb01001010FBBBuuuuuu111110.
@@ -3211,6 +4039,11 @@ def ARC_ASLS_z_b_u6 : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{23-16} = 0b01001010;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // asls<.f><.cc> b,b,u6 00101bbb11001010FBBBuuuuuu1QQQQQ.
@@ -3226,6 +4059,11 @@ def ARC_ASLS_b_u6_cc : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // asls<.f> b,b,s12 00101bbb10001010FBBBssssssSSSSSS.
@@ -3239,6 +4077,12 @@ def ARC_ASLS_b_s12 : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{23-16} = 0b10001010;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // asls<.f> a,limm,c 0010111000001010F111CCCCCCAAAAAA.
@@ -3251,6 +4095,8 @@ def ARC_ASLS_a_limm_c : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{31-16} = 0b0010111000001010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asls<.f> a,b,limm 00101bbb00001010FBBB111110AAAAAA.
@@ -3264,6 +4110,8 @@ def ARC_ASLS_a_b_limm : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{23-16} = 0b00001010;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asls<.f> 0,limm,c 0010111000001010F111CCCCCC111110.
@@ -3277,6 +4125,8 @@ def ARC_ASLS_z_limm_c : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asls<.f> 0,b,limm 00101bbb00001010FBBB111110111110.
@@ -3290,6 +4140,8 @@ def ARC_ASLS_z_b_limm : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{23-16} = 0b00001010;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asls<.f><.cc> b,b,limm 00101bbb11001010FBBB1111100QQQQQ.
@@ -3305,6 +4157,8 @@ def ARC_ASLS_b_limm_cc : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asls<.f><.cc> 0,limm,c 0010111011001010F111CCCCCC0QQQQQ.
@@ -3319,6 +4173,8 @@ def ARC_ASLS_z_limm_c_cc : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asls<.f> a,limm,u6 0010111001001010F111uuuuuuAAAAAA.
@@ -3331,6 +4187,8 @@ def ARC_ASLS_a_limm_u6 : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{31-16} = 0b0010111001001010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asls<.f> 0,limm,u6 0010111001001010F111uuuuuu111110.
@@ -3344,6 +4202,8 @@ def ARC_ASLS_z_limm_u6 : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asls<.f><.cc> 0,limm,u6 0010111011001010F111uuuuuu1QQQQQ.
@@ -3358,6 +4218,8 @@ def ARC_ASLS_z_limm_u6_cc : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asls<.f> 0,limm,s12 0010111010001010F111ssssssSSSSSS.
@@ -3370,6 +4232,8 @@ def ARC_ASLS_z_limm_s12 : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{31-16} = 0b0010111010001010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asls<.f> a,limm,limm 0010111000001010F111111110AAAAAA.
@@ -3382,6 +4246,8 @@ def ARC_ASLS_a_limm : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{31-16} = 0b0010111000001010;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asls<.f> 0,limm,limm 0010111000001010F111111110111110.
@@ -3394,6 +4260,8 @@ def ARC_ASLS_z_limm : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{31-16} = 0b0010111000001010;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asls<.f><.cc> 0,limm,limm 0010111011001010F1111111100QQQQQ.
@@ -3407,6 +4275,8 @@ def ARC_ASLS_z_limm_cc : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f> b,c 00100bbb00101111FBBBCCCCCC000001.
@@ -3420,6 +4290,11 @@ def ARC_ASR_b_c : ARCompactInst32_2op<0b00100, 0b000001, "asr",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // asr<.f> 0,c 0010011000101111F111CCCCCC000001.
@@ -3433,6 +4308,8 @@ def ARC_ASR_z_c : ARCompactInst32_2op<0b00100, 0b000001, "asr",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000001;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // asr<.f> a,b,c 00101bbb00000010FBBBCCCCCCAAAAAA.
@@ -3445,6 +4322,13 @@ def ARC_ASR_a_b_c : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b00000010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // asr<.f> 0,b,c 00101bbb00000010FBBBCCCCCC111110.
@@ -3458,6 +4342,11 @@ def ARC_ASR_z_b_c : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{23-16} = 0b00000010;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // asr<.f><.cc> b,b,c 00101bbb11000010FBBBCCCCCC0QQQQQ.
@@ -3473,6 +4362,11 @@ def ARC_ASR_b_c_cc : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // asr<.f> b,u6 00100bbb01101111FBBBuuuuuu000001.
@@ -3486,6 +4380,11 @@ def ARC_ASR_b_u6 : ARCompactInst32_2op<0b00100, 0b000001, "asr",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // asr<.f> 0,u6 0010011001101111F111uuuuuu000001.
@@ -3499,6 +4398,8 @@ def ARC_ASR_z_u6 : ARCompactInst32_2op<0b00100, 0b000001, "asr",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000001;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // asr<.f> a,b,u6 00101bbb01000010FBBBuuuuuuAAAAAA.
@@ -3511,6 +4412,13 @@ def ARC_ASR_a_b_u6 : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01000010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // asr<.f> 0,b,u6 00101bbb01000010FBBBuuuuuu111110.
@@ -3524,6 +4432,11 @@ def ARC_ASR_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{23-16} = 0b01000010;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // asr<.f><.cc> b,b,u6 00101bbb11000010FBBBuuuuuu1QQQQQ.
@@ -3539,6 +4452,11 @@ def ARC_ASR_b_u6_cc : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // asr<.f> b,b,s12 00101bbb10000010FBBBssssssSSSSSS.
@@ -3552,6 +4470,12 @@ def ARC_ASR_b_s12 : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{23-16} = 0b10000010;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // asr<.f> b,limm 00100bbb00101111FBBB111110000001.
@@ -3565,6 +4489,8 @@ def ARC_ASR_b_limm : ARCompactInst32_2op<0b00100, 0b000001, "asr",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000001;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f> 0,limm 0010011000101111F111111110000001.
@@ -3577,6 +4503,8 @@ def ARC_ASR_z_limm : ARCompactInst32_2op<0b00100, 0b000001, "asr",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110000001;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f> a,limm,c 0010111000000010F111CCCCCCAAAAAA.
@@ -3589,6 +4517,8 @@ def ARC_ASR_a_limm_c : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{31-16} = 0b0010111000000010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f> a,b,limm 00101bbb00000010FBBB111110AAAAAA.
@@ -3602,6 +4532,8 @@ def ARC_ASR_a_b_limm : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{23-16} = 0b00000010;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f> 0,limm,c 0010111000000010F111CCCCCC111110.
@@ -3615,6 +4547,8 @@ def ARC_ASR_z_limm_c : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f> 0,b,limm 00101bbb00000010FBBB111110111110.
@@ -3628,6 +4562,8 @@ def ARC_ASR_z_b_limm : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{23-16} = 0b00000010;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f><.cc> b,b,limm 00101bbb11000010FBBB1111100QQQQQ.
@@ -3643,6 +4579,8 @@ def ARC_ASR_b_limm_cc : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f><.cc> 0,limm,c 0010111011000010F111CCCCCC0QQQQQ.
@@ -3657,6 +4595,8 @@ def ARC_ASR_z_limm_c_cc : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f> a,limm,u6 0010111001000010F111uuuuuuAAAAAA.
@@ -3669,6 +4609,8 @@ def ARC_ASR_a_limm_u6 : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{31-16} = 0b0010111001000010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f> 0,limm,u6 0010111001000010F111uuuuuu111110.
@@ -3682,6 +4624,8 @@ def ARC_ASR_z_limm_u6 : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f><.cc> 0,limm,u6 0010111011000010F111uuuuuu1QQQQQ.
@@ -3696,6 +4640,8 @@ def ARC_ASR_z_limm_u6_cc : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f> 0,limm,s12 0010111010000010F111ssssssSSSSSS.
@@ -3708,6 +4654,8 @@ def ARC_ASR_z_limm_s12 : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{31-16} = 0b0010111010000010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f> a,limm,limm 0010111000000010F111111110AAAAAA.
@@ -3720,6 +4668,8 @@ def ARC_ASR_a_limm : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{31-16} = 0b0010111000000010;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f> 0,limm,limm 0010111000000010F111111110111110.
@@ -3732,6 +4682,8 @@ def ARC_ASR_z_limm_v1 : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{31-16} = 0b0010111000000010;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // asr<.f><.cc> 0,limm,limm 0010111011000010F1111111100QQQQQ.
@@ -3745,6 +4697,8 @@ def ARC_ASR_z_limm_cc : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asrs<.f> a,b,c 00101bbb00001011FBBBCCCCCCAAAAAA.
@@ -3757,6 +4711,13 @@ def ARC_ASRS_a_b_c : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b00001011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // asrs<.f> 0,b,c 00101bbb00001011FBBBCCCCCC111110.
@@ -3770,6 +4731,11 @@ def ARC_ASRS_z_b_c : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{23-16} = 0b00001011;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // asrs<.f><.cc> b,b,c 00101bbb11001011FBBBCCCCCC0QQQQQ.
@@ -3785,6 +4751,11 @@ def ARC_ASRS_b_c_cc : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // asrs<.f> a,b,u6 00101bbb01001011FBBBuuuuuuAAAAAA.
@@ -3797,6 +4768,13 @@ def ARC_ASRS_a_b_u6 : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01001011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // asrs<.f> 0,b,u6 00101bbb01001011FBBBuuuuuu111110.
@@ -3810,6 +4788,11 @@ def ARC_ASRS_z_b_u6 : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{23-16} = 0b01001011;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // asrs<.f><.cc> b,b,u6 00101bbb11001011FBBBuuuuuu1QQQQQ.
@@ -3825,6 +4808,11 @@ def ARC_ASRS_b_u6_cc : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // asrs<.f> b,b,s12 00101bbb10001011FBBBssssssSSSSSS.
@@ -3838,6 +4826,12 @@ def ARC_ASRS_b_s12 : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{23-16} = 0b10001011;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // asrs<.f> a,limm,c 0010111000001011F111CCCCCCAAAAAA.
@@ -3850,6 +4844,8 @@ def ARC_ASRS_a_limm_c : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{31-16} = 0b0010111000001011;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asrs<.f> a,b,limm 00101bbb00001011FBBB111110AAAAAA.
@@ -3863,6 +4859,8 @@ def ARC_ASRS_a_b_limm : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{23-16} = 0b00001011;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asrs<.f> 0,limm,c 0010111000001011F111CCCCCC111110.
@@ -3876,6 +4874,8 @@ def ARC_ASRS_z_limm_c : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asrs<.f> 0,b,limm 00101bbb00001011FBBB111110111110.
@@ -3889,6 +4889,8 @@ def ARC_ASRS_z_b_limm : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{23-16} = 0b00001011;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asrs<.f><.cc> b,b,limm 00101bbb11001011FBBB1111100QQQQQ.
@@ -3904,6 +4906,8 @@ def ARC_ASRS_b_limm_cc : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asrs<.f><.cc> 0,limm,c 0010111011001011F111CCCCCC0QQQQQ.
@@ -3918,6 +4922,8 @@ def ARC_ASRS_z_limm_c_cc : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asrs<.f> a,limm,u6 0010111001001011F111uuuuuuAAAAAA.
@@ -3930,6 +4936,8 @@ def ARC_ASRS_a_limm_u6 : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{31-16} = 0b0010111001001011;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asrs<.f> 0,limm,u6 0010111001001011F111uuuuuu111110.
@@ -3943,6 +4951,8 @@ def ARC_ASRS_z_limm_u6 : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asrs<.f><.cc> 0,limm,u6 0010111011001011F111uuuuuu1QQQQQ.
@@ -3957,6 +4967,8 @@ def ARC_ASRS_z_limm_u6_cc : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asrs<.f> 0,limm,s12 0010111010001011F111ssssssSSSSSS.
@@ -3969,6 +4981,8 @@ def ARC_ASRS_z_limm_s12 : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{31-16} = 0b0010111010001011;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asrs<.f> a,limm,limm 0010111000001011F111111110AAAAAA.
@@ -3981,6 +4995,8 @@ def ARC_ASRS_a_limm : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{31-16} = 0b0010111000001011;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asrs<.f> 0,limm,limm 0010111000001011F111111110111110.
@@ -3993,6 +5009,8 @@ def ARC_ASRS_z_limm : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{31-16} = 0b0010111000001011;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // asrs<.f><.cc> 0,limm,limm 0010111011001011F1111111100QQQQQ.
@@ -4006,6 +5024,8 @@ def ARC_ASRS_z_limm_cc : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // avgqb<.f> a,b,c 00110bbb00100011FBBBCCCCCCAAAAAA.
@@ -4018,6 +5038,13 @@ def ARC_AVGQB_a_b_c : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b00100011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // avgqb<.f><.cc> b,b,c 00110bbb11100011FBBBCCCCCC0QQQQQ.
@@ -4033,6 +5060,11 @@ def ARC_AVGQB_b_c_cc : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // avgqb<.f> a,b,u6 00110bbb01100011FBBBuuuuuuAAAAAA.
@@ -4045,6 +5077,13 @@ def ARC_AVGQB_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b01100011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // avgqb<.f><.cc> b,b,u6 00110bbb11100011FBBBuuuuuu1QQQQQ.
@@ -4060,6 +5099,11 @@ def ARC_AVGQB_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // avgqb<.f> b,b,s12 00110bbb10100011FBBBssssssSSSSSS.
@@ -4073,6 +5117,12 @@ def ARC_AVGQB_b_s12 : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let Inst{23-16} = 0b10100011;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // avgqb<.f> a,limm,c 0011011000100011F111CCCCCCAAAAAA.
@@ -4085,6 +5135,8 @@ def ARC_AVGQB_a_limm_c : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let Inst{31-16} = 0b0011011000100011;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // avgqb<.f> a,b,limm 00110bbb00100011FBBB111110AAAAAA.
@@ -4098,6 +5150,8 @@ def ARC_AVGQB_a_b_limm : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let Inst{23-16} = 0b00100011;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // avgqb<.f><.cc> b,b,limm 00110bbb11100011FBBB1111100QQQQQ.
@@ -4113,6 +5167,8 @@ def ARC_AVGQB_b_limm_cc : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bclr<.f> a,b,c 00100bbb00010000FBBBCCCCCCAAAAAA.
@@ -4125,6 +5181,13 @@ def ARC_BCLR_a_b_c : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00010000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // bclr<.f> 0,b,c 00100bbb00010000FBBBCCCCCC111110.
@@ -4138,6 +5201,11 @@ def ARC_BCLR_z_b_c : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{23-16} = 0b00010000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // bclr<.f><.cc> b,b,c 00100bbb11010000FBBBCCCCCC0QQQQQ.
@@ -4153,6 +5221,11 @@ def ARC_BCLR_b_c_cc : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // bclr<.f> a,b,u6 00100bbb01010000FBBBuuuuuuAAAAAA.
@@ -4165,6 +5238,13 @@ def ARC_BCLR_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01010000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // bclr<.f> 0,b,u6 00100bbb01010000FBBBuuuuuu111110.
@@ -4178,6 +5258,11 @@ def ARC_BCLR_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{23-16} = 0b01010000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // bclr<.f><.cc> b,b,u6 00100bbb11010000FBBBuuuuuu1QQQQQ.
@@ -4193,6 +5278,11 @@ def ARC_BCLR_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // bclr<.f> b,b,s12 00100bbb10010000FBBBssssssSSSSSS.
@@ -4206,6 +5296,12 @@ def ARC_BCLR_b_s12 : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{23-16} = 0b10010000;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // bclr<.f> a,limm,c 0010011000010000F111CCCCCCAAAAAA.
@@ -4218,6 +5314,8 @@ def ARC_BCLR_a_limm_c : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{31-16} = 0b0010011000010000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bclr<.f> a,b,limm 00100bbb00010000FBBB111110AAAAAA.
@@ -4231,6 +5329,8 @@ def ARC_BCLR_a_b_limm : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{23-16} = 0b00010000;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bclr<.f> 0,limm,c 0010011000010000F111CCCCCC111110.
@@ -4244,6 +5344,8 @@ def ARC_BCLR_z_limm_c : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bclr<.f> 0,b,limm 00100bbb00010000FBBB111110111110.
@@ -4257,6 +5359,8 @@ def ARC_BCLR_z_b_limm : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{23-16} = 0b00010000;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bclr<.f><.cc> b,b,limm 00100bbb11010000FBBB1111100QQQQQ.
@@ -4272,6 +5376,8 @@ def ARC_BCLR_b_limm_cc : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bclr<.f><.cc> 0,limm,c 0010011011010000F111CCCCCC0QQQQQ.
@@ -4286,6 +5392,8 @@ def ARC_BCLR_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bclr<.f> a,limm,u6 0010011001010000F111uuuuuuAAAAAA.
@@ -4298,6 +5406,8 @@ def ARC_BCLR_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{31-16} = 0b0010011001010000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bclr<.f> 0,limm,u6 0010011001010000F111uuuuuu111110.
@@ -4311,6 +5421,8 @@ def ARC_BCLR_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bclr<.f><.cc> 0,limm,u6 0010011011010000F111uuuuuu1QQQQQ.
@@ -4325,6 +5437,8 @@ def ARC_BCLR_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bclr<.f> 0,limm,s12 0010011010010000F111ssssssSSSSSS.
@@ -4337,6 +5451,8 @@ def ARC_BCLR_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{31-16} = 0b0010011010010000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bclr<.f> a,limm,limm 0010011000010000F111111110AAAAAA.
@@ -4349,6 +5465,8 @@ def ARC_BCLR_a_limm : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{31-16} = 0b0010011000010000;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bclr<.f> 0,limm,limm 0010011000010000F111111110111110.
@@ -4361,6 +5479,8 @@ def ARC_BCLR_z_limm : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{31-16} = 0b0010011000010000;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bclr<.f><.cc> 0,limm,limm 0010011011010000F1111111100QQQQQ.
@@ -4374,6 +5494,8 @@ def ARC_BCLR_z_limm_cc : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bic<.f> a,b,c 00100bbb00000110FBBBCCCCCCAAAAAA.
@@ -4386,6 +5508,13 @@ def ARC_BIC_a_b_c : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00000110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // bic<.f> 0,b,c 00100bbb00000110FBBBCCCCCC111110.
@@ -4399,6 +5528,11 @@ def ARC_BIC_z_b_c : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{23-16} = 0b00000110;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // bic<.f><.cc> b,b,c 00100bbb11000110FBBBCCCCCC0QQQQQ.
@@ -4414,6 +5548,11 @@ def ARC_BIC_b_c_cc : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // bic<.f> a,b,u6 00100bbb01000110FBBBuuuuuuAAAAAA.
@@ -4426,6 +5565,13 @@ def ARC_BIC_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01000110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // bic<.f> 0,b,u6 00100bbb01000110FBBBuuuuuu111110.
@@ -4439,6 +5585,11 @@ def ARC_BIC_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{23-16} = 0b01000110;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // bic<.f><.cc> b,b,u6 00100bbb11000110FBBBuuuuuu1QQQQQ.
@@ -4454,6 +5605,11 @@ def ARC_BIC_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // bic<.f> b,b,s12 00100bbb10000110FBBBssssssSSSSSS.
@@ -4467,6 +5623,12 @@ def ARC_BIC_b_s12 : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{23-16} = 0b10000110;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // bic<.f> a,limm,c 0010011000000110F111CCCCCCAAAAAA.
@@ -4479,6 +5641,8 @@ def ARC_BIC_a_limm_c : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{31-16} = 0b0010011000000110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bic<.f> a,b,limm 00100bbb00000110FBBB111110AAAAAA.
@@ -4492,6 +5656,8 @@ def ARC_BIC_a_b_limm : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{23-16} = 0b00000110;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bic<.f> 0,limm,c 0010011000000110F111CCCCCC111110.
@@ -4505,6 +5671,8 @@ def ARC_BIC_z_limm_c : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bic<.f> 0,b,limm 00100bbb00000110FBBB111110111110.
@@ -4518,6 +5686,8 @@ def ARC_BIC_z_b_limm : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{23-16} = 0b00000110;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bic<.f><.cc> b,b,limm 00100bbb11000110FBBB1111100QQQQQ.
@@ -4533,6 +5703,8 @@ def ARC_BIC_b_limm_cc : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bic<.f><.cc> 0,limm,c 0010011011000110F111CCCCCC0QQQQQ.
@@ -4547,6 +5719,8 @@ def ARC_BIC_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bic<.f> a,limm,u6 0010011001000110F111uuuuuuAAAAAA.
@@ -4559,6 +5733,8 @@ def ARC_BIC_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{31-16} = 0b0010011001000110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bic<.f> 0,limm,u6 0010011001000110F111uuuuuu111110.
@@ -4572,6 +5748,8 @@ def ARC_BIC_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bic<.f><.cc> 0,limm,u6 0010011011000110F111uuuuuu1QQQQQ.
@@ -4586,6 +5764,8 @@ def ARC_BIC_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bic<.f> 0,limm,s12 0010011010000110F111ssssssSSSSSS.
@@ -4598,6 +5778,8 @@ def ARC_BIC_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{31-16} = 0b0010011010000110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bic<.f> a,limm,limm 0010011000000110F111111110AAAAAA.
@@ -4610,6 +5792,8 @@ def ARC_BIC_a_limm : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{31-16} = 0b0010011000000110;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bic<.f> 0,limm,limm 0010011000000110F111111110111110.
@@ -4622,6 +5806,8 @@ def ARC_BIC_z_limm : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{31-16} = 0b0010011000000110;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bic<.f><.cc> 0,limm,limm 0010011011000110F1111111100QQQQQ.
@@ -4635,6 +5821,8 @@ def ARC_BIC_z_limm_cc : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bmsk<.f> a,b,c 00100bbb00010011FBBBCCCCCCAAAAAA.
@@ -4647,6 +5835,13 @@ def ARC_BMSK_a_b_c : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00010011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // bmsk<.f> 0,b,c 00100bbb00010011FBBBCCCCCC111110.
@@ -4660,6 +5855,11 @@ def ARC_BMSK_z_b_c : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{23-16} = 0b00010011;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // bmsk<.f><.cc> b,b,c 00100bbb11010011FBBBCCCCCC0QQQQQ.
@@ -4675,6 +5875,11 @@ def ARC_BMSK_b_c_cc : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // bmsk<.f> a,b,u6 00100bbb01010011FBBBuuuuuuAAAAAA.
@@ -4687,6 +5892,13 @@ def ARC_BMSK_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01010011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // bmsk<.f> 0,b,u6 00100bbb01010011FBBBuuuuuu111110.
@@ -4700,6 +5912,11 @@ def ARC_BMSK_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{23-16} = 0b01010011;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // bmsk<.f><.cc> b,b,u6 00100bbb11010011FBBBuuuuuu1QQQQQ.
@@ -4715,6 +5932,11 @@ def ARC_BMSK_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // bmsk<.f> b,b,s12 00100bbb10010011FBBBssssssSSSSSS.
@@ -4728,6 +5950,12 @@ def ARC_BMSK_b_s12 : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{23-16} = 0b10010011;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // bmsk<.f> a,limm,c 0010011000010011F111CCCCCCAAAAAA.
@@ -4740,6 +5968,8 @@ def ARC_BMSK_a_limm_c : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{31-16} = 0b0010011000010011;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bmsk<.f> a,b,limm 00100bbb00010011FBBB111110AAAAAA.
@@ -4753,6 +5983,8 @@ def ARC_BMSK_a_b_limm : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{23-16} = 0b00010011;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bmsk<.f> 0,limm,c 0010011000010011F111CCCCCC111110.
@@ -4766,6 +5998,8 @@ def ARC_BMSK_z_limm_c : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bmsk<.f> 0,b,limm 00100bbb00010011FBBB111110111110.
@@ -4779,6 +6013,8 @@ def ARC_BMSK_z_b_limm : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{23-16} = 0b00010011;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bmsk<.f><.cc> b,b,limm 00100bbb11010011FBBB1111100QQQQQ.
@@ -4794,6 +6030,8 @@ def ARC_BMSK_b_limm_cc : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bmsk<.f><.cc> 0,limm,c 0010011011010011F111CCCCCC0QQQQQ.
@@ -4808,6 +6046,8 @@ def ARC_BMSK_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bmsk<.f> a,limm,u6 0010011001010011F111uuuuuuAAAAAA.
@@ -4820,6 +6060,8 @@ def ARC_BMSK_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{31-16} = 0b0010011001010011;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bmsk<.f> 0,limm,u6 0010011001010011F111uuuuuu111110.
@@ -4833,6 +6075,8 @@ def ARC_BMSK_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bmsk<.f><.cc> 0,limm,u6 0010011011010011F111uuuuuu1QQQQQ.
@@ -4847,6 +6091,8 @@ def ARC_BMSK_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bmsk<.f> 0,limm,s12 0010011010010011F111ssssssSSSSSS.
@@ -4859,6 +6105,8 @@ def ARC_BMSK_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{31-16} = 0b0010011010010011;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bmsk<.f> a,limm,limm 0010011000010011F111111110AAAAAA.
@@ -4871,6 +6119,8 @@ def ARC_BMSK_a_limm : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{31-16} = 0b0010011000010011;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bmsk<.f> 0,limm,limm 0010011000010011F111111110111110.
@@ -4883,6 +6133,8 @@ def ARC_BMSK_z_limm : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{31-16} = 0b0010011000010011;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bmsk<.f><.cc> 0,limm,limm 0010011011010011F1111111100QQQQQ.
@@ -4896,6 +6148,8 @@ def ARC_BMSK_z_limm_cc : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bset<.f> a,b,c 00100bbb00001111FBBBCCCCCCAAAAAA.
@@ -4908,6 +6162,13 @@ def ARC_BSET_a_b_c : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00001111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // bset<.f> 0,b,c 00100bbb00001111FBBBCCCCCC111110.
@@ -4921,6 +6182,11 @@ def ARC_BSET_z_b_c : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{23-16} = 0b00001111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // bset<.f><.cc> b,b,c 00100bbb11001111FBBBCCCCCC0QQQQQ.
@@ -4936,6 +6202,11 @@ def ARC_BSET_b_c_cc : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // bset<.f> a,b,u6 00100bbb01001111FBBBuuuuuuAAAAAA.
@@ -4948,6 +6219,13 @@ def ARC_BSET_a_b_u6 : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01001111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // bset<.f> 0,b,u6 00100bbb01001111FBBBuuuuuu111110.
@@ -4961,6 +6239,11 @@ def ARC_BSET_z_b_u6 : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{23-16} = 0b01001111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // bset<.f><.cc> b,b,u6 00100bbb11001111FBBBuuuuuu1QQQQQ.
@@ -4976,6 +6259,11 @@ def ARC_BSET_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // bset<.f> b,b,s12 00100bbb10001111FBBBssssssSSSSSS.
@@ -4989,6 +6277,12 @@ def ARC_BSET_b_s12 : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{23-16} = 0b10001111;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // bset<.f> a,limm,c 0010011000001111F111CCCCCCAAAAAA.
@@ -5001,6 +6295,8 @@ def ARC_BSET_a_limm_c : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{31-16} = 0b0010011000001111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bset<.f> a,b,limm 00100bbb00001111FBBB111110AAAAAA.
@@ -5014,6 +6310,8 @@ def ARC_BSET_a_b_limm : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{23-16} = 0b00001111;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bset<.f> 0,limm,c 0010011000001111F111CCCCCC111110.
@@ -5027,6 +6325,8 @@ def ARC_BSET_z_limm_c : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bset<.f> 0,b,limm 00100bbb00001111FBBB111110111110.
@@ -5040,6 +6340,8 @@ def ARC_BSET_z_b_limm : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{23-16} = 0b00001111;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bset<.f><.cc> b,b,limm 00100bbb11001111FBBB1111100QQQQQ.
@@ -5055,6 +6357,8 @@ def ARC_BSET_b_limm_cc : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bset<.f><.cc> 0,limm,c 0010011011001111F111CCCCCC0QQQQQ.
@@ -5069,6 +6373,8 @@ def ARC_BSET_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bset<.f> a,limm,u6 0010011001001111F111uuuuuuAAAAAA.
@@ -5081,6 +6387,8 @@ def ARC_BSET_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{31-16} = 0b0010011001001111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bset<.f> 0,limm,u6 0010011001001111F111uuuuuu111110.
@@ -5094,6 +6402,8 @@ def ARC_BSET_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bset<.f><.cc> 0,limm,u6 0010011011001111F111uuuuuu1QQQQQ.
@@ -5108,6 +6418,8 @@ def ARC_BSET_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bset<.f> 0,limm,s12 0010011010001111F111ssssssSSSSSS.
@@ -5120,6 +6432,8 @@ def ARC_BSET_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{31-16} = 0b0010011010001111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bset<.f> a,limm,limm 0010011000001111F111111110AAAAAA.
@@ -5132,6 +6446,8 @@ def ARC_BSET_a_limm : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{31-16} = 0b0010011000001111;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bset<.f> 0,limm,limm 0010011000001111F111111110111110.
@@ -5144,6 +6460,8 @@ def ARC_BSET_z_limm : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{31-16} = 0b0010011000001111;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bset<.f><.cc> 0,limm,limm 0010011011001111F1111111100QQQQQ.
@@ -5157,6 +6475,8 @@ def ARC_BSET_z_limm_cc : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // btst b,c 00100bbb000100011BBBCCCCCC000000.
@@ -5169,6 +6489,11 @@ def ARC_BTST_b_c : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b000100011;
   let Inst{5-0} = 0b000000;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // btst<.cc> b,c 00100bbb110100011BBBCCCCCC0QQQQQ.
@@ -5182,6 +6507,11 @@ def ARC_BTST_b_c_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{23-15} = 0b110100011;
   let Inst{5} = 0;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // btst b,u6 00100bbb010100011BBBuuuuuu000000.
@@ -5194,6 +6524,11 @@ def ARC_BTST_b_u6 : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b010100011;
   let Inst{5-0} = 0b000000;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // btst<.cc> b,u6 00100bbb110100011BBBuuuuuu1QQQQQ.
@@ -5207,6 +6542,11 @@ def ARC_BTST_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{23-15} = 0b110100011;
   let Inst{5} = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // btst b,s12 00100bbb100100011BBBssssssSSSSSS.
@@ -5218,6 +6558,12 @@ def ARC_BTST_b_s12 : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b100100011;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // btst limm,c 00100110000100011111CCCCCC000000.
@@ -5229,6 +6575,8 @@ def ARC_BTST_limm_c : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   // Flags: none
   let Inst{31-12} = 0b00100110000100011111;
   let Inst{5-0} = 0b000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // btst b,limm 00100bbb000100011BBB111110000000.
@@ -5241,6 +6589,8 @@ def ARC_BTST_b_limm : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b000100011;
   let Inst{11-0} = 0b111110000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // btst<.cc> b,limm 00100bbb110100011BBB1111100QQQQQ.
@@ -5254,6 +6604,8 @@ def ARC_BTST_b_limm_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{23-15} = 0b110100011;
   let Inst{11-5} = 0b1111100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // btst<.cc> limm,c 00100110110100011111CCCCCC0QQQQQ.
@@ -5266,6 +6618,8 @@ def ARC_BTST_limm_c_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{31-12} = 0b00100110110100011111;
   let Inst{5} = 0;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // btst limm,u6 00100110010100011111uuuuuu000000.
@@ -5277,6 +6631,8 @@ def ARC_BTST_limm_u6 : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   // Flags: none
   let Inst{31-12} = 0b00100110010100011111;
   let Inst{5-0} = 0b000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // btst<.cc> limm,u6 00100110110100011111uuuuuu1QQQQQ.
@@ -5289,6 +6645,8 @@ def ARC_BTST_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{31-12} = 0b00100110110100011111;
   let Inst{5} = 1;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // btst limm,s12 00100110100100011111ssssssSSSSSS.
@@ -5299,6 +6657,8 @@ def ARC_BTST_limm_s12 : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   // Operands: LIMM, SIMM12_20
   // Flags: none
   let Inst{31-12} = 0b00100110100100011111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // btst limm,limm 00100110000100011111111110000000.
@@ -5309,6 +6669,8 @@ def ARC_BTST_limm : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   // Operands: LIMM, LIMMdup
   // Flags: none
   let Inst{31-0} = 0b00100110000100011111111110000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // btst<.cc> limm,limm 001001101101000111111111100QQQQQ.
@@ -5320,6 +6682,8 @@ def ARC_BTST_limm_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   // Flags: C_CC
   let Inst{31-5} = 0b001001101101000111111111100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bxor<.f> a,b,c 00100bbb00010010FBBBCCCCCCAAAAAA.
@@ -5332,6 +6696,13 @@ def ARC_BXOR_a_b_c : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00010010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // bxor<.f> 0,b,c 00100bbb00010010FBBBCCCCCC111110.
@@ -5345,6 +6716,11 @@ def ARC_BXOR_z_b_c : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{23-16} = 0b00010010;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // bxor<.f><.cc> b,b,c 00100bbb11010010FBBBCCCCCC0QQQQQ.
@@ -5360,6 +6736,11 @@ def ARC_BXOR_b_c_cc : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // bxor<.f> a,b,u6 00100bbb01010010FBBBuuuuuuAAAAAA.
@@ -5372,6 +6753,13 @@ def ARC_BXOR_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01010010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // bxor<.f> 0,b,u6 00100bbb01010010FBBBuuuuuu111110.
@@ -5385,6 +6773,11 @@ def ARC_BXOR_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{23-16} = 0b01010010;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // bxor<.f><.cc> b,b,u6 00100bbb11010010FBBBuuuuuu1QQQQQ.
@@ -5400,6 +6793,11 @@ def ARC_BXOR_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // bxor<.f> b,b,s12 00100bbb10010010FBBBssssssSSSSSS.
@@ -5413,6 +6811,12 @@ def ARC_BXOR_b_s12 : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{23-16} = 0b10010010;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // bxor<.f> a,limm,c 0010011000010010F111CCCCCCAAAAAA.
@@ -5425,6 +6829,8 @@ def ARC_BXOR_a_limm_c : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{31-16} = 0b0010011000010010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bxor<.f> a,b,limm 00100bbb00010010FBBB111110AAAAAA.
@@ -5438,6 +6844,8 @@ def ARC_BXOR_a_b_limm : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{23-16} = 0b00010010;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bxor<.f> 0,limm,c 0010011000010010F111CCCCCC111110.
@@ -5451,6 +6859,8 @@ def ARC_BXOR_z_limm_c : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bxor<.f> 0,b,limm 00100bbb00010010FBBB111110111110.
@@ -5464,6 +6874,8 @@ def ARC_BXOR_z_b_limm : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{23-16} = 0b00010010;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bxor<.f><.cc> b,b,limm 00100bbb11010010FBBB1111100QQQQQ.
@@ -5479,6 +6891,8 @@ def ARC_BXOR_b_limm_cc : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bxor<.f><.cc> 0,limm,c 0010011011010010F111CCCCCC0QQQQQ.
@@ -5493,6 +6907,8 @@ def ARC_BXOR_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bxor<.f> a,limm,u6 0010011001010010F111uuuuuuAAAAAA.
@@ -5505,6 +6921,8 @@ def ARC_BXOR_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{31-16} = 0b0010011001010010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bxor<.f> 0,limm,u6 0010011001010010F111uuuuuu111110.
@@ -5518,6 +6936,8 @@ def ARC_BXOR_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bxor<.f><.cc> 0,limm,u6 0010011011010010F111uuuuuu1QQQQQ.
@@ -5532,6 +6952,8 @@ def ARC_BXOR_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bxor<.f> 0,limm,s12 0010011010010010F111ssssssSSSSSS.
@@ -5544,6 +6966,8 @@ def ARC_BXOR_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{31-16} = 0b0010011010010010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bxor<.f> a,limm,limm 0010011000010010F111111110AAAAAA.
@@ -5556,6 +6980,8 @@ def ARC_BXOR_a_limm : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{31-16} = 0b0010011000010010;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bxor<.f> 0,limm,limm 0010011000010010F111111110111110.
@@ -5568,6 +6994,8 @@ def ARC_BXOR_z_limm : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{31-16} = 0b0010011000010010;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // bxor<.f><.cc> 0,limm,limm 0010011011010010F1111111100QQQQQ.
@@ -5581,6 +7009,8 @@ def ARC_BXOR_z_limm_cc : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // clamp<.f> a,b,c 00110bbb00101010FBBBCCCCCCAAAAAA.
@@ -5593,6 +7023,13 @@ def ARC_CLAMP_a_b_c : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b00101010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // clamp<.f><.cc> b,b,c 00110bbb11101010FBBBCCCCCC0QQQQQ.
@@ -5608,6 +7045,11 @@ def ARC_CLAMP_b_c_cc : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // clamp<.f> a,b,u6 00110bbb01101010FBBBuuuuuuAAAAAA.
@@ -5620,6 +7062,13 @@ def ARC_CLAMP_a_b_u6 : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b01101010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // clamp<.f><.cc> b,b,u6 00110bbb11101010FBBBuuuuuu1QQQQQ.
@@ -5635,6 +7084,11 @@ def ARC_CLAMP_b_u6_cc : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // clamp<.f> b,b,s12 00110bbb10101010FBBBssssssSSSSSS.
@@ -5648,6 +7102,12 @@ def ARC_CLAMP_b_s12 : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let Inst{23-16} = 0b10101010;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // clamp<.f> a,limm,c 0011011000101010F111CCCCCCAAAAAA.
@@ -5660,6 +7120,8 @@ def ARC_CLAMP_a_limm_c : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let Inst{31-16} = 0b0011011000101010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // clamp<.f> a,b,limm 00110bbb00101010FBBB111110AAAAAA.
@@ -5673,6 +7135,8 @@ def ARC_CLAMP_a_b_limm : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let Inst{23-16} = 0b00101010;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // clamp<.f><.cc> b,b,limm 00110bbb11101010FBBB1111100QQQQQ.
@@ -5688,6 +7152,8 @@ def ARC_CLAMP_b_limm_cc : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // cmp b,c 00100bbb000011001BBBCCCCCC000000.
@@ -5700,6 +7166,11 @@ def ARC_CMP_b_c : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b000011001;
   let Inst{5-0} = 0b000000;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // cmp<.cc> b,c 00100bbb110011001BBBCCCCCC0QQQQQ.
@@ -5713,6 +7184,11 @@ def ARC_CMP_b_c_cc : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{23-15} = 0b110011001;
   let Inst{5} = 0;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // cmp b,u6 00100bbb010011001BBBuuuuuu000000.
@@ -5725,6 +7201,11 @@ def ARC_CMP_b_u6 : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b010011001;
   let Inst{5-0} = 0b000000;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // cmp<.cc> b,u6 00100bbb110011001BBBuuuuuu1QQQQQ.
@@ -5738,6 +7219,11 @@ def ARC_CMP_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{23-15} = 0b110011001;
   let Inst{5} = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // cmp b,s12 00100bbb100011001BBBssssssSSSSSS.
@@ -5749,6 +7235,12 @@ def ARC_CMP_b_s12 : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b100011001;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // cmp limm,c 00100110000011001111CCCCCC000000.
@@ -5760,6 +7252,8 @@ def ARC_CMP_limm_c : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   // Flags: none
   let Inst{31-12} = 0b00100110000011001111;
   let Inst{5-0} = 0b000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // cmp b,limm 00100bbb000011001BBB111110000000.
@@ -5772,6 +7266,8 @@ def ARC_CMP_b_limm : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b000011001;
   let Inst{11-0} = 0b111110000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // cmp<.cc> b,limm 00100bbb110011001BBB1111100QQQQQ.
@@ -5785,6 +7281,8 @@ def ARC_CMP_b_limm_cc : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{23-15} = 0b110011001;
   let Inst{11-5} = 0b1111100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // cmp<.cc> limm,c 00100110110011001111CCCCCC0QQQQQ.
@@ -5797,6 +7295,8 @@ def ARC_CMP_limm_c_cc : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{31-12} = 0b00100110110011001111;
   let Inst{5} = 0;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // cmp limm,u6 00100110010011001111uuuuuu000000.
@@ -5808,6 +7308,8 @@ def ARC_CMP_limm_u6 : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   // Flags: none
   let Inst{31-12} = 0b00100110010011001111;
   let Inst{5-0} = 0b000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // cmp<.cc> limm,u6 00100110110011001111uuuuuu1QQQQQ.
@@ -5820,6 +7322,8 @@ def ARC_CMP_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{31-12} = 0b00100110110011001111;
   let Inst{5} = 1;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // cmp limm,s12 00100110100011001111ssssssSSSSSS.
@@ -5830,6 +7334,8 @@ def ARC_CMP_limm_s12 : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   // Operands: LIMM, SIMM12_20
   // Flags: none
   let Inst{31-12} = 0b00100110100011001111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // cmp limm,limm 00100110000011001111111110000000.
@@ -5840,6 +7346,8 @@ def ARC_CMP_limm : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   // Operands: LIMM, LIMMdup
   // Flags: none
   let Inst{31-0} = 0b00100110000011001111111110000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // cmp<.cc> limm,limm 001001101100110011111111100QQQQQ.
@@ -5851,6 +7359,8 @@ def ARC_CMP_limm_cc : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   // Flags: C_CC
   let Inst{31-5} = 0b001001101100110011111111100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // divaw<.f> a,b,c 00101bbb00001000FBBBCCCCCCAAAAAA.
@@ -5863,6 +7373,13 @@ def ARC_DIVAW_a_b_c : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b00001000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // divaw<.f> 0,b,c 00101bbb00001000FBBBCCCCCC111110.
@@ -5876,6 +7393,11 @@ def ARC_DIVAW_z_b_c : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{23-16} = 0b00001000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // divaw<.f><.cc> b,b,c 00101bbb11001000FBBBCCCCCC0QQQQQ.
@@ -5891,6 +7413,11 @@ def ARC_DIVAW_b_c_cc : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // divaw<.f> a,b,u6 00101bbb01001000FBBBuuuuuuAAAAAA.
@@ -5903,6 +7430,13 @@ def ARC_DIVAW_a_b_u6 : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01001000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // divaw<.f> 0,b,u6 00101bbb01001000FBBBuuuuuu111110.
@@ -5916,6 +7450,11 @@ def ARC_DIVAW_z_b_u6 : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{23-16} = 0b01001000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // divaw<.f><.cc> b,b,u6 00101bbb11001000FBBBuuuuuu1QQQQQ.
@@ -5931,6 +7470,11 @@ def ARC_DIVAW_b_u6_cc : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // divaw<.f> b,b,s12 00101bbb10001000FBBBssssssSSSSSS.
@@ -5944,6 +7488,12 @@ def ARC_DIVAW_b_s12 : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{23-16} = 0b10001000;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // divaw<.f> a,limm,c 0010111000001000F111CCCCCCAAAAAA.
@@ -5956,6 +7506,8 @@ def ARC_DIVAW_a_limm_c : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{31-16} = 0b0010111000001000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // divaw<.f> a,b,limm 00101bbb00001000FBBB111110AAAAAA.
@@ -5969,6 +7521,8 @@ def ARC_DIVAW_a_b_limm : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{23-16} = 0b00001000;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // divaw<.f> 0,limm,c 0010111000001000F111CCCCCC111110.
@@ -5982,6 +7536,8 @@ def ARC_DIVAW_z_limm_c : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // divaw<.f> 0,b,limm 00101bbb00001000FBBB111110111110.
@@ -5995,6 +7551,8 @@ def ARC_DIVAW_z_b_limm : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{23-16} = 0b00001000;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // divaw<.f><.cc> b,b,limm 00101bbb11001000FBBB1111100QQQQQ.
@@ -6010,6 +7568,8 @@ def ARC_DIVAW_b_limm_cc : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // divaw<.f><.cc> 0,limm,c 0010111011001000F111CCCCCC0QQQQQ.
@@ -6024,6 +7584,8 @@ def ARC_DIVAW_z_limm_c_cc : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // divaw<.f> a,limm,u6 0010111001001000F111uuuuuuAAAAAA.
@@ -6036,6 +7598,8 @@ def ARC_DIVAW_a_limm_u6 : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{31-16} = 0b0010111001001000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // divaw<.f> 0,limm,u6 0010111001001000F111uuuuuu111110.
@@ -6049,6 +7613,8 @@ def ARC_DIVAW_z_limm_u6 : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // divaw<.f><.cc> 0,limm,u6 0010111011001000F111uuuuuu1QQQQQ.
@@ -6063,6 +7629,8 @@ def ARC_DIVAW_z_limm_u6_cc : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // divaw<.f> 0,limm,s12 0010111010001000F111ssssssSSSSSS.
@@ -6075,6 +7643,8 @@ def ARC_DIVAW_z_limm_s12 : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{31-16} = 0b0010111010001000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // divaw<.f> a,limm,limm 0010111000001000F111111110AAAAAA.
@@ -6087,6 +7657,8 @@ def ARC_DIVAW_a_limm : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{31-16} = 0b0010111000001000;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // divaw<.f> 0,limm,limm 0010111000001000F111111110111110.
@@ -6099,6 +7671,8 @@ def ARC_DIVAW_z_limm : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{31-16} = 0b0010111000001000;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // divaw<.f><.cc> 0,limm,limm 0010111011001000F1111111100QQQQQ.
@@ -6112,6 +7686,8 @@ def ARC_DIVAW_z_limm_cc : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // extb<.f> b,c 00100bbb00101111FBBBCCCCCC000111.
@@ -6125,6 +7701,11 @@ def ARC_EXTB_b_c : ARCompactInst32_2op<0b00100, 0b000111, "extb",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // extb<.f> 0,c 0010011000101111F111CCCCCC000111.
@@ -6138,6 +7719,8 @@ def ARC_EXTB_z_c : ARCompactInst32_2op<0b00100, 0b000111, "extb",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000111;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // extb<.f> b,u6 00100bbb01101111FBBBuuuuuu000111.
@@ -6151,6 +7734,11 @@ def ARC_EXTB_b_u6 : ARCompactInst32_2op<0b00100, 0b000111, "extb",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // extb<.f> 0,u6 0010011001101111F111uuuuuu000111.
@@ -6164,6 +7752,8 @@ def ARC_EXTB_z_u6 : ARCompactInst32_2op<0b00100, 0b000111, "extb",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000111;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // extb<.f> b,limm 00100bbb00101111FBBB111110000111.
@@ -6177,6 +7767,8 @@ def ARC_EXTB_b_limm : ARCompactInst32_2op<0b00100, 0b000111, "extb",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // extb<.f> 0,limm 0010011000101111F111111110000111.
@@ -6189,6 +7781,8 @@ def ARC_EXTB_z_limm : ARCompactInst32_2op<0b00100, 0b000111, "extb",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110000111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // extw<.f> b,c 00100bbb00101111FBBBCCCCCC001000.
@@ -6202,6 +7796,11 @@ def ARC_EXTW_b_c : ARCompactInst32_2op<0b00100, 0b001000, "extw",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b001000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // extw<.f> 0,c 0010011000101111F111CCCCCC001000.
@@ -6215,6 +7814,8 @@ def ARC_EXTW_z_c : ARCompactInst32_2op<0b00100, 0b001000, "extw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001000;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // extw<.f> b,u6 00100bbb01101111FBBBuuuuuu001000.
@@ -6228,6 +7829,11 @@ def ARC_EXTW_b_u6 : ARCompactInst32_2op<0b00100, 0b001000, "extw",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b001000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // extw<.f> 0,u6 0010011001101111F111uuuuuu001000.
@@ -6241,6 +7847,8 @@ def ARC_EXTW_z_u6 : ARCompactInst32_2op<0b00100, 0b001000, "extw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001000;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // extw<.f> b,limm 00100bbb00101111FBBB111110001000.
@@ -6254,6 +7862,8 @@ def ARC_EXTW_b_limm : ARCompactInst32_2op<0b00100, 0b001000, "extw",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110001000;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // extw<.f> 0,limm 0010011000101111F111111110001000.
@@ -6266,6 +7876,8 @@ def ARC_EXTW_z_limm : ARCompactInst32_2op<0b00100, 0b001000, "extw",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110001000;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // fxtr<.f> a,b,c 00110bbb00100110FBBBCCCCCCAAAAAA.
@@ -6278,6 +7890,13 @@ def ARC_FXTR_a_b_c : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b00100110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // fxtr<.f><.cc> b,b,c 00110bbb11100110FBBBCCCCCC0QQQQQ.
@@ -6293,6 +7912,11 @@ def ARC_FXTR_b_c_cc : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // fxtr<.f> a,b,u6 00110bbb01100110FBBBuuuuuuAAAAAA.
@@ -6305,6 +7929,13 @@ def ARC_FXTR_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b01100110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // fxtr<.f><.cc> b,b,u6 00110bbb11100110FBBBuuuuuu1QQQQQ.
@@ -6320,6 +7951,11 @@ def ARC_FXTR_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // fxtr<.f> b,b,s12 00110bbb10100110FBBBssssssSSSSSS.
@@ -6333,6 +7969,12 @@ def ARC_FXTR_b_s12 : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let Inst{23-16} = 0b10100110;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // fxtr<.f> a,limm,c 0011011000100110F111CCCCCCAAAAAA.
@@ -6345,6 +7987,8 @@ def ARC_FXTR_a_limm_c : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let Inst{31-16} = 0b0011011000100110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // fxtr<.f> a,b,limm 00110bbb00100110FBBB111110AAAAAA.
@@ -6358,6 +8002,8 @@ def ARC_FXTR_a_b_limm : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let Inst{23-16} = 0b00100110;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // fxtr<.f><.cc> b,b,limm 00110bbb11100110FBBB1111100QQQQQ.
@@ -6373,6 +8019,8 @@ def ARC_FXTR_b_limm_cc : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // iaddr<.f> a,b,c 00110bbb00100111FBBBCCCCCCAAAAAA.
@@ -6385,6 +8033,13 @@ def ARC_IADDR_a_b_c : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b00100111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // iaddr<.f><.cc> b,b,c 00110bbb11100111FBBBCCCCCC0QQQQQ.
@@ -6400,6 +8055,11 @@ def ARC_IADDR_b_c_cc : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // iaddr<.f> a,b,u6 00110bbb01100111FBBBuuuuuuAAAAAA.
@@ -6412,6 +8072,13 @@ def ARC_IADDR_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b01100111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // iaddr<.f><.cc> b,b,u6 00110bbb11100111FBBBuuuuuu1QQQQQ.
@@ -6427,6 +8094,11 @@ def ARC_IADDR_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // iaddr<.f> b,b,s12 00110bbb10100111FBBBssssssSSSSSS.
@@ -6440,6 +8112,12 @@ def ARC_IADDR_b_s12 : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let Inst{23-16} = 0b10100111;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // iaddr<.f> a,limm,c 0011011000100111F111CCCCCCAAAAAA.
@@ -6452,6 +8130,8 @@ def ARC_IADDR_a_limm_c : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let Inst{31-16} = 0b0011011000100111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // iaddr<.f> a,b,limm 00110bbb00100111FBBB111110AAAAAA.
@@ -6465,6 +8145,8 @@ def ARC_IADDR_a_b_limm : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let Inst{23-16} = 0b00100111;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // iaddr<.f><.cc> b,b,limm 00110bbb11100111FBBB1111100QQQQQ.
@@ -6480,6 +8162,8 @@ def ARC_IADDR_b_limm_cc : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f> b,c 00100bbb00101111FBBBCCCCCC000010.
@@ -6493,6 +8177,11 @@ def ARC_LSR_b_c : ARCompactInst32_2op<0b00100, 0b000010, "lsr",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // lsr<.f> 0,c 0010011000101111F111CCCCCC000010.
@@ -6506,6 +8195,8 @@ def ARC_LSR_z_c : ARCompactInst32_2op<0b00100, 0b000010, "lsr",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000010;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // lsr<.f> a,b,c 00101bbb00000001FBBBCCCCCCAAAAAA.
@@ -6518,6 +8209,13 @@ def ARC_LSR_a_b_c : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b00000001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // lsr<.f> 0,b,c 00101bbb00000001FBBBCCCCCC111110.
@@ -6531,6 +8229,11 @@ def ARC_LSR_z_b_c : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{23-16} = 0b00000001;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // lsr<.f><.cc> b,b,c 00101bbb11000001FBBBCCCCCC0QQQQQ.
@@ -6546,6 +8249,11 @@ def ARC_LSR_b_c_cc : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // lsr<.f> b,u6 00100bbb01101111FBBBuuuuuu000010.
@@ -6559,6 +8267,11 @@ def ARC_LSR_b_u6 : ARCompactInst32_2op<0b00100, 0b000010, "lsr",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // lsr<.f> 0,u6 0010011001101111F111uuuuuu000010.
@@ -6572,6 +8285,8 @@ def ARC_LSR_z_u6 : ARCompactInst32_2op<0b00100, 0b000010, "lsr",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000010;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // lsr<.f> a,b,u6 00101bbb01000001FBBBuuuuuuAAAAAA.
@@ -6584,6 +8299,13 @@ def ARC_LSR_a_b_u6 : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01000001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // lsr<.f> 0,b,u6 00101bbb01000001FBBBuuuuuu111110.
@@ -6597,6 +8319,11 @@ def ARC_LSR_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{23-16} = 0b01000001;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // lsr<.f><.cc> b,b,u6 00101bbb11000001FBBBuuuuuu1QQQQQ.
@@ -6612,6 +8339,11 @@ def ARC_LSR_b_u6_cc : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // lsr<.f> b,b,s12 00101bbb10000001FBBBssssssSSSSSS.
@@ -6625,6 +8357,12 @@ def ARC_LSR_b_s12 : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{23-16} = 0b10000001;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // lsr<.f> b,limm 00100bbb00101111FBBB111110000010.
@@ -6638,6 +8376,8 @@ def ARC_LSR_b_limm : ARCompactInst32_2op<0b00100, 0b000010, "lsr",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000010;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f> 0,limm 0010011000101111F111111110000010.
@@ -6650,6 +8390,8 @@ def ARC_LSR_z_limm : ARCompactInst32_2op<0b00100, 0b000010, "lsr",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110000010;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f> a,limm,c 0010111000000001F111CCCCCCAAAAAA.
@@ -6662,6 +8404,8 @@ def ARC_LSR_a_limm_c : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{31-16} = 0b0010111000000001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f> a,b,limm 00101bbb00000001FBBB111110AAAAAA.
@@ -6675,6 +8419,8 @@ def ARC_LSR_a_b_limm : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{23-16} = 0b00000001;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f> 0,limm,c 0010111000000001F111CCCCCC111110.
@@ -6688,6 +8434,8 @@ def ARC_LSR_z_limm_c : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f> 0,b,limm 00101bbb00000001FBBB111110111110.
@@ -6701,6 +8449,8 @@ def ARC_LSR_z_b_limm : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{23-16} = 0b00000001;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f><.cc> b,b,limm 00101bbb11000001FBBB1111100QQQQQ.
@@ -6716,6 +8466,8 @@ def ARC_LSR_b_limm_cc : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f><.cc> 0,limm,c 0010111011000001F111CCCCCC0QQQQQ.
@@ -6730,6 +8482,8 @@ def ARC_LSR_z_limm_c_cc : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f> a,limm,u6 0010111001000001F111uuuuuuAAAAAA.
@@ -6742,6 +8496,8 @@ def ARC_LSR_a_limm_u6 : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{31-16} = 0b0010111001000001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f> 0,limm,u6 0010111001000001F111uuuuuu111110.
@@ -6755,6 +8511,8 @@ def ARC_LSR_z_limm_u6 : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f><.cc> 0,limm,u6 0010111011000001F111uuuuuu1QQQQQ.
@@ -6769,6 +8527,8 @@ def ARC_LSR_z_limm_u6_cc : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f> 0,limm,s12 0010111010000001F111ssssssSSSSSS.
@@ -6781,6 +8541,8 @@ def ARC_LSR_z_limm_s12 : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{31-16} = 0b0010111010000001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f> a,limm,limm 0010111000000001F111111110AAAAAA.
@@ -6793,6 +8555,8 @@ def ARC_LSR_a_limm : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{31-16} = 0b0010111000000001;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f> 0,limm,limm 0010111000000001F111111110111110.
@@ -6805,6 +8569,8 @@ def ARC_LSR_z_limm_v1 : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{31-16} = 0b0010111000000001;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // lsr<.f><.cc> 0,limm,limm 0010111011000001F1111111100QQQQQ.
@@ -6818,6 +8584,8 @@ def ARC_LSR_z_limm_cc : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // max<.f> a,b,c 00100bbb00001000FBBBCCCCCCAAAAAA.
@@ -6830,6 +8598,13 @@ def ARC_MAX_a_b_c : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00001000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // max<.f> 0,b,c 00100bbb00001000FBBBCCCCCC111110.
@@ -6843,6 +8618,11 @@ def ARC_MAX_z_b_c : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{23-16} = 0b00001000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // max<.f><.cc> b,b,c 00100bbb11001000FBBBCCCCCC0QQQQQ.
@@ -6858,6 +8638,11 @@ def ARC_MAX_b_c_cc : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // max<.f> a,b,u6 00100bbb01001000FBBBuuuuuuAAAAAA.
@@ -6870,6 +8655,13 @@ def ARC_MAX_a_b_u6 : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01001000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // max<.f> 0,b,u6 00100bbb01001000FBBBuuuuuu111110.
@@ -6883,6 +8675,11 @@ def ARC_MAX_z_b_u6 : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{23-16} = 0b01001000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // max<.f><.cc> b,b,u6 00100bbb11001000FBBBuuuuuu1QQQQQ.
@@ -6898,6 +8695,11 @@ def ARC_MAX_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // max<.f> b,b,s12 00100bbb10001000FBBBssssssSSSSSS.
@@ -6911,6 +8713,12 @@ def ARC_MAX_b_s12 : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{23-16} = 0b10001000;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // max<.f> a,limm,c 0010011000001000F111CCCCCCAAAAAA.
@@ -6923,6 +8731,8 @@ def ARC_MAX_a_limm_c : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{31-16} = 0b0010011000001000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // max<.f> a,b,limm 00100bbb00001000FBBB111110AAAAAA.
@@ -6936,6 +8746,8 @@ def ARC_MAX_a_b_limm : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{23-16} = 0b00001000;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // max<.f> 0,limm,c 0010011000001000F111CCCCCC111110.
@@ -6949,6 +8761,8 @@ def ARC_MAX_z_limm_c : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // max<.f> 0,b,limm 00100bbb00001000FBBB111110111110.
@@ -6962,6 +8776,8 @@ def ARC_MAX_z_b_limm : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{23-16} = 0b00001000;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // max<.f><.cc> b,b,limm 00100bbb11001000FBBB1111100QQQQQ.
@@ -6977,6 +8793,8 @@ def ARC_MAX_b_limm_cc : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // max<.f><.cc> 0,limm,c 0010011011001000F111CCCCCC0QQQQQ.
@@ -6991,6 +8809,8 @@ def ARC_MAX_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // max<.f> a,limm,u6 0010011001001000F111uuuuuuAAAAAA.
@@ -7003,6 +8823,8 @@ def ARC_MAX_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{31-16} = 0b0010011001001000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // max<.f> 0,limm,u6 0010011001001000F111uuuuuu111110.
@@ -7016,6 +8838,8 @@ def ARC_MAX_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // max<.f><.cc> 0,limm,u6 0010011011001000F111uuuuuu1QQQQQ.
@@ -7030,6 +8854,8 @@ def ARC_MAX_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // max<.f> 0,limm,s12 0010011010001000F111ssssssSSSSSS.
@@ -7042,6 +8868,8 @@ def ARC_MAX_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{31-16} = 0b0010011010001000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // max<.f> a,limm,limm 0010011000001000F111111110AAAAAA.
@@ -7054,6 +8882,8 @@ def ARC_MAX_a_limm : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{31-16} = 0b0010011000001000;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // max<.f> 0,limm,limm 0010011000001000F111111110111110.
@@ -7066,6 +8896,8 @@ def ARC_MAX_z_limm : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{31-16} = 0b0010011000001000;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // max<.f><.cc> 0,limm,limm 0010011011001000F1111111100QQQQQ.
@@ -7079,6 +8911,8 @@ def ARC_MAX_z_limm_cc : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // min<.f> a,b,c 00100bbb00001001FBBBCCCCCCAAAAAA.
@@ -7091,6 +8925,13 @@ def ARC_MIN_a_b_c : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00001001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // min<.f> 0,b,c 00100bbb00001001FBBBCCCCCC111110.
@@ -7104,6 +8945,11 @@ def ARC_MIN_z_b_c : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{23-16} = 0b00001001;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // min<.f><.cc> b,b,c 00100bbb11001001FBBBCCCCCC0QQQQQ.
@@ -7119,6 +8965,11 @@ def ARC_MIN_b_c_cc : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // min<.f> a,b,u6 00100bbb01001001FBBBuuuuuuAAAAAA.
@@ -7131,6 +8982,13 @@ def ARC_MIN_a_b_u6 : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01001001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // min<.f> 0,b,u6 00100bbb01001001FBBBuuuuuu111110.
@@ -7144,6 +9002,11 @@ def ARC_MIN_z_b_u6 : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{23-16} = 0b01001001;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // min<.f><.cc> b,b,u6 00100bbb11001001FBBBuuuuuu1QQQQQ.
@@ -7159,6 +9022,11 @@ def ARC_MIN_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // min<.f> b,b,s12 00100bbb10001001FBBBssssssSSSSSS.
@@ -7172,6 +9040,12 @@ def ARC_MIN_b_s12 : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{23-16} = 0b10001001;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // min<.f> a,limm,c 0010011000001001F111CCCCCCAAAAAA.
@@ -7184,6 +9058,8 @@ def ARC_MIN_a_limm_c : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{31-16} = 0b0010011000001001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // min<.f> a,b,limm 00100bbb00001001FBBB111110AAAAAA.
@@ -7197,6 +9073,8 @@ def ARC_MIN_a_b_limm : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{23-16} = 0b00001001;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // min<.f> 0,limm,c 0010011000001001F111CCCCCC111110.
@@ -7210,6 +9088,8 @@ def ARC_MIN_z_limm_c : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // min<.f> 0,b,limm 00100bbb00001001FBBB111110111110.
@@ -7223,6 +9103,8 @@ def ARC_MIN_z_b_limm : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{23-16} = 0b00001001;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // min<.f><.cc> b,b,limm 00100bbb11001001FBBB1111100QQQQQ.
@@ -7238,6 +9120,8 @@ def ARC_MIN_b_limm_cc : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // min<.f><.cc> 0,limm,c 0010011011001001F111CCCCCC0QQQQQ.
@@ -7252,6 +9136,8 @@ def ARC_MIN_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // min<.f> a,limm,u6 0010011001001001F111uuuuuuAAAAAA.
@@ -7264,6 +9150,8 @@ def ARC_MIN_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{31-16} = 0b0010011001001001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // min<.f> 0,limm,u6 0010011001001001F111uuuuuu111110.
@@ -7277,6 +9165,8 @@ def ARC_MIN_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // min<.f><.cc> 0,limm,u6 0010011011001001F111uuuuuu1QQQQQ.
@@ -7291,6 +9181,8 @@ def ARC_MIN_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // min<.f> 0,limm,s12 0010011010001001F111ssssssSSSSSS.
@@ -7303,6 +9195,8 @@ def ARC_MIN_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{31-16} = 0b0010011010001001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // min<.f> a,limm,limm 0010011000001001F111111110AAAAAA.
@@ -7315,6 +9209,8 @@ def ARC_MIN_a_limm : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{31-16} = 0b0010011000001001;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // min<.f> 0,limm,limm 0010011000001001F111111110111110.
@@ -7327,6 +9223,8 @@ def ARC_MIN_z_limm : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{31-16} = 0b0010011000001001;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // min<.f><.cc> 0,limm,limm 0010011011001001F1111111100QQQQQ.
@@ -7340,6 +9238,8 @@ def ARC_MIN_z_limm_cc : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // mov<.f> b,c 00100bbb00001010FBBBCCCCCCRRRRRR.
@@ -7352,6 +9252,11 @@ def ARC_MOV_b_c : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00001010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // mov<.f> 0,c 0010011000001010F111CCCCCCRRRRRR.
@@ -7364,6 +9269,8 @@ def ARC_MOV_z_c : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{31-16} = 0b0010011000001010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // mov<.f><.cc> b,c 00100bbb11001010FBBBCCCCCC0QQQQQ.
@@ -7378,6 +9285,11 @@ def ARC_MOV_b_c_cc : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // mov<.f><.cc> 0,c 0010011011001010F111CCCCCC0QQQQQ.
@@ -7392,6 +9304,8 @@ def ARC_MOV_z_c_cc : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // mov<.f> b,u6 00100bbb01001010FBBBuuuuuuRRRRRR.
@@ -7404,6 +9318,11 @@ def ARC_MOV_b_u6 : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01001010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // mov<.f> 0,u6 0010011001001010F111uuuuuuRRRRRR.
@@ -7416,6 +9335,8 @@ def ARC_MOV_z_u6 : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{31-16} = 0b0010011001001010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // mov<.f><.cc> b,u6 00100bbb11001010FBBBuuuuuu1QQQQQ.
@@ -7430,6 +9351,11 @@ def ARC_MOV_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // mov<.f><.cc> 0,u6 0010011011001010F111uuuuuu1QQQQQ.
@@ -7444,6 +9370,8 @@ def ARC_MOV_z_u6_cc : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // mov<.f> b,s12 00100bbb10001010FBBBssssssSSSSSS.
@@ -7456,6 +9384,12 @@ def ARC_MOV_b_s12 : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b10001010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // mov<.f> 0,s12 0010011010001010F111ssssssSSSSSS.
@@ -7468,6 +9402,9 @@ def ARC_MOV_z_s12 : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{31-16} = 0b0010011010001010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // mov<.f> b,limm 00100bbb00001010FBBB111110RRRRRR.
@@ -7481,6 +9418,8 @@ def ARC_MOV_b_limm : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{23-16} = 0b00001010;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // mov<.f> 0,limm 0010011000001010F111111110RRRRRR.
@@ -7493,6 +9432,8 @@ def ARC_MOV_z_limm : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{31-16} = 0b0010011000001010;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // mov<.f><.cc> b,limm 00100bbb11001010FBBB1111100QQQQQ.
@@ -7507,6 +9448,8 @@ def ARC_MOV_b_limm_cc : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{11-5} = 0b1111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // mov<.f><.cc> 0,limm 0010011011001010F1111111100QQQQQ.
@@ -7520,6 +9463,8 @@ def ARC_MOV_z_limm_cc : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // neg<.f> a,b 00100bbb01001110FBBB000000AAAAAA.
@@ -7533,6 +9478,11 @@ def ARC_NEG_a_b : ARCompactInst32_3op<0b00100, 0b001110, "neg",
   let Inst{23-16} = 0b01001110;
   let Inst{11-6} = 0b000000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // neg<.f> 0,b 00100bbb01001110FBBB000000111110.
@@ -7546,6 +9496,9 @@ def ARC_NEG_z_b : ARCompactInst32_3op<0b00100, 0b001110, "neg",
   let Inst{23-16} = 0b01001110;
   let Inst{11-0} = 0b000000000000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
 }
 
 // neg<.f><.cc> b,b 00100bbb11001110FBBB0000001QQQQQ.
@@ -7561,6 +9514,9 @@ def ARC_NEG_b_cc : ARCompactInst32_3op<0b00100, 0b001110, "neg",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
 }
 
 // neg<.f> a,limm 0010011001001110F111000000AAAAAA.
@@ -7573,6 +9529,8 @@ def ARC_NEG_a_limm : ARCompactInst32_3op<0b00100, 0b001110, "neg",
   let Inst{31-16} = 0b0010011001001110;
   let Inst{14-6} = 0b111000000;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // neg<.f><.cc> 0,limm 0010011011001110F1110000001QQQQQ.
@@ -7586,6 +9544,8 @@ def ARC_NEG_z_limm_cc : ARCompactInst32_3op<0b00100, 0b001110, "neg",
   let Inst{14-5} = 0b1110000001;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // negs<.f> b,c 00101bbb00101111FBBBCCCCCC000111.
@@ -7599,6 +9559,11 @@ def ARC_NEGS_b_c : ARCompactInst32_2op<0b00101, 0b000111, "negs",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // negs<.f> 0,c 0010111000101111F111CCCCCC000111.
@@ -7612,6 +9577,8 @@ def ARC_NEGS_z_c : ARCompactInst32_2op<0b00101, 0b000111, "negs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000111;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // negs<.f> b,u6 00101bbb01101111FBBBuuuuuu000111.
@@ -7625,6 +9592,11 @@ def ARC_NEGS_b_u6 : ARCompactInst32_2op<0b00101, 0b000111, "negs",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // negs<.f> 0,u6 0010111001101111F111uuuuuu000111.
@@ -7638,6 +9610,8 @@ def ARC_NEGS_z_u6 : ARCompactInst32_2op<0b00101, 0b000111, "negs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000111;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // negs<.f> b,limm 00101bbb00101111FBBB111110000111.
@@ -7651,6 +9625,8 @@ def ARC_NEGS_b_limm : ARCompactInst32_2op<0b00101, 0b000111, "negs",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // negs<.f> 0,limm 0010111000101111F111111110000111.
@@ -7663,6 +9639,8 @@ def ARC_NEGS_z_limm : ARCompactInst32_2op<0b00101, 0b000111, "negs",
   let Inst{31-16} = 0b0010111000101111;
   let Inst{14-0} = 0b111111110000111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // negsw<.f> b,c 00101bbb00101111FBBBCCCCCC000110.
@@ -7676,6 +9654,11 @@ def ARC_NEGSW_b_c : ARCompactInst32_2op<0b00101, 0b000110, "negsw",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // negsw<.f> 0,c 0010111000101111F111CCCCCC000110.
@@ -7689,6 +9672,8 @@ def ARC_NEGSW_z_c : ARCompactInst32_2op<0b00101, 0b000110, "negsw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000110;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // negsw<.f> b,u6 00101bbb01101111FBBBuuuuuu000110.
@@ -7702,6 +9687,11 @@ def ARC_NEGSW_b_u6 : ARCompactInst32_2op<0b00101, 0b000110, "negsw",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // negsw<.f> 0,u6 0010111001101111F111uuuuuu000110.
@@ -7715,6 +9705,8 @@ def ARC_NEGSW_z_u6 : ARCompactInst32_2op<0b00101, 0b000110, "negsw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000110;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // negsw<.f> b,limm 00101bbb00101111FBBB111110000110.
@@ -7728,6 +9720,8 @@ def ARC_NEGSW_b_limm : ARCompactInst32_2op<0b00101, 0b000110, "negsw",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // negsw<.f> 0,limm 0010111000101111F111111110000110.
@@ -7740,6 +9734,8 @@ def ARC_NEGSW_z_limm : ARCompactInst32_2op<0b00101, 0b000110, "negsw",
   let Inst{31-16} = 0b0010111000101111;
   let Inst{14-0} = 0b111111110000110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // norm<.f> b,c 00101bbb00101111FBBBCCCCCC000001.
@@ -7753,6 +9749,11 @@ def ARC_NORM_b_c : ARCompactInst32_2op<0b00101, 0b000001, "norm",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // norm<.f> 0,c 0010111000101111F111CCCCCC000001.
@@ -7766,6 +9767,8 @@ def ARC_NORM_z_c : ARCompactInst32_2op<0b00101, 0b000001, "norm",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000001;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // norm<.f> b,u6 00101bbb01101111FBBBuuuuuu000001.
@@ -7779,6 +9782,11 @@ def ARC_NORM_b_u6 : ARCompactInst32_2op<0b00101, 0b000001, "norm",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // norm<.f> 0,u6 0010111001101111F111uuuuuu000001.
@@ -7792,6 +9800,8 @@ def ARC_NORM_z_u6 : ARCompactInst32_2op<0b00101, 0b000001, "norm",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000001;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // norm<.f> b,limm 00101bbb00101111FBBB111110000001.
@@ -7805,6 +9815,8 @@ def ARC_NORM_b_limm : ARCompactInst32_2op<0b00101, 0b000001, "norm",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000001;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // norm<.f> 0,limm 0010111000101111F111111110000001.
@@ -7817,6 +9829,8 @@ def ARC_NORM_z_limm : ARCompactInst32_2op<0b00101, 0b000001, "norm",
   let Inst{31-16} = 0b0010111000101111;
   let Inst{14-0} = 0b111111110000001;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // normw<.f> b,c 00101bbb00101111FBBBCCCCCC001000.
@@ -7830,6 +9844,11 @@ def ARC_NORMW_b_c : ARCompactInst32_2op<0b00101, 0b001000, "normw",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b001000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // normw<.f> 0,c 0010111000101111F111CCCCCC001000.
@@ -7843,6 +9862,8 @@ def ARC_NORMW_z_c : ARCompactInst32_2op<0b00101, 0b001000, "normw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001000;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // normw<.f> b,u6 00101bbb01101111FBBBuuuuuu001000.
@@ -7856,6 +9877,11 @@ def ARC_NORMW_b_u6 : ARCompactInst32_2op<0b00101, 0b001000, "normw",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b001000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // normw<.f> 0,u6 0010111001101111F111uuuuuu001000.
@@ -7869,6 +9895,8 @@ def ARC_NORMW_z_u6 : ARCompactInst32_2op<0b00101, 0b001000, "normw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001000;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // normw<.f> b,limm 00101bbb00101111FBBB111110001000.
@@ -7882,6 +9910,8 @@ def ARC_NORMW_b_limm : ARCompactInst32_2op<0b00101, 0b001000, "normw",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110001000;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // normw<.f> 0,limm 0010111000101111F111111110001000.
@@ -7894,6 +9924,8 @@ def ARC_NORMW_z_limm : ARCompactInst32_2op<0b00101, 0b001000, "normw",
   let Inst{31-16} = 0b0010111000101111;
   let Inst{14-0} = 0b111111110001000;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // not<.f> b,c 00100bbb00101111FBBBCCCCCC001010.
@@ -7907,6 +9939,11 @@ def ARC_NOT_b_c : ARCompactInst32_2op<0b00100, 0b001010, "not",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b001010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // not<.f> 0,c 0010011000101111F111CCCCCC001010.
@@ -7920,6 +9957,8 @@ def ARC_NOT_z_c : ARCompactInst32_2op<0b00100, 0b001010, "not",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001010;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // not<.f> b,u6 00100bbb01101111FBBBuuuuuu001010.
@@ -7933,6 +9972,11 @@ def ARC_NOT_b_u6 : ARCompactInst32_2op<0b00100, 0b001010, "not",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b001010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // not<.f> 0,u6 0010011001101111F111uuuuuu001010.
@@ -7946,6 +9990,8 @@ def ARC_NOT_z_u6 : ARCompactInst32_2op<0b00100, 0b001010, "not",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001010;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // not<.f> b,limm 00100bbb00101111FBBB111110001010.
@@ -7959,6 +10005,8 @@ def ARC_NOT_b_limm : ARCompactInst32_2op<0b00100, 0b001010, "not",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110001010;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // not<.f> 0,limm 0010011000101111F111111110001010.
@@ -7971,6 +10019,8 @@ def ARC_NOT_z_limm : ARCompactInst32_2op<0b00100, 0b001010, "not",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110001010;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // or<.f> a,b,c 00100bbb00000101FBBBCCCCCCAAAAAA.
@@ -7983,6 +10033,13 @@ def ARC_OR_a_b_c : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00000101;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // or<.f> 0,b,c 00100bbb00000101FBBBCCCCCC111110.
@@ -7996,6 +10053,11 @@ def ARC_OR_z_b_c : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{23-16} = 0b00000101;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // or<.f><.cc> b,b,c 00100bbb11000101FBBBCCCCCC0QQQQQ.
@@ -8011,6 +10073,11 @@ def ARC_OR_b_c_cc : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // or<.f> a,b,u6 00100bbb01000101FBBBuuuuuuAAAAAA.
@@ -8023,6 +10090,13 @@ def ARC_OR_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01000101;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // or<.f> 0,b,u6 00100bbb01000101FBBBuuuuuu111110.
@@ -8036,6 +10110,11 @@ def ARC_OR_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{23-16} = 0b01000101;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // or<.f><.cc> b,b,u6 00100bbb11000101FBBBuuuuuu1QQQQQ.
@@ -8051,6 +10130,11 @@ def ARC_OR_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // or<.f> b,b,s12 00100bbb10000101FBBBssssssSSSSSS.
@@ -8064,6 +10148,12 @@ def ARC_OR_b_s12 : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{23-16} = 0b10000101;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // or<.f> a,limm,c 0010011000000101F111CCCCCCAAAAAA.
@@ -8076,6 +10166,8 @@ def ARC_OR_a_limm_c : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{31-16} = 0b0010011000000101;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // or<.f> a,b,limm 00100bbb00000101FBBB111110AAAAAA.
@@ -8089,6 +10181,8 @@ def ARC_OR_a_b_limm : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{23-16} = 0b00000101;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // or<.f> 0,limm,c 0010011000000101F111CCCCCC111110.
@@ -8102,6 +10196,8 @@ def ARC_OR_z_limm_c : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // or<.f> 0,b,limm 00100bbb00000101FBBB111110111110.
@@ -8115,6 +10211,8 @@ def ARC_OR_z_b_limm : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{23-16} = 0b00000101;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // or<.f><.cc> b,b,limm 00100bbb11000101FBBB1111100QQQQQ.
@@ -8130,6 +10228,8 @@ def ARC_OR_b_limm_cc : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // or<.f><.cc> 0,limm,c 0010011011000101F111CCCCCC0QQQQQ.
@@ -8144,6 +10244,8 @@ def ARC_OR_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // or<.f> a,limm,u6 0010011001000101F111uuuuuuAAAAAA.
@@ -8156,6 +10258,8 @@ def ARC_OR_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{31-16} = 0b0010011001000101;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // or<.f> 0,limm,u6 0010011001000101F111uuuuuu111110.
@@ -8169,6 +10273,8 @@ def ARC_OR_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // or<.f><.cc> 0,limm,u6 0010011011000101F111uuuuuu1QQQQQ.
@@ -8183,6 +10289,8 @@ def ARC_OR_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // or<.f> 0,limm,s12 0010011010000101F111ssssssSSSSSS.
@@ -8195,6 +10303,8 @@ def ARC_OR_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{31-16} = 0b0010011010000101;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // or<.f> a,limm,limm 0010011000000101F111111110AAAAAA.
@@ -8207,6 +10317,8 @@ def ARC_OR_a_limm : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{31-16} = 0b0010011000000101;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // or<.f> 0,limm,limm 0010011000000101F111111110111110.
@@ -8219,6 +10331,8 @@ def ARC_OR_z_limm : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{31-16} = 0b0010011000000101;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // or<.f><.cc> 0,limm,limm 0010011011000101F1111111100QQQQQ.
@@ -8232,6 +10346,8 @@ def ARC_OR_z_limm_cc : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // pkqb<.f> a,b,c 00110bbb00100000FBBBCCCCCCAAAAAA.
@@ -8244,6 +10360,13 @@ def ARC_PKQB_a_b_c : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b00100000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // pkqb<.f><.cc> b,b,c 00110bbb11100000FBBBCCCCCC0QQQQQ.
@@ -8259,6 +10382,11 @@ def ARC_PKQB_b_c_cc : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // pkqb<.f> a,b,u6 00110bbb01100000FBBBuuuuuuAAAAAA.
@@ -8271,6 +10399,13 @@ def ARC_PKQB_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b01100000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // pkqb<.f><.cc> b,b,u6 00110bbb11100000FBBBuuuuuu1QQQQQ.
@@ -8286,6 +10421,11 @@ def ARC_PKQB_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // pkqb<.f> b,b,s12 00110bbb10100000FBBBssssssSSSSSS.
@@ -8299,6 +10439,12 @@ def ARC_PKQB_b_s12 : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let Inst{23-16} = 0b10100000;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // pkqb<.f> a,limm,c 0011011000100000F111CCCCCCAAAAAA.
@@ -8311,6 +10457,8 @@ def ARC_PKQB_a_limm_c : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let Inst{31-16} = 0b0011011000100000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // pkqb<.f> a,b,limm 00110bbb00100000FBBB111110AAAAAA.
@@ -8324,6 +10472,8 @@ def ARC_PKQB_a_b_limm : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let Inst{23-16} = 0b00100000;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // pkqb<.f><.cc> b,b,limm 00110bbb11100000FBBB1111100QQQQQ.
@@ -8339,6 +10489,8 @@ def ARC_PKQB_b_limm_cc : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rcmp b,c 00100bbb000011011BBBCCCCCC000000.
@@ -8351,6 +10503,11 @@ def ARC_RCMP_b_c : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b000011011;
   let Inst{5-0} = 0b000000;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // rcmp<.cc> b,c 00100bbb110011011BBBCCCCCC0QQQQQ.
@@ -8364,6 +10521,11 @@ def ARC_RCMP_b_c_cc : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{23-15} = 0b110011011;
   let Inst{5} = 0;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // rcmp b,u6 00100bbb010011011BBBuuuuuu000000.
@@ -8376,6 +10538,11 @@ def ARC_RCMP_b_u6 : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b010011011;
   let Inst{5-0} = 0b000000;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // rcmp<.cc> b,u6 00100bbb110011011BBBuuuuuu1QQQQQ.
@@ -8389,6 +10556,11 @@ def ARC_RCMP_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{23-15} = 0b110011011;
   let Inst{5} = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // rcmp b,s12 00100bbb100011011BBBssssssSSSSSS.
@@ -8400,6 +10572,12 @@ def ARC_RCMP_b_s12 : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b100011011;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // rcmp limm,c 00100110000011011111CCCCCC000000.
@@ -8411,6 +10589,8 @@ def ARC_RCMP_limm_c : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   // Flags: none
   let Inst{31-12} = 0b00100110000011011111;
   let Inst{5-0} = 0b000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rcmp b,limm 00100bbb000011011BBB111110000000.
@@ -8423,6 +10603,8 @@ def ARC_RCMP_b_limm : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b000011011;
   let Inst{11-0} = 0b111110000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rcmp<.cc> limm,c 00100110110011011111CCCCCC0QQQQQ.
@@ -8435,6 +10617,8 @@ def ARC_RCMP_limm_c_cc : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{31-12} = 0b00100110110011011111;
   let Inst{5} = 0;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rcmp<.cc> b,limm 00100bbb110011011BBB1111100QQQQQ.
@@ -8448,6 +10632,8 @@ def ARC_RCMP_b_limm_cc : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{23-15} = 0b110011011;
   let Inst{11-5} = 0b1111100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rcmp limm,u6 00100110010011011111uuuuuu000000.
@@ -8459,6 +10645,8 @@ def ARC_RCMP_limm_u6 : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   // Flags: none
   let Inst{31-12} = 0b00100110010011011111;
   let Inst{5-0} = 0b000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rcmp<.cc> limm,u6 00100110110011011111uuuuuu1QQQQQ.
@@ -8471,6 +10659,8 @@ def ARC_RCMP_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{31-12} = 0b00100110110011011111;
   let Inst{5} = 1;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rcmp limm,s12 00100110100011011111ssssssSSSSSS.
@@ -8481,6 +10671,8 @@ def ARC_RCMP_limm_s12 : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   // Operands: LIMM, SIMM12_20
   // Flags: none
   let Inst{31-12} = 0b00100110100011011111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rcmp limm,limm 00100110000011011111111110000000.
@@ -8491,6 +10683,8 @@ def ARC_RCMP_limm : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   // Operands: LIMM, LIMMdup
   // Flags: none
   let Inst{31-0} = 0b00100110000011011111111110000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rcmp<.cc> limm,limm 001001101100110111111111100QQQQQ.
@@ -8502,6 +10696,8 @@ def ARC_RCMP_limm_cc : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   // Flags: C_CC
   let Inst{31-5} = 0b001001101100110111111111100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rlc<.f> b,c 00100bbb00101111FBBBCCCCCC001011.
@@ -8515,6 +10711,11 @@ def ARC_RLC_b_c : ARCompactInst32_2op<0b00100, 0b001011, "rlc",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b001011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // rlc<.f> 0,c 0010011000101111F111CCCCCC001011.
@@ -8528,6 +10729,8 @@ def ARC_RLC_z_c : ARCompactInst32_2op<0b00100, 0b001011, "rlc",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001011;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // rlc<.f> b,u6 00100bbb01101111FBBBuuuuuu001011.
@@ -8541,6 +10744,11 @@ def ARC_RLC_b_u6 : ARCompactInst32_2op<0b00100, 0b001011, "rlc",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b001011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // rlc<.f> 0,u6 0010011001101111F111uuuuuu001011.
@@ -8554,6 +10762,8 @@ def ARC_RLC_z_u6 : ARCompactInst32_2op<0b00100, 0b001011, "rlc",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001011;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // rlc<.f> b,limm 00100bbb00101111FBBB111110001011.
@@ -8567,6 +10777,8 @@ def ARC_RLC_b_limm : ARCompactInst32_2op<0b00100, 0b001011, "rlc",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110001011;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rlc<.f> 0,limm 0010011000101111F111111110001011.
@@ -8579,6 +10791,8 @@ def ARC_RLC_z_limm : ARCompactInst32_2op<0b00100, 0b001011, "rlc",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110001011;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rnd16<.f> b,c 00101bbb00101111FBBBCCCCCC000011.
@@ -8592,6 +10806,11 @@ def ARC_RND16_b_c : ARCompactInst32_2op<0b00101, 0b000011, "rnd16",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // rnd16<.f> 0,c 0010111000101111F111CCCCCC000011.
@@ -8605,6 +10824,8 @@ def ARC_RND16_z_c : ARCompactInst32_2op<0b00101, 0b000011, "rnd16",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000011;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // rnd16<.f> b,u6 00101bbb01101111FBBBuuuuuu000011.
@@ -8618,6 +10839,11 @@ def ARC_RND16_b_u6 : ARCompactInst32_2op<0b00101, 0b000011, "rnd16",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // rnd16<.f> 0,u6 0010111001101111F111uuuuuu000011.
@@ -8631,6 +10857,8 @@ def ARC_RND16_z_u6 : ARCompactInst32_2op<0b00101, 0b000011, "rnd16",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000011;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // rnd16<.f> b,limm 00101bbb00101111FBBB111110000011.
@@ -8644,6 +10872,8 @@ def ARC_RND16_b_limm : ARCompactInst32_2op<0b00101, 0b000011, "rnd16",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000011;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rnd16<.f> 0,limm 0010111000101111F111111110000011.
@@ -8656,6 +10886,8 @@ def ARC_RND16_z_limm : ARCompactInst32_2op<0b00101, 0b000011, "rnd16",
   let Inst{31-16} = 0b0010111000101111;
   let Inst{14-0} = 0b111111110000011;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f> b,c 00100bbb00101111FBBBCCCCCC000011.
@@ -8669,6 +10901,11 @@ def ARC_ROR_b_c : ARCompactInst32_2op<0b00100, 0b000011, "ror",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // ror<.f> 0,c 0010011000101111F111CCCCCC000011.
@@ -8682,6 +10919,8 @@ def ARC_ROR_z_c : ARCompactInst32_2op<0b00100, 0b000011, "ror",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000011;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // ror<.f> a,b,c 00101bbb00000011FBBBCCCCCCAAAAAA.
@@ -8694,6 +10933,13 @@ def ARC_ROR_a_b_c : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b00000011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // ror<.f> 0,b,c 00101bbb00000011FBBBCCCCCC111110.
@@ -8707,6 +10953,11 @@ def ARC_ROR_z_b_c : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{23-16} = 0b00000011;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // ror<.f><.cc> b,b,c 00101bbb11000011FBBBCCCCCC0QQQQQ.
@@ -8722,6 +10973,11 @@ def ARC_ROR_b_c_cc : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // ror<.f> b,u6 00100bbb01101111FBBBuuuuuu000011.
@@ -8735,6 +10991,11 @@ def ARC_ROR_b_u6 : ARCompactInst32_2op<0b00100, 0b000011, "ror",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // ror<.f> 0,u6 0010011001101111F111uuuuuu000011.
@@ -8748,6 +11009,8 @@ def ARC_ROR_z_u6 : ARCompactInst32_2op<0b00100, 0b000011, "ror",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000011;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // ror<.f> a,b,u6 00101bbb01000011FBBBuuuuuuAAAAAA.
@@ -8760,6 +11023,13 @@ def ARC_ROR_a_b_u6 : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01000011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // ror<.f> 0,b,u6 00101bbb01000011FBBBuuuuuu111110.
@@ -8773,6 +11043,11 @@ def ARC_ROR_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{23-16} = 0b01000011;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // ror<.f><.cc> b,b,u6 00101bbb11000011FBBBuuuuuu1QQQQQ.
@@ -8788,6 +11063,11 @@ def ARC_ROR_b_u6_cc : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // ror<.f> b,b,s12 00101bbb10000011FBBBssssssSSSSSS.
@@ -8801,6 +11081,12 @@ def ARC_ROR_b_s12 : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{23-16} = 0b10000011;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // ror<.f> b,limm 00100bbb00101111FBBB111110000011.
@@ -8814,6 +11100,8 @@ def ARC_ROR_b_limm : ARCompactInst32_2op<0b00100, 0b000011, "ror",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000011;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f> 0,limm 0010011000101111F111111110000011.
@@ -8826,6 +11114,8 @@ def ARC_ROR_z_limm : ARCompactInst32_2op<0b00100, 0b000011, "ror",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110000011;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f> a,limm,c 0010111000000011F111CCCCCCAAAAAA.
@@ -8838,6 +11128,8 @@ def ARC_ROR_a_limm_c : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{31-16} = 0b0010111000000011;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f> a,b,limm 00101bbb00000011FBBB111110AAAAAA.
@@ -8851,6 +11143,8 @@ def ARC_ROR_a_b_limm : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{23-16} = 0b00000011;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f> 0,limm,c 0010111000000011F111CCCCCC111110.
@@ -8864,6 +11158,8 @@ def ARC_ROR_z_limm_c : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f> 0,b,limm 00101bbb00000011FBBB111110111110.
@@ -8877,6 +11173,8 @@ def ARC_ROR_z_b_limm : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{23-16} = 0b00000011;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f><.cc> b,b,limm 00101bbb11000011FBBB1111100QQQQQ.
@@ -8892,6 +11190,8 @@ def ARC_ROR_b_limm_cc : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f><.cc> 0,limm,c 0010111011000011F111CCCCCC0QQQQQ.
@@ -8906,6 +11206,8 @@ def ARC_ROR_z_limm_c_cc : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f> a,limm,u6 0010111001000011F111uuuuuuAAAAAA.
@@ -8918,6 +11220,8 @@ def ARC_ROR_a_limm_u6 : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{31-16} = 0b0010111001000011;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f> 0,limm,u6 0010111001000011F111uuuuuu111110.
@@ -8931,6 +11235,8 @@ def ARC_ROR_z_limm_u6 : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f><.cc> 0,limm,u6 0010111011000011F111uuuuuu1QQQQQ.
@@ -8945,6 +11251,8 @@ def ARC_ROR_z_limm_u6_cc : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f> 0,limm,s12 0010111010000011F111ssssssSSSSSS.
@@ -8957,6 +11265,8 @@ def ARC_ROR_z_limm_s12 : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{31-16} = 0b0010111010000011;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f> a,limm,limm 0010111000000011F111111110AAAAAA.
@@ -8969,6 +11279,8 @@ def ARC_ROR_a_limm : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{31-16} = 0b0010111000000011;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f> 0,limm,limm 0010111000000011F111111110111110.
@@ -8981,6 +11293,8 @@ def ARC_ROR_z_limm_v1 : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{31-16} = 0b0010111000000011;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // ror<.f><.cc> 0,limm,limm 0010111011000011F1111111100QQQQQ.
@@ -8994,6 +11308,8 @@ def ARC_ROR_z_limm_cc : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rrc<.f> b,c 00100bbb00101111FBBBCCCCCC000100.
@@ -9007,6 +11323,11 @@ def ARC_RRC_b_c : ARCompactInst32_2op<0b00100, 0b000100, "rrc",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000100;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // rrc<.f> 0,c 0010011000101111F111CCCCCC000100.
@@ -9020,6 +11341,8 @@ def ARC_RRC_z_c : ARCompactInst32_2op<0b00100, 0b000100, "rrc",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000100;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // rrc<.f> b,u6 00100bbb01101111FBBBuuuuuu000100.
@@ -9033,6 +11356,11 @@ def ARC_RRC_b_u6 : ARCompactInst32_2op<0b00100, 0b000100, "rrc",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000100;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // rrc<.f> 0,u6 0010011001101111F111uuuuuu000100.
@@ -9046,6 +11374,8 @@ def ARC_RRC_z_u6 : ARCompactInst32_2op<0b00100, 0b000100, "rrc",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000100;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // rrc<.f> b,limm 00100bbb00101111FBBB111110000100.
@@ -9059,6 +11389,8 @@ def ARC_RRC_b_limm : ARCompactInst32_2op<0b00100, 0b000100, "rrc",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000100;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rrc<.f> 0,limm 0010011000101111F111111110000100.
@@ -9071,6 +11403,8 @@ def ARC_RRC_z_limm : ARCompactInst32_2op<0b00100, 0b000100, "rrc",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110000100;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rsub<.f> a,b,c 00100bbb00001110FBBBCCCCCCAAAAAA.
@@ -9083,6 +11417,13 @@ def ARC_RSUB_a_b_c : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00001110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // rsub<.f> 0,b,c 00100bbb00001110FBBBCCCCCC111110.
@@ -9096,6 +11437,11 @@ def ARC_RSUB_z_b_c : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{23-16} = 0b00001110;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // rsub<.f><.cc> b,b,c 00100bbb11001110FBBBCCCCCC0QQQQQ.
@@ -9111,6 +11457,11 @@ def ARC_RSUB_b_c_cc : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // rsub<.f> a,b,u6 00100bbb01001110FBBBuuuuuuAAAAAA.
@@ -9123,6 +11474,13 @@ def ARC_RSUB_a_b_u6 : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01001110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // rsub<.f> 0,b,u6 00100bbb01001110FBBBuuuuuu111110.
@@ -9136,6 +11494,11 @@ def ARC_RSUB_z_b_u6 : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{23-16} = 0b01001110;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // rsub<.f><.cc> b,b,u6 00100bbb11001110FBBBuuuuuu1QQQQQ.
@@ -9151,6 +11514,11 @@ def ARC_RSUB_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // rsub<.f> b,b,s12 00100bbb10001110FBBBssssssSSSSSS.
@@ -9164,6 +11532,12 @@ def ARC_RSUB_b_s12 : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{23-16} = 0b10001110;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // rsub<.f> a,limm,c 0010011000001110F111CCCCCCAAAAAA.
@@ -9176,6 +11550,8 @@ def ARC_RSUB_a_limm_c : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{31-16} = 0b0010011000001110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rsub<.f> a,b,limm 00100bbb00001110FBBB111110AAAAAA.
@@ -9189,6 +11565,8 @@ def ARC_RSUB_a_b_limm : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{23-16} = 0b00001110;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rsub<.f> 0,limm,c 0010011000001110F111CCCCCC111110.
@@ -9202,6 +11580,8 @@ def ARC_RSUB_z_limm_c : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rsub<.f> 0,b,limm 00100bbb00001110FBBB111110111110.
@@ -9215,6 +11595,8 @@ def ARC_RSUB_z_b_limm : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{23-16} = 0b00001110;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rsub<.f><.cc> b,b,limm 00100bbb11001110FBBB1111100QQQQQ.
@@ -9230,6 +11612,8 @@ def ARC_RSUB_b_limm_cc : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rsub<.f><.cc> 0,limm,c 0010011011001110F111CCCCCC0QQQQQ.
@@ -9244,6 +11628,8 @@ def ARC_RSUB_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rsub<.f> a,limm,u6 0010011001001110F111uuuuuuAAAAAA.
@@ -9256,6 +11642,8 @@ def ARC_RSUB_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{31-16} = 0b0010011001001110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rsub<.f> 0,limm,u6 0010011001001110F111uuuuuu111110.
@@ -9269,6 +11657,8 @@ def ARC_RSUB_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rsub<.f><.cc> 0,limm,u6 0010011011001110F111uuuuuu1QQQQQ.
@@ -9283,6 +11673,8 @@ def ARC_RSUB_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rsub<.f> 0,limm,s12 0010011010001110F111ssssssSSSSSS.
@@ -9295,6 +11687,8 @@ def ARC_RSUB_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{31-16} = 0b0010011010001110;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rsub<.f> a,limm,limm 0010011000001110F111111110AAAAAA.
@@ -9307,6 +11701,8 @@ def ARC_RSUB_a_limm : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{31-16} = 0b0010011000001110;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rsub<.f> 0,limm,limm 0010011000001110F111111110111110.
@@ -9319,6 +11715,8 @@ def ARC_RSUB_z_limm : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{31-16} = 0b0010011000001110;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // rsub<.f><.cc> 0,limm,limm 0010011011001110F1111111100QQQQQ.
@@ -9332,6 +11730,8 @@ def ARC_RSUB_z_limm_cc : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sat16<.f> b,c 00101bbb00101111FBBBCCCCCC000010.
@@ -9345,6 +11745,11 @@ def ARC_SAT16_b_c : ARCompactInst32_2op<0b00101, 0b000010, "sat16",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sat16<.f> 0,c 0010111000101111F111CCCCCC000010.
@@ -9358,6 +11763,8 @@ def ARC_SAT16_z_c : ARCompactInst32_2op<0b00101, 0b000010, "sat16",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000010;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sat16<.f> b,u6 00101bbb01101111FBBBuuuuuu000010.
@@ -9371,6 +11778,11 @@ def ARC_SAT16_b_u6 : ARCompactInst32_2op<0b00101, 0b000010, "sat16",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sat16<.f> 0,u6 0010111001101111F111uuuuuu000010.
@@ -9384,6 +11796,8 @@ def ARC_SAT16_z_u6 : ARCompactInst32_2op<0b00101, 0b000010, "sat16",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000010;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sat16<.f> b,limm 00101bbb00101111FBBB111110000010.
@@ -9397,6 +11811,8 @@ def ARC_SAT16_b_limm : ARCompactInst32_2op<0b00101, 0b000010, "sat16",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000010;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sat16<.f> 0,limm 0010111000101111F111111110000010.
@@ -9409,6 +11825,8 @@ def ARC_SAT16_z_limm : ARCompactInst32_2op<0b00101, 0b000010, "sat16",
   let Inst{31-16} = 0b0010111000101111;
   let Inst{14-0} = 0b111111110000010;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbc<.f> a,b,c 00100bbb00000011FBBBCCCCCCAAAAAA.
@@ -9421,6 +11839,13 @@ def ARC_SBC_a_b_c : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00000011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sbc<.f> 0,b,c 00100bbb00000011FBBBCCCCCC111110.
@@ -9434,6 +11859,11 @@ def ARC_SBC_z_b_c : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{23-16} = 0b00000011;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sbc<.f><.cc> b,b,c 00100bbb11000011FBBBCCCCCC0QQQQQ.
@@ -9449,6 +11879,11 @@ def ARC_SBC_b_c_cc : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sbc<.f> a,b,u6 00100bbb01000011FBBBuuuuuuAAAAAA.
@@ -9461,6 +11896,13 @@ def ARC_SBC_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01000011;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sbc<.f> 0,b,u6 00100bbb01000011FBBBuuuuuu111110.
@@ -9474,6 +11916,11 @@ def ARC_SBC_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{23-16} = 0b01000011;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sbc<.f><.cc> b,b,u6 00100bbb11000011FBBBuuuuuu1QQQQQ.
@@ -9489,6 +11936,11 @@ def ARC_SBC_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sbc<.f> b,b,s12 00100bbb10000011FBBBssssssSSSSSS.
@@ -9502,6 +11954,12 @@ def ARC_SBC_b_s12 : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{23-16} = 0b10000011;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // sbc<.f> a,limm,c 0010011000000011F111CCCCCCAAAAAA.
@@ -9514,6 +11972,8 @@ def ARC_SBC_a_limm_c : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{31-16} = 0b0010011000000011;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbc<.f> a,b,limm 00100bbb00000011FBBB111110AAAAAA.
@@ -9527,6 +11987,8 @@ def ARC_SBC_a_b_limm : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{23-16} = 0b00000011;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbc<.f> 0,limm,c 0010011000000011F111CCCCCC111110.
@@ -9540,6 +12002,8 @@ def ARC_SBC_z_limm_c : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbc<.f> 0,b,limm 00100bbb00000011FBBB111110111110.
@@ -9553,6 +12017,8 @@ def ARC_SBC_z_b_limm : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{23-16} = 0b00000011;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbc<.f><.cc> b,b,limm 00100bbb11000011FBBB1111100QQQQQ.
@@ -9568,6 +12034,8 @@ def ARC_SBC_b_limm_cc : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbc<.f><.cc> 0,limm,c 0010011011000011F111CCCCCC0QQQQQ.
@@ -9582,6 +12050,8 @@ def ARC_SBC_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbc<.f> a,limm,u6 0010011001000011F111uuuuuuAAAAAA.
@@ -9594,6 +12064,8 @@ def ARC_SBC_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{31-16} = 0b0010011001000011;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbc<.f> 0,limm,u6 0010011001000011F111uuuuuu111110.
@@ -9607,6 +12079,8 @@ def ARC_SBC_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbc<.f><.cc> 0,limm,u6 0010011011000011F111uuuuuu1QQQQQ.
@@ -9621,6 +12095,8 @@ def ARC_SBC_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbc<.f> 0,limm,s12 0010011010000011F111ssssssSSSSSS.
@@ -9633,6 +12109,8 @@ def ARC_SBC_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{31-16} = 0b0010011010000011;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbc<.f> a,limm,limm 0010011000000011F111111110AAAAAA.
@@ -9645,6 +12123,8 @@ def ARC_SBC_a_limm : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{31-16} = 0b0010011000000011;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbc<.f> 0,limm,limm 0010011000000011F111111110111110.
@@ -9657,6 +12137,8 @@ def ARC_SBC_z_limm : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{31-16} = 0b0010011000000011;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbc<.f><.cc> 0,limm,limm 0010011011000011F1111111100QQQQQ.
@@ -9670,6 +12152,8 @@ def ARC_SBC_z_limm_cc : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbcs<.f> a,b,c 00101bbb00100111FBBBCCCCCCAAAAAA.
@@ -9682,6 +12166,13 @@ def ARC_SBCS_a_b_c : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b00100111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sbcs<.f> 0,b,c 00101bbb00100111FBBBCCCCCC111110.
@@ -9695,6 +12186,11 @@ def ARC_SBCS_z_b_c : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{23-16} = 0b00100111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sbcs<.f><.cc> b,b,c 00101bbb11100111FBBBCCCCCC0QQQQQ.
@@ -9710,6 +12206,11 @@ def ARC_SBCS_b_c_cc : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sbcs<.f> a,b,u6 00101bbb01100111FBBBuuuuuuAAAAAA.
@@ -9722,6 +12223,13 @@ def ARC_SBCS_a_b_u6 : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01100111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sbcs<.f> 0,b,u6 00101bbb01100111FBBBuuuuuu111110.
@@ -9735,6 +12243,11 @@ def ARC_SBCS_z_b_u6 : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{23-16} = 0b01100111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sbcs<.f><.cc> b,b,u6 00101bbb11100111FBBBuuuuuu1QQQQQ.
@@ -9750,6 +12263,11 @@ def ARC_SBCS_b_u6_cc : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sbcs<.f> b,b,s12 00101bbb10100111FBBBssssssSSSSSS.
@@ -9763,6 +12281,12 @@ def ARC_SBCS_b_s12 : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{23-16} = 0b10100111;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // sbcs<.f> a,limm,c 0010111000100111F111CCCCCCAAAAAA.
@@ -9775,6 +12299,8 @@ def ARC_SBCS_a_limm_c : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{31-16} = 0b0010111000100111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbcs<.f> a,b,limm 00101bbb00100111FBBB111110AAAAAA.
@@ -9788,6 +12314,8 @@ def ARC_SBCS_a_b_limm : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{23-16} = 0b00100111;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbcs<.f> 0,limm,c 0010111001100111F111CCCCCC111110.
@@ -9801,6 +12329,8 @@ def ARC_SBCS_z_limm_c : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbcs<.f> 0,b,limm 00101bbb00100111FBBB111110111110.
@@ -9814,6 +12344,8 @@ def ARC_SBCS_z_b_limm : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{23-16} = 0b00100111;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbcs<.f><.cc> b,b,limm 00101bbb11100111FBBB1111100QQQQQ.
@@ -9829,6 +12361,8 @@ def ARC_SBCS_b_limm_cc : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbcs<.f><.cc> 0,limm,c 0010111011100111F111CCCCCC0QQQQQ.
@@ -9843,6 +12377,8 @@ def ARC_SBCS_z_limm_c_cc : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbcs<.f> a,limm,u6 0010111001100111F111uuuuuuAAAAAA.
@@ -9855,6 +12391,8 @@ def ARC_SBCS_a_limm_u6 : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{31-16} = 0b0010111001100111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbcs<.f> 0,limm,u6 0010111001100111F111uuuuuu111110.
@@ -9868,6 +12406,8 @@ def ARC_SBCS_z_limm_u6 : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Decoding conflict with overlapping encoding.
+  let isCodeGenOnly = 1;
 }
 
 // sbcs<.f><.cc> 0,limm,u6 0010111011100111F111uuuuuu1QQQQQ.
@@ -9882,6 +12422,8 @@ def ARC_SBCS_z_limm_u6_cc : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbcs<.f> 0,limm,s12 0010111010100111F111ssssssSSSSSS.
@@ -9894,6 +12436,8 @@ def ARC_SBCS_z_limm_s12 : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{31-16} = 0b0010111010100111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbcs<.f> a,limm,limm 0010111000100111F111111110AAAAAA.
@@ -9906,6 +12450,8 @@ def ARC_SBCS_a_limm : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{31-16} = 0b0010111000100111;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbcs<.f> 0,limm,limm 0010111000100111F111111110111110.
@@ -9918,6 +12464,8 @@ def ARC_SBCS_z_limm : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{31-16} = 0b0010111000100111;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sbcs<.f><.cc> 0,limm,limm 0010111011100111F1111111100QQQQQ.
@@ -9931,6 +12479,8 @@ def ARC_SBCS_z_limm_cc : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sexb<.f> b,c 00100bbb00101111FBBBCCCCCC000101.
@@ -9944,6 +12494,11 @@ def ARC_SEXB_b_c : ARCompactInst32_2op<0b00100, 0b000101, "sexb",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000101;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sexb<.f> 0,c 0010011000101111F111CCCCCC000101.
@@ -9957,6 +12512,8 @@ def ARC_SEXB_z_c : ARCompactInst32_2op<0b00100, 0b000101, "sexb",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000101;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sexb<.f> b,u6 00100bbb01101111FBBBuuuuuu000101.
@@ -9970,6 +12527,11 @@ def ARC_SEXB_b_u6 : ARCompactInst32_2op<0b00100, 0b000101, "sexb",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000101;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sexb<.f> 0,u6 0010011001101111F111uuuuuu000101.
@@ -9983,6 +12545,8 @@ def ARC_SEXB_z_u6 : ARCompactInst32_2op<0b00100, 0b000101, "sexb",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000101;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sexb<.f> b,limm 00100bbb00101111FBBB111110000101.
@@ -9996,6 +12560,8 @@ def ARC_SEXB_b_limm : ARCompactInst32_2op<0b00100, 0b000101, "sexb",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000101;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sexb<.f> 0,limm 0010011000101111F111111110000101.
@@ -10008,6 +12574,8 @@ def ARC_SEXB_z_limm : ARCompactInst32_2op<0b00100, 0b000101, "sexb",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110000101;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sexw<.f> b,c 00100bbb00101111FBBBCCCCCC000110.
@@ -10021,6 +12589,11 @@ def ARC_SEXW_b_c : ARCompactInst32_2op<0b00100, 0b000110, "sexw",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sexw<.f> 0,c 0010011000101111F111CCCCCC000110.
@@ -10034,6 +12607,8 @@ def ARC_SEXW_z_c : ARCompactInst32_2op<0b00100, 0b000110, "sexw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000110;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sexw<.f> b,u6 00100bbb01101111FBBBuuuuuu000110.
@@ -10047,6 +12622,11 @@ def ARC_SEXW_b_u6 : ARCompactInst32_2op<0b00100, 0b000110, "sexw",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sexw<.f> 0,u6 0010011001101111F111uuuuuu000110.
@@ -10060,6 +12640,8 @@ def ARC_SEXW_z_u6 : ARCompactInst32_2op<0b00100, 0b000110, "sexw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000110;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sexw<.f> b,limm 00100bbb00101111FBBB111110000110.
@@ -10073,6 +12655,8 @@ def ARC_SEXW_b_limm : ARCompactInst32_2op<0b00100, 0b000110, "sexw",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sexw<.f> 0,limm 0010011000101111F111111110000110.
@@ -10085,6 +12669,8 @@ def ARC_SEXW_z_limm : ARCompactInst32_2op<0b00100, 0b000110, "sexw",
   let Inst{31-16} = 0b0010011000101111;
   let Inst{14-0} = 0b111111110000110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sfxtr<.f> a,b,c 00110bbb00101001FBBBCCCCCCAAAAAA.
@@ -10097,6 +12683,13 @@ def ARC_SFXTR_a_b_c : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b00101001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sfxtr<.f><.cc> b,b,c 00110bbb11101001FBBBCCCCCC0QQQQQ.
@@ -10112,6 +12705,11 @@ def ARC_SFXTR_b_c_cc : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sfxtr<.f> a,b,u6 00110bbb01101001FBBBuuuuuuAAAAAA.
@@ -10124,6 +12722,13 @@ def ARC_SFXTR_a_b_u6 : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b01101001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sfxtr<.f><.cc> b,b,u6 00110bbb11101001FBBBuuuuuu1QQQQQ.
@@ -10139,6 +12744,11 @@ def ARC_SFXTR_b_u6_cc : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sfxtr<.f> b,b,s12 00110bbb10101001FBBBssssssSSSSSS.
@@ -10152,6 +12762,12 @@ def ARC_SFXTR_b_s12 : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let Inst{23-16} = 0b10101001;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // sfxtr<.f> a,limm,c 0011011000101001F111CCCCCCAAAAAA.
@@ -10164,6 +12780,8 @@ def ARC_SFXTR_a_limm_c : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let Inst{31-16} = 0b0011011000101001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sfxtr<.f> a,b,limm 00110bbb00101001FBBB111110AAAAAA.
@@ -10177,6 +12795,8 @@ def ARC_SFXTR_a_b_limm : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let Inst{23-16} = 0b00101001;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sfxtr<.f><.cc> b,b,limm 00110bbb11101001FBBB1111100QQQQQ.
@@ -10192,6 +12812,8 @@ def ARC_SFXTR_b_limm_cc : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub<.f> a,b,c 00100bbb00000010FBBBCCCCCCAAAAAA.
@@ -10204,6 +12826,13 @@ def ARC_SUB_a_b_c : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00000010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sub<.f> 0,b,c 00100bbb00000010FBBBCCCCCC111110.
@@ -10217,6 +12846,11 @@ def ARC_SUB_z_b_c : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{23-16} = 0b00000010;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sub<.f><.cc> b,b,c 00100bbb11000010FBBBCCCCCC0QQQQQ.
@@ -10232,6 +12866,11 @@ def ARC_SUB_b_c_cc : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sub<.f> a,b,u6 00100bbb01000010FBBBuuuuuuAAAAAA.
@@ -10244,6 +12883,13 @@ def ARC_SUB_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01000010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sub<.f> 0,b,u6 00100bbb01000010FBBBuuuuuu111110.
@@ -10257,6 +12903,11 @@ def ARC_SUB_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{23-16} = 0b01000010;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sub<.f><.cc> b,b,u6 00100bbb11000010FBBBuuuuuu1QQQQQ.
@@ -10272,6 +12923,11 @@ def ARC_SUB_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sub<.f> b,b,s12 00100bbb10000010FBBBssssssSSSSSS.
@@ -10285,6 +12941,12 @@ def ARC_SUB_b_s12 : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{23-16} = 0b10000010;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // sub<.f> a,limm,c 0010011000000010F111CCCCCCAAAAAA.
@@ -10297,6 +12959,8 @@ def ARC_SUB_a_limm_c : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{31-16} = 0b0010011000000010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub<.f> a,b,limm 00100bbb00000010FBBB111110AAAAAA.
@@ -10310,6 +12974,8 @@ def ARC_SUB_a_b_limm : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{23-16} = 0b00000010;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub<.f> 0,limm,c 0010011000000010F111CCCCCC111110.
@@ -10323,6 +12989,8 @@ def ARC_SUB_z_limm_c : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub<.f> 0,b,limm 00100bbb00000010FBBB111110111110.
@@ -10336,6 +13004,8 @@ def ARC_SUB_z_b_limm : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{23-16} = 0b00000010;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub<.f><.cc> b,b,limm 00100bbb11000010FBBB1111100QQQQQ.
@@ -10351,6 +13021,8 @@ def ARC_SUB_b_limm_cc : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub<.f><.cc> 0,limm,c 0010011011000010F111CCCCCC0QQQQQ.
@@ -10365,6 +13037,8 @@ def ARC_SUB_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub<.f> a,limm,u6 0010011001000010F111uuuuuuAAAAAA.
@@ -10377,6 +13051,8 @@ def ARC_SUB_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{31-16} = 0b0010011001000010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub<.f> 0,limm,u6 0010011001000010F111uuuuuu111110.
@@ -10390,6 +13066,8 @@ def ARC_SUB_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub<.f><.cc> 0,limm,u6 0010011011000010F111uuuuuu1QQQQQ.
@@ -10404,6 +13082,8 @@ def ARC_SUB_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub<.f> 0,limm,s12 0010011010000010F111ssssssSSSSSS.
@@ -10416,6 +13096,8 @@ def ARC_SUB_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{31-16} = 0b0010011010000010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub<.f> a,limm,limm 0010011000000010F111111110AAAAAA.
@@ -10428,6 +13110,8 @@ def ARC_SUB_a_limm : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{31-16} = 0b0010011000000010;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub<.f> 0,limm,limm 0010011000000010F111111110111110.
@@ -10440,6 +13124,8 @@ def ARC_SUB_z_limm : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{31-16} = 0b0010011000000010;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub<.f><.cc> 0,limm,limm 0010011011000010F1111111100QQQQQ.
@@ -10453,6 +13139,8 @@ def ARC_SUB_z_limm_cc : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub1<.f> a,b,c 00100bbb00010111FBBBCCCCCCAAAAAA.
@@ -10465,6 +13153,13 @@ def ARC_SUB1_a_b_c : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00010111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sub1<.f> 0,b,c 00100bbb00010111FBBBCCCCCC111110.
@@ -10478,6 +13173,11 @@ def ARC_SUB1_z_b_c : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{23-16} = 0b00010111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sub1<.f><.cc> b,b,c 00100bbb11010111FBBBCCCCCC0QQQQQ.
@@ -10493,6 +13193,11 @@ def ARC_SUB1_b_c_cc : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sub1<.f> a,b,u6 00100bbb01010111FBBBuuuuuuAAAAAA.
@@ -10505,6 +13210,13 @@ def ARC_SUB1_a_b_u6 : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01010111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sub1<.f> 0,b,u6 00100bbb01010111FBBBuuuuuu111110.
@@ -10518,6 +13230,11 @@ def ARC_SUB1_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{23-16} = 0b01010111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sub1<.f><.cc> b,b,u6 00100bbb11010111FBBBuuuuuu1QQQQQ.
@@ -10533,6 +13250,11 @@ def ARC_SUB1_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sub1<.f> b,b,s12 00100bbb10010111FBBBssssssSSSSSS.
@@ -10546,6 +13268,12 @@ def ARC_SUB1_b_s12 : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{23-16} = 0b10010111;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // sub1<.f> a,limm,c 0010011000010111F111CCCCCCAAAAAA.
@@ -10558,6 +13286,8 @@ def ARC_SUB1_a_limm_c : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{31-16} = 0b0010011000010111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub1<.f> a,b,limm 00100bbb00010111FBBB111110AAAAAA.
@@ -10571,6 +13301,8 @@ def ARC_SUB1_a_b_limm : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{23-16} = 0b00010111;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub1<.f> 0,limm,c 0010011000010111F111CCCCCC111110.
@@ -10584,6 +13316,8 @@ def ARC_SUB1_z_limm_c : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub1<.f> 0,b,limm 00100bbb00010111FBBB111110111110.
@@ -10597,6 +13331,8 @@ def ARC_SUB1_z_b_limm : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{23-16} = 0b00010111;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub1<.f><.cc> b,b,limm 00100bbb11010111FBBB1111100QQQQQ.
@@ -10612,6 +13348,8 @@ def ARC_SUB1_b_limm_cc : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub1<.f><.cc> 0,limm,c 0010011011010111F111CCCCCC0QQQQQ.
@@ -10626,6 +13364,8 @@ def ARC_SUB1_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub1<.f> a,limm,u6 0010011001010111F111uuuuuuAAAAAA.
@@ -10638,6 +13378,8 @@ def ARC_SUB1_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{31-16} = 0b0010011001010111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub1<.f> 0,limm,u6 0010011001010111F111uuuuuu111110.
@@ -10651,6 +13393,8 @@ def ARC_SUB1_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub1<.f><.cc> 0,limm,u6 0010011011010111F111uuuuuu1QQQQQ.
@@ -10665,6 +13409,8 @@ def ARC_SUB1_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub1<.f> 0,limm,s12 0010011010010111F111ssssssSSSSSS.
@@ -10677,6 +13423,8 @@ def ARC_SUB1_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{31-16} = 0b0010011010010111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub1<.f> a,limm,limm 0010011000010111F111111110AAAAAA.
@@ -10689,6 +13437,8 @@ def ARC_SUB1_a_limm : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{31-16} = 0b0010011000010111;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub1<.f> 0,limm,limm 0010011000010111F111111110111110.
@@ -10701,6 +13451,8 @@ def ARC_SUB1_z_limm : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{31-16} = 0b0010011000010111;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub1<.f><.cc> 0,limm,limm 0010011011010111F1111111100QQQQQ.
@@ -10714,6 +13466,8 @@ def ARC_SUB1_z_limm_cc : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub2<.f> a,b,c 00100bbb00011000FBBBCCCCCCAAAAAA.
@@ -10726,6 +13480,13 @@ def ARC_SUB2_a_b_c : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00011000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sub2<.f> 0,b,c 00100bbb00011000FBBBCCCCCC111110.
@@ -10739,6 +13500,11 @@ def ARC_SUB2_z_b_c : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{23-16} = 0b00011000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sub2<.f><.cc> b,b,c 00100bbb11011000FBBBCCCCCC0QQQQQ.
@@ -10754,6 +13520,11 @@ def ARC_SUB2_b_c_cc : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sub2<.f> a,b,u6 00100bbb01011000FBBBuuuuuuAAAAAA.
@@ -10766,6 +13537,13 @@ def ARC_SUB2_a_b_u6 : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01011000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sub2<.f> 0,b,u6 00100bbb01011000FBBBuuuuuu111110.
@@ -10779,6 +13557,11 @@ def ARC_SUB2_z_b_u6 : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{23-16} = 0b01011000;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sub2<.f><.cc> b,b,u6 00100bbb11011000FBBBuuuuuu1QQQQQ.
@@ -10794,6 +13577,11 @@ def ARC_SUB2_b_u6_cc : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sub2<.f> b,b,s12 00100bbb10011000FBBBssssssSSSSSS.
@@ -10807,6 +13595,12 @@ def ARC_SUB2_b_s12 : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{23-16} = 0b10011000;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // sub2<.f> a,limm,c 0010011000011000F111CCCCCCAAAAAA.
@@ -10819,6 +13613,8 @@ def ARC_SUB2_a_limm_c : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{31-16} = 0b0010011000011000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub2<.f> a,b,limm 00100bbb00011000FBBB111110AAAAAA.
@@ -10832,6 +13628,8 @@ def ARC_SUB2_a_b_limm : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{23-16} = 0b00011000;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub2<.f> 0,limm,c 0010011000011000F111CCCCCC111110.
@@ -10845,6 +13643,8 @@ def ARC_SUB2_z_limm_c : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub2<.f> 0,b,limm 00100bbb00011000FBBB111110111110.
@@ -10858,6 +13658,8 @@ def ARC_SUB2_z_b_limm : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{23-16} = 0b00011000;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub2<.f><.cc> b,b,limm 00100bbb11011000FBBB1111100QQQQQ.
@@ -10873,6 +13675,8 @@ def ARC_SUB2_b_limm_cc : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub2<.f><.cc> 0,limm,c 0010011011011000F111CCCCCC0QQQQQ.
@@ -10887,6 +13691,8 @@ def ARC_SUB2_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub2<.f> a,limm,u6 0010011001011000F111uuuuuuAAAAAA.
@@ -10899,6 +13705,8 @@ def ARC_SUB2_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{31-16} = 0b0010011001011000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub2<.f> 0,limm,u6 0010011001011000F111uuuuuu111110.
@@ -10912,6 +13720,8 @@ def ARC_SUB2_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub2<.f><.cc> 0,limm,u6 0010011011011000F111uuuuuu1QQQQQ.
@@ -10926,6 +13736,8 @@ def ARC_SUB2_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub2<.f> 0,limm,s12 0010011010011000F111ssssssSSSSSS.
@@ -10938,6 +13750,8 @@ def ARC_SUB2_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{31-16} = 0b0010011010011000;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub2<.f> a,limm,limm 0010011000011000F111111110AAAAAA.
@@ -10950,6 +13764,8 @@ def ARC_SUB2_a_limm : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{31-16} = 0b0010011000011000;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub2<.f> 0,limm,limm 0010011000011000F111111110111110.
@@ -10962,6 +13778,8 @@ def ARC_SUB2_z_limm : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{31-16} = 0b0010011000011000;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub2<.f><.cc> 0,limm,limm 0010011011011000F1111111100QQQQQ.
@@ -10975,6 +13793,8 @@ def ARC_SUB2_z_limm_cc : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub3<.f> a,b,c 00100bbb00011001FBBBCCCCCCAAAAAA.
@@ -10987,6 +13807,13 @@ def ARC_SUB3_a_b_c : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00011001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sub3<.f> 0,b,c 00100bbb00011001FBBBCCCCCC111110.
@@ -11000,6 +13827,11 @@ def ARC_SUB3_z_b_c : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{23-16} = 0b00011001;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sub3<.f><.cc> b,b,c 00100bbb11011001FBBBCCCCCC0QQQQQ.
@@ -11015,6 +13847,11 @@ def ARC_SUB3_b_c_cc : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // sub3<.f> a,b,u6 00100bbb01011001FBBBuuuuuuAAAAAA.
@@ -11027,6 +13864,13 @@ def ARC_SUB3_a_b_u6 : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01011001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // sub3<.f> 0,b,u6 00100bbb01011001FBBBuuuuuu111110.
@@ -11040,6 +13884,11 @@ def ARC_SUB3_z_b_u6 : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{23-16} = 0b01011001;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sub3<.f><.cc> b,b,u6 00100bbb11011001FBBBuuuuuu1QQQQQ.
@@ -11055,6 +13904,11 @@ def ARC_SUB3_b_u6_cc : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // sub3<.f> b,b,s12 00100bbb10011001FBBBssssssSSSSSS.
@@ -11068,6 +13922,12 @@ def ARC_SUB3_b_s12 : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{23-16} = 0b10011001;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // sub3<.f> a,limm,c 0010011000011001F111CCCCCCAAAAAA.
@@ -11080,6 +13940,8 @@ def ARC_SUB3_a_limm_c : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{31-16} = 0b0010011000011001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub3<.f> a,b,limm 00100bbb00011001FBBB111110AAAAAA.
@@ -11093,6 +13955,8 @@ def ARC_SUB3_a_b_limm : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{23-16} = 0b00011001;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub3<.f> 0,limm,c 0010011000011001F111CCCCCC111110.
@@ -11106,6 +13970,8 @@ def ARC_SUB3_z_limm_c : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub3<.f> 0,b,limm 00100bbb00011001FBBB111110111110.
@@ -11119,6 +13985,8 @@ def ARC_SUB3_z_b_limm : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{23-16} = 0b00011001;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub3<.f><.cc> b,b,limm 00100bbb11011001FBBB1111100QQQQQ.
@@ -11134,6 +14002,8 @@ def ARC_SUB3_b_limm_cc : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub3<.f><.cc> 0,limm,c 0010011011011001F111CCCCCC0QQQQQ.
@@ -11148,6 +14018,8 @@ def ARC_SUB3_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub3<.f> a,limm,u6 0010011001011001F111uuuuuuAAAAAA.
@@ -11160,6 +14032,8 @@ def ARC_SUB3_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{31-16} = 0b0010011001011001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub3<.f> 0,limm,u6 0010011001011001F111uuuuuu111110.
@@ -11173,6 +14047,8 @@ def ARC_SUB3_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub3<.f><.cc> 0,limm,u6 0010011011011001F111uuuuuu1QQQQQ.
@@ -11187,6 +14063,8 @@ def ARC_SUB3_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub3<.f> 0,limm,s12 0010011010011001F111ssssssSSSSSS.
@@ -11199,6 +14077,8 @@ def ARC_SUB3_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{31-16} = 0b0010011010011001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub3<.f> a,limm,limm 0010011000011001F111111110AAAAAA.
@@ -11211,6 +14091,8 @@ def ARC_SUB3_a_limm : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{31-16} = 0b0010011000011001;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub3<.f> 0,limm,limm 0010011000011001F111111110111110.
@@ -11223,6 +14105,8 @@ def ARC_SUB3_z_limm : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{31-16} = 0b0010011000011001;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // sub3<.f><.cc> 0,limm,limm 0010011011011001F1111111100QQQQQ.
@@ -11236,6 +14120,8 @@ def ARC_SUB3_z_limm_cc : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f> a,b,c 00101bbb00000111FBBBCCCCCCAAAAAA.
@@ -11248,6 +14134,13 @@ def ARC_SUBS_a_b_c : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b00000111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // subs<.f> 0,b,c 00101bbb00000111FBBBCCCCCC111110.
@@ -11261,6 +14154,11 @@ def ARC_SUBS_z_b_c : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{23-16} = 0b00000111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // subs<.f><.cc> b,b,c 00101bbb11000111FBBBCCCCCC0QQQQQ.
@@ -11276,6 +14174,11 @@ def ARC_SUBS_b_c_cc : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // subs<.f> a,b,u6 00101bbb01000111FBBBuuuuuuAAAAAA.
@@ -11288,6 +14191,13 @@ def ARC_SUBS_a_b_u6 : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01000111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // subs<.f> 0,b,u6 00101bbb01000111FBBBuuuuuu111110.
@@ -11301,6 +14211,11 @@ def ARC_SUBS_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{23-16} = 0b01000111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // subs<.f><.cc> b,b,u6 00101bbb11000111FBBBuuuuuu1QQQQQ.
@@ -11316,6 +14231,11 @@ def ARC_SUBS_b_u6_cc : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // subs<.f> b,b,s12 00101bbb10000111FBBBssssssSSSSSS.
@@ -11329,6 +14249,12 @@ def ARC_SUBS_b_s12 : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{23-16} = 0b10000111;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // subs<.f> a,limm,c 0010111000000111F111CCCCCCAAAAAA.
@@ -11341,6 +14267,8 @@ def ARC_SUBS_a_limm_c : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{31-16} = 0b0010111000000111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f> a,b,limm 00101bbb00000111FBBB111110AAAAAA.
@@ -11354,6 +14282,8 @@ def ARC_SUBS_a_b_limm : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{23-16} = 0b00000111;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f> 0,limm,c 0010111000000111F111CCCCCC111110.
@@ -11367,6 +14297,8 @@ def ARC_SUBS_z_limm_c : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f> 0,b,limm 00101bbb00000111FBBB111110111110.
@@ -11380,6 +14312,8 @@ def ARC_SUBS_z_b_limm : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{23-16} = 0b00000111;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f> a,limm,c 0010111000000111F111CCCCCCAAAAAA.
@@ -11392,6 +14326,8 @@ def ARC_SUBS_a_limm_c_v1 : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{31-16} = 0b0010111000000111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Duplicate encoding variant.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f><.cc> b,b,limm 00101bbb11000111FBBB1111100QQQQQ.
@@ -11407,6 +14343,8 @@ def ARC_SUBS_b_limm_cc : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f><.cc> 0,limm,c 0010111011000111F111CCCCCC0QQQQQ.
@@ -11421,6 +14359,8 @@ def ARC_SUBS_z_limm_c_cc : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f> a,limm,u6 0010111001000111F111uuuuuuAAAAAA.
@@ -11433,6 +14373,8 @@ def ARC_SUBS_a_limm_u6 : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{31-16} = 0b0010111001000111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f> 0,limm,u6 0010111001000111F111uuuuuu111110.
@@ -11446,6 +14388,8 @@ def ARC_SUBS_z_limm_u6 : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f><.cc> 0,limm,u6 0010111011000111F111uuuuuu1QQQQQ.
@@ -11460,6 +14404,8 @@ def ARC_SUBS_z_limm_u6_cc : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f> 0,limm,s12 0010111010000111F111ssssssSSSSSS.
@@ -11472,6 +14418,8 @@ def ARC_SUBS_z_limm_s12 : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{31-16} = 0b0010111010000111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f> a,limm,limm 0010111000000111F111111110AAAAAA.
@@ -11484,6 +14432,8 @@ def ARC_SUBS_a_limm : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{31-16} = 0b0010111000000111;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f> 0,limm,limm 0010111000000111F111111110111110.
@@ -11496,6 +14446,8 @@ def ARC_SUBS_z_limm : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{31-16} = 0b0010111000000111;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subs<.f><.cc> 0,limm,limm 0010111011000111F1111111100QQQQQ.
@@ -11509,6 +14461,8 @@ def ARC_SUBS_z_limm_cc : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subsdw<.f> a,b,c 00101bbb00101001FBBBCCCCCCAAAAAA.
@@ -11521,6 +14475,13 @@ def ARC_SUBSDW_a_b_c : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b00101001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // subsdw<.f> 0,b,c 00101bbb00101001FBBBCCCCCC111110.
@@ -11534,6 +14495,11 @@ def ARC_SUBSDW_z_b_c : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{23-16} = 0b00101001;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // subsdw<.f><.cc> b,b,c 00101bbb11101001FBBBCCCCCC0QQQQQ.
@@ -11549,6 +14515,11 @@ def ARC_SUBSDW_b_c_cc : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // subsdw<.f> a,b,u6 00101bbb01101001FBBBuuuuuuAAAAAA.
@@ -11561,6 +14532,13 @@ def ARC_SUBSDW_a_b_u6 : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01101001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // subsdw<.f> 0,b,u6 00101bbb01101001FBBBuuuuuu111110.
@@ -11574,6 +14552,11 @@ def ARC_SUBSDW_z_b_u6 : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{23-16} = 0b01101001;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // subsdw<.f><.cc> b,b,u6 00101bbb11101001FBBBuuuuuu1QQQQQ.
@@ -11589,6 +14572,11 @@ def ARC_SUBSDW_b_u6_cc : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // subsdw<.f> b,b,s12 00101bbb10101001FBBBssssssSSSSSS.
@@ -11602,6 +14590,12 @@ def ARC_SUBSDW_b_s12 : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{23-16} = 0b10101001;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // subsdw<.f> a,limm,c 0010111000101001F111CCCCCCAAAAAA.
@@ -11614,6 +14608,8 @@ def ARC_SUBSDW_a_limm_c : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{31-16} = 0b0010111000101001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subsdw<.f> a,b,limm 00101bbb00101001FBBB111110AAAAAA.
@@ -11627,6 +14623,8 @@ def ARC_SUBSDW_a_b_limm : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{23-16} = 0b00101001;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subsdw<.f> 0,limm,c 0010111000101001F111CCCCCC111110.
@@ -11640,6 +14638,8 @@ def ARC_SUBSDW_z_limm_c : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subsdw<.f> 0,b,limm 00101bbb00101001FBBB111110111110.
@@ -11653,6 +14653,8 @@ def ARC_SUBSDW_z_b_limm : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{23-16} = 0b00101001;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subsdw<.f><.cc> b,b,limm 00101bbb11101001FBBB1111100QQQQQ.
@@ -11668,6 +14670,8 @@ def ARC_SUBSDW_b_limm_cc : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subsdw<.f><.cc> 0,limm,c 0010111011101001F111CCCCCC0QQQQQ.
@@ -11682,6 +14686,8 @@ def ARC_SUBSDW_z_limm_c_cc : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subsdw<.f> a,limm,u6 0010111001101001F111uuuuuuAAAAAA.
@@ -11694,6 +14700,8 @@ def ARC_SUBSDW_a_limm_u6 : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{31-16} = 0b0010111001101001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subsdw<.f> 0,limm,u6 0010111001101001F111uuuuuu111110.
@@ -11707,6 +14715,8 @@ def ARC_SUBSDW_z_limm_u6 : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subsdw<.f><.cc> 0,limm,u6 0010111011101001F111uuuuuu1QQQQQ.
@@ -11721,6 +14731,8 @@ def ARC_SUBSDW_z_limm_u6_cc : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subsdw<.f> 0,limm,s12 0010111010101001F111ssssssSSSSSS.
@@ -11733,6 +14745,8 @@ def ARC_SUBSDW_z_limm_s12 : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{31-16} = 0b0010111010101001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subsdw<.f> a,limm,limm 0010111000101001F111111110AAAAAA.
@@ -11745,6 +14759,8 @@ def ARC_SUBSDW_a_limm : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{31-16} = 0b0010111000101001;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subsdw<.f> 0,limm,limm 0010111000101001F111111110111110.
@@ -11757,6 +14773,8 @@ def ARC_SUBSDW_z_limm : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{31-16} = 0b0010111000101001;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // subsdw<.f><.cc> 0,limm,limm 0010111011101001F1111111100QQQQQ.
@@ -11770,6 +14788,8 @@ def ARC_SUBSDW_z_limm_cc : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // swap<.f> b,c 00101bbb00101111FBBBCCCCCC000000.
@@ -11783,6 +14803,11 @@ def ARC_SWAP_b_c : ARCompactInst32_2op<0b00101, 0b000000, "swap",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // swap<.f> 0,c 0010111000101111F111CCCCCC000000.
@@ -11796,6 +14821,8 @@ def ARC_SWAP_z_c : ARCompactInst32_2op<0b00101, 0b000000, "swap",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000000;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // swap<.f> b,u6 00101bbb01101111FBBBuuuuuu000000.
@@ -11809,6 +14836,11 @@ def ARC_SWAP_b_u6 : ARCompactInst32_2op<0b00101, 0b000000, "swap",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b000000;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // swap<.f> 0,u6 0010111001101111F111uuuuuu000000.
@@ -11822,6 +14854,8 @@ def ARC_SWAP_z_u6 : ARCompactInst32_2op<0b00101, 0b000000, "swap",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b000000;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // swap<.f> b,limm 00101bbb00101111FBBB111110000000.
@@ -11835,6 +14869,8 @@ def ARC_SWAP_b_limm : ARCompactInst32_2op<0b00101, 0b000000, "swap",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110000000;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // swap<.f> 0,limm 0010111000101111F111111110000000.
@@ -11847,6 +14883,8 @@ def ARC_SWAP_z_limm : ARCompactInst32_2op<0b00101, 0b000000, "swap",
   let Inst{31-16} = 0b0010111000101111;
   let Inst{14-0} = 0b111111110000000;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // swape<.f> b,c 00101bbb00101111FBBBCCCCCC001001.
@@ -11860,6 +14898,11 @@ def ARC_SWAPE_b_c : ARCompactInst32_2op<0b00101, 0b001001, "swape",
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b001001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // swape<.f> 0,c 0010111000101111F111CCCCCC001001.
@@ -11873,6 +14916,8 @@ def ARC_SWAPE_z_c : ARCompactInst32_2op<0b00101, 0b001001, "swape",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001001;
   let Defs = [STATUS32];
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // swape<.f> b,u6 00101bbb01101111FBBBuuuuuu001001.
@@ -11886,6 +14931,11 @@ def ARC_SWAPE_b_u6 : ARCompactInst32_2op<0b00101, 0b001001, "swape",
   let Inst{23-16} = 0b01101111;
   let Inst{5-0} = 0b001001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // swape<.f> 0,u6 0010111001101111F111uuuuuu001001.
@@ -11899,6 +14949,8 @@ def ARC_SWAPE_z_u6 : ARCompactInst32_2op<0b00101, 0b001001, "swape",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b001001;
   let Defs = [STATUS32];
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // swape<.f> b,limm 00101bbb00101111FBBB111110001001.
@@ -11912,6 +14964,8 @@ def ARC_SWAPE_b_limm : ARCompactInst32_2op<0b00101, 0b001001, "swape",
   let Inst{23-16} = 0b00101111;
   let Inst{11-0} = 0b111110001001;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // swape<.f> 0,limm 0010111000101111F111111110001001.
@@ -11924,6 +14978,8 @@ def ARC_SWAPE_z_limm : ARCompactInst32_2op<0b00101, 0b001001, "swape",
   let Inst{31-16} = 0b0010111000101111;
   let Inst{14-0} = 0b111111110001001;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // tst b,c 00100bbb000010111BBBCCCCCC000000.
@@ -11936,6 +14992,11 @@ def ARC_TST_b_c : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b000010111;
   let Inst{5-0} = 0b000000;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // tst<.cc> b,c 00100bbb110010111BBBCCCCCC0QQQQQ.
@@ -11949,6 +15010,11 @@ def ARC_TST_b_c_cc : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{23-15} = 0b110010111;
   let Inst{5} = 0;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // tst b,u6 00100bbb010010111BBBuuuuuu000000.
@@ -11961,6 +15027,11 @@ def ARC_TST_b_u6 : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b010010111;
   let Inst{5-0} = 0b000000;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // tst<.cc> b,u6 00100bbb110010111BBBuuuuuu1QQQQQ.
@@ -11974,6 +15045,11 @@ def ARC_TST_b_u6_cc : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{23-15} = 0b110010111;
   let Inst{5} = 1;
   let isPredicable = 1;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // tst b,s12 00100bbb100010111BBBssssssSSSSSS.
@@ -11985,6 +15061,12 @@ def ARC_TST_b_s12 : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   // Flags: none
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b100010111;
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // tst limm,c 00100110000010111111CCCCCC000000.
@@ -11996,6 +15078,8 @@ def ARC_TST_limm_c : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   // Flags: none
   let Inst{31-12} = 0b00100110000010111111;
   let Inst{5-0} = 0b000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // tst b,limm 00100bbb000010111BBB111110000000.
@@ -12008,6 +15092,8 @@ def ARC_TST_b_limm : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b000010111;
   let Inst{11-0} = 0b111110000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // tst<.cc> b,limm 00100bbb110010111BBB1111100QQQQQ.
@@ -12021,6 +15107,8 @@ def ARC_TST_b_limm_cc : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{23-15} = 0b110010111;
   let Inst{11-5} = 0b1111100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // tst<.cc> limm,c 00100110110010111111CCCCCC0QQQQQ.
@@ -12033,6 +15121,8 @@ def ARC_TST_limm_c_cc : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{31-12} = 0b00100110110010111111;
   let Inst{5} = 0;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // tst limm,u6 00100110010010111111uuuuuu000000.
@@ -12044,6 +15134,8 @@ def ARC_TST_limm_u6 : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   // Flags: none
   let Inst{31-12} = 0b00100110010010111111;
   let Inst{5-0} = 0b000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // tst<.cc> limm,u6 00100110110010111111uuuuuu1QQQQQ.
@@ -12056,6 +15148,8 @@ def ARC_TST_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{31-12} = 0b00100110110010111111;
   let Inst{5} = 1;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // tst limm,s12 00100110100010111111ssssssSSSSSS.
@@ -12066,6 +15160,8 @@ def ARC_TST_limm_s12 : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   // Operands: LIMM, SIMM12_20
   // Flags: none
   let Inst{31-12} = 0b00100110100010111111;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // tst limm,limm 00100110000010111111111110000000.
@@ -12076,6 +15172,8 @@ def ARC_TST_limm : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   // Operands: LIMM, LIMMdup
   // Flags: none
   let Inst{31-0} = 0b00100110000010111111111110000000;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // tst<.cc> limm,limm 001001101100101111111111100QQQQQ.
@@ -12087,6 +15185,8 @@ def ARC_TST_limm_cc : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   // Flags: C_CC
   let Inst{31-5} = 0b001001101100101111111111100;
   let isPredicable = 1;
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // upkqb<.f> a,b,c 00110bbb00100001FBBBCCCCCCAAAAAA.
@@ -12099,6 +15199,13 @@ def ARC_UPKQB_a_b_c : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b00100001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // upkqb<.f><.cc> b,b,c 00110bbb11100001FBBBCCCCCC0QQQQQ.
@@ -12114,6 +15221,11 @@ def ARC_UPKQB_b_c_cc : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // upkqb<.f> a,b,u6 00110bbb01100001FBBBuuuuuuAAAAAA.
@@ -12126,6 +15238,13 @@ def ARC_UPKQB_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b01100001;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // upkqb<.f><.cc> b,b,u6 00110bbb11100001FBBBuuuuuu1QQQQQ.
@@ -12141,6 +15260,11 @@ def ARC_UPKQB_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // upkqb<.f> b,b,s12 00110bbb10100001FBBBssssssSSSSSS.
@@ -12154,6 +15278,12 @@ def ARC_UPKQB_b_s12 : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let Inst{23-16} = 0b10100001;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // upkqb<.f> a,limm,c 0011011000100001F111CCCCCCAAAAAA.
@@ -12166,6 +15296,8 @@ def ARC_UPKQB_a_limm_c : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let Inst{31-16} = 0b0011011000100001;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // upkqb<.f> a,b,limm 00110bbb00100001FBBB111110AAAAAA.
@@ -12179,6 +15311,8 @@ def ARC_UPKQB_a_b_limm : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let Inst{23-16} = 0b00100001;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // upkqb<.f><.cc> b,b,limm 00110bbb11100001FBBB1111100QQQQQ.
@@ -12194,6 +15328,8 @@ def ARC_UPKQB_b_limm_cc : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xor<.f> a,b,c 00100bbb00000111FBBBCCCCCCAAAAAA.
@@ -12206,6 +15342,13 @@ def ARC_XOR_a_b_c : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00000111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // xor<.f> 0,b,c 00100bbb00000111FBBBCCCCCC111110.
@@ -12219,6 +15362,11 @@ def ARC_XOR_z_b_c : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{23-16} = 0b00000111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // xor<.f><.cc> b,b,c 00100bbb11000111FBBBCCCCCC0QQQQQ.
@@ -12234,6 +15382,11 @@ def ARC_XOR_b_c_cc : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // xor<.f> a,b,u6 00100bbb01000111FBBBuuuuuuAAAAAA.
@@ -12246,6 +15399,13 @@ def ARC_XOR_a_b_u6 : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b01000111;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // xor<.f> 0,b,u6 00100bbb01000111FBBBuuuuuu111110.
@@ -12259,6 +15419,11 @@ def ARC_XOR_z_b_u6 : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{23-16} = 0b01000111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // xor<.f><.cc> b,b,u6 00100bbb11000111FBBBuuuuuu1QQQQQ.
@@ -12274,6 +15439,11 @@ def ARC_XOR_b_u6_cc : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // xor<.f> b,b,s12 00100bbb10000111FBBBssssssSSSSSS.
@@ -12287,6 +15457,12 @@ def ARC_XOR_b_s12 : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{23-16} = 0b10000111;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // xor<.f> a,limm,c 0010011000000111F111CCCCCCAAAAAA.
@@ -12299,6 +15475,8 @@ def ARC_XOR_a_limm_c : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{31-16} = 0b0010011000000111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xor<.f> a,b,limm 00100bbb00000111FBBB111110AAAAAA.
@@ -12312,6 +15490,8 @@ def ARC_XOR_a_b_limm : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{23-16} = 0b00000111;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xor<.f> 0,limm,c 0010011000000111F111CCCCCC111110.
@@ -12325,6 +15505,8 @@ def ARC_XOR_z_limm_c : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xor<.f> 0,b,limm 00100bbb00000111FBBB111110111110.
@@ -12338,6 +15520,8 @@ def ARC_XOR_z_b_limm : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{23-16} = 0b00000111;
   let Inst{11-0} = 0b111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xor<.f><.cc> 0,limm,c 0010011011000111F111CCCCCC0QQQQQ.
@@ -12352,6 +15536,8 @@ def ARC_XOR_z_limm_c_cc : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{5} = 0;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xor<.f><.cc> b,b,limm 00100bbb11000111FBBB1111100QQQQQ.
@@ -12367,6 +15553,8 @@ def ARC_XOR_b_limm_cc : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xor<.f> a,limm,u6 0010011001000111F111uuuuuuAAAAAA.
@@ -12379,6 +15567,8 @@ def ARC_XOR_a_limm_u6 : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{31-16} = 0b0010011001000111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xor<.f> 0,limm,u6 0010011001000111F111uuuuuu111110.
@@ -12392,6 +15582,8 @@ def ARC_XOR_z_limm_u6 : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{14-12} = 0b111;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xor<.f><.cc> 0,limm,u6 0010011011000111F111uuuuuu1QQQQQ.
@@ -12406,6 +15598,8 @@ def ARC_XOR_z_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{5} = 1;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xor<.f> 0,limm,s12 0010011010000111F111ssssssSSSSSS.
@@ -12418,6 +15612,8 @@ def ARC_XOR_z_limm_s12 : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{31-16} = 0b0010011010000111;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xor<.f> a,limm,limm 0010011000000111F111111110AAAAAA.
@@ -12430,6 +15626,8 @@ def ARC_XOR_a_limm : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{31-16} = 0b0010011000000111;
   let Inst{14-6} = 0b111111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xor<.f> 0,limm,limm 0010011000000111F111111110111110.
@@ -12442,6 +15640,8 @@ def ARC_XOR_z_limm : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{31-16} = 0b0010011000000111;
   let Inst{14-0} = 0b111111110111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xor<.f><.cc> 0,limm,limm 0010011011000111F1111111100QQQQQ.
@@ -12455,6 +15655,8 @@ def ARC_XOR_z_limm_cc : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{14-5} = 0b1111111100;
   let isPredicable = 1;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xpkqb<.f> a,b,c 00110bbb00100010FBBBCCCCCCAAAAAA.
@@ -12467,6 +15669,13 @@ def ARC_XPKQB_a_b_c : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b00100010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // xpkqb<.f><.cc> b,b,c 00110bbb11100010FBBBCCCCCC0QQQQQ.
@@ -12482,6 +15691,11 @@ def ARC_XPKQB_b_c_cc : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> rc;
+  let Inst{11-6} = rc;
 }
 
 // xpkqb<.f> a,b,u6 00110bbb01100010FBBBuuuuuuAAAAAA.
@@ -12494,6 +15708,13 @@ def ARC_XPKQB_a_b_u6 : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let Inst{31-27} = 0b00110;
   let Inst{23-16} = 0b01100010;
   let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+  bits<6> ra;
+  let Inst{5-0} = ra;
 }
 
 // xpkqb<.f><.cc> b,b,u6 00110bbb11100010FBBBuuuuuu1QQQQQ.
@@ -12509,6 +15730,11 @@ def ARC_XPKQB_b_u6_cc : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
 }
 
 // xpkqb<.f> b,b,s12 00110bbb10100010FBBBssssssSSSSSS.
@@ -12522,6 +15748,12 @@ def ARC_XPKQB_b_s12 : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let Inst{23-16} = 0b10100010;
   let Defs = [STATUS32];
   
+  bits<6> rb;
+  let Inst{26-24} = rb{5-3};
+  let Inst{14-12} = rb{2-0};
+  bits<12> simm12_20;
+  let Inst{11-6} = simm12_20{11-6};
+  let Inst{5-0} = simm12_20{5-0};
 }
 
 // xpkqb<.f> a,limm,c 0011011000100010F111CCCCCCAAAAAA.
@@ -12534,6 +15766,8 @@ def ARC_XPKQB_a_limm_c : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let Inst{31-16} = 0b0011011000100010;
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xpkqb<.f> a,b,limm 00110bbb00100010FBBB111110AAAAAA.
@@ -12547,6 +15781,8 @@ def ARC_XPKQB_a_b_limm : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let Inst{23-16} = 0b00100010;
   let Inst{11-6} = 0b111110;
   let Defs = [STATUS32];
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 // xpkqb<.f><.cc> b,b,limm 00110bbb11100010FBBB1111100QQQQQ.
@@ -12562,6 +15798,8 @@ def ARC_XPKQB_b_limm_cc : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let isPredicable = 1;
   let Defs = [STATUS32];
   
+  // Operand(s) limm need custom disassembler.
+  let isCodeGenOnly = 1;
 }
 
 } // end let Predicates = [IsARCompact]

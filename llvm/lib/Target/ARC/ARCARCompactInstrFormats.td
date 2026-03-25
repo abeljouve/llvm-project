@@ -41,7 +41,8 @@ class ARCompactInst32<dag outs, dag ins, string asmstr, list<dag> pattern>
   let Pattern = pattern;
   let Predicates = [IsARCompact];
   let isPseudo = 0;
-  let isCodeGenOnly = 1; // Disable disassembler until conflicts resolved
+  // Disassembler enabled -- conflicts resolved via isCodeGenOnly on specific
+  // instructions (DSP/float overlaps, true duplicates).
 }
 
 // 3-operand ALU: major[31:27], subop[21:16], F[15], a[5:0], b[26:24,14:12], c[11:6]
@@ -139,7 +140,8 @@ class ARCompactInst16<dag outs, dag ins, string asmstr, list<dag> pattern>
   let Pattern = pattern;
   let Predicates = [IsARCompact];
   let isPseudo = 0;
-  let isCodeGenOnly = 1; // Disable disassembler until conflicts resolved
+  // Disassembler enabled -- conflicts resolved via isCodeGenOnly on specific
+  // instructions (DSP/float overlaps, true duplicates).
 }
 
 // 16-bit ALU

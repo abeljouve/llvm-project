@@ -87,6 +87,7 @@ void ARCPassConfig::addPreEmitPass() {
 void ARCPassConfig::addPreRegAlloc() {
     addPass(createARCExpandPseudosPass());
     addPass(createARCOptAddrMode());
+    addPass(createARCHardwareLoopsPass());
 }
 
 MachineFunctionInfo *ARCTargetMachine::createMachineFunctionInfo(
@@ -103,6 +104,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeARCTarget() {
   initializeARCAsmPrinterPass(PR);
   initializeARCDAGToDAGISelLegacyPass(PR);
   initializeARCDelaySlotFillerPass(PR);
+  initializeARCHardwareLoopsPass(PR);
 }
 
 TargetTransformInfo

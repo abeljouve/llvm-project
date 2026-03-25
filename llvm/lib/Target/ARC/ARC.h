@@ -28,9 +28,11 @@ FunctionPass *createARCExpandPseudosPass();
 FunctionPass *createARCOptAddrMode();
 FunctionPass *createARCBranchFinalizePass();
 FunctionPass *createARCDelaySlotFillerPass();
+FunctionPass *createARCHardwareLoopsPass();
 void initializeARCAsmPrinterPass(PassRegistry &);
 void initializeARCDAGToDAGISelLegacyPass(PassRegistry &);
 void initializeARCDelaySlotFillerPass(PassRegistry &);
+void initializeARCHardwareLoopsPass(PassRegistry &);
 
 } // end namespace llvm
 
