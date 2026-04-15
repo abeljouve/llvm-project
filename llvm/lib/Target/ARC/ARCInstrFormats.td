@@ -17,7 +17,7 @@ class Encoding64 {
 // Address operands
 
 class immU<int BSz> : Operand<i32>, PatLeaf<(imm),
-    "\n    return isUInt<"#BSz#">(N->getSExtValue());"> {
+    "\n    return isUInt<"#BSz#">(N->getZExtValue());"> {
 }
 
 def immU6 : immU<6>;
@@ -42,6 +42,7 @@ def MEMii : Operand<i32> {
 def MEMrs9 : Operand<iAny> {
   let MIOperandInfo = (ops GPR32:$B, immS<9>:$S9);
   let PrintMethod = "printMemOperandRI";
+  let EncoderMethod = "getMEMrs9OpValue";
   let DecoderMethod = "DecodeMEMrs9";
 }
 
@@ -990,14 +991,22 @@ class BCTargetSigned<ValueType vt, int BSz> : BCTarget<vt> {
 class BranchTargetS<int BSz> : BCTargetSigned<OtherVT, BSz>;
 def btargetS7 : BranchTargetS<7>;
 def btargetS8 : BranchTargetS<8>;
-def btargetS9 : BranchTargetS<9>;
+def btargetS9 : BranchTargetS<9> {
+  let EncoderMethod = "getBRccTargetEncoding";
+}
 def btargetS10 : BranchTargetS<10>;
 def btargetS13 : BranchTargetS<13>;
-def btargetS21 : BranchTargetS<21>;
-def btargetS25 : BranchTargetS<25>;
+def btargetS21 : BranchTargetS<21> {
+  let EncoderMethod = "getBranchTargetS21HEncoding";
+}
+def btargetS25 : BranchTargetS<25> {
+  let EncoderMethod = "getBranchTargetS25HEncoding";
+}
 
 class CallTargetS<int BSz> : BCTargetSigned<i32, BSz>;
-def calltargetS25: CallTargetS<25>;
+def calltargetS25: CallTargetS<25> {
+  let EncoderMethod = "getCallTargetEncoding";
+}
 
 // Compact Branch on Compare Register with Zero.
 class F16_BCC_REG<bit i, string asmstr> :

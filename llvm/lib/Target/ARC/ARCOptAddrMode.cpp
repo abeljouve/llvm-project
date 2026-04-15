@@ -498,6 +498,14 @@ bool ARCOptAddrMode::runOnMachineFunction(MachineFunction &MF) {
   if (skipFunction(MF.getFunction()) || KILL_PASS())
     return false;
 
+  // ARCOptAddrMode is designed for ARCv2 pre/post-increment addressing modes.
+  // ARCompact (ARC600/ARC700) has different addressing mode constraints and
+  // canFixPastUses does not properly track cumulative offsets, causing
+  // assertion failures when large stack frames generate out-of-range offsets.
+  // Skip this pass entirely for ARCompact targets.
+  if (MF.getSubtarget<ARCSubtarget>().isARCompact())
+    return false;
+
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
   if (DUMP_BEFORE())
     MF.dump();

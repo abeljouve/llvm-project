@@ -34,6 +34,21 @@ public:
   ARCAsmBackend(llvm::endianness Endian, uint8_t OSABI, bool IsARCompact)
       : MCAsmBackend(Endian), OSABI(OSABI), IsARCompact(IsARCompact) {}
 
+  // Absolute `fixup_arc_32` references always need the linker. For
+  // PC-relative branch fixups, applyFixup now handles the ARCompact split
+  // bit-field encoding directly, so they can be resolved locally when the
+  // target is in the same section — no relocation record needed.
+  std::optional<bool> evaluateFixup(const MCFragment &, MCFixup &Fixup,
+                                    MCValue &, uint64_t &) override {
+    switch (static_cast<unsigned>(Fixup.getKind())) {
+    case ARC::fixup_arc_32:
+    case ARC::fixup_arc_32_pcrel:
+      return false; // Not resolved; emit as relocation.
+    default:
+      return {};
+    }
+  }
+
   void applyFixup(const MCFragment &, const MCFixup &, const MCValue &Target,
                   uint8_t *Data, uint64_t Value, bool IsResolved) override;
 
@@ -60,6 +75,7 @@ MCFixupKindInfo ARCAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
     {"fixup_arc_s25h_pcrel",     0,    25,  0},
     {"fixup_arc_s25w_pcrel",     0,    25,  0},
     {"fixup_arc_32_pcrel",       0,    32,  0},
+    {"fixup_arc_s9h_pcrel",      0,    9,   0},
   };
   // clang-format on
   static_assert((std::size(Infos)) == ARC::NumTargetFixupKinds,
@@ -73,10 +89,132 @@ MCFixupKindInfo ARCAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
   return Infos[Kind - FirstTargetFixupKind];
 }
 
+// Scatter a PC-relative byte displacement into an ARCompact branch/call
+// instruction's split bit fields and return the 32-bit instruction-word
+// patch to OR in. Mirrors the layouts decoded in
+// arc700-emulator/src/decoder/decode32.rs.
+//
+//   fixup_arc_s21h_pcrel  (Bcc   — 21-bit half-word signed)
+//     raw = (disp >> 1) & 0xFFFFF   // 20 usable bits (S[20:1])
+//     bits [26:17] = raw[9:0]       (S[10:1])
+//     bits [15:6]  = raw[19:10]     (S[20:11])
+//
+//   fixup_arc_s21w_pcrel  (BLcc  — 21-bit word-aligned signed)
+//     raw = (disp >> 2) & 0x7FFFF   // 19 usable bits (S[20:2])
+//     bits [26:18] = raw[8:0]       (S[10:2])
+//     bits [15:6]  = raw[18:9]      (S[20:11])
+//
+//   fixup_arc_s25h_pcrel  (B far — 25-bit half-word signed)
+//     raw = (disp >> 1) & 0xFFFFFF  // 24 usable bits (S[24:1])
+//     bits [26:17] = raw[9:0]       (S[10:1])
+//     bits [15:6]  = raw[19:10]     (S[20:11])
+//     bits [3:0]   = raw[23:20]     (S[24:21])
+//
+//   fixup_arc_s25w_pcrel  (BL far — 25-bit word-aligned signed)
+//     raw = (disp >> 2) & 0x7FFFFF  // 23 usable bits (S[24:2])
+//     bits [26:18] = raw[8:0]       (S[10:2])
+//     bits [15:6]  = raw[18:9]      (S[20:11])
+//     bits [3:0]   = raw[22:19]     (S[24:21])
+//
+//   fixup_arc_s9h_pcrel   (BRcc/BBIT — 9-bit half-word signed)
+//     raw = (disp >> 1) & 0xFF      // 8 usable bits (S[8:1])
+//     bits [23:17] = raw[6:0]       (S[7:1])
+//     bit [15]     = raw[7]         (S[8])
+static uint32_t scatterBranchFixup(unsigned Kind, uint64_t Value) {
+  int64_t SDisp = static_cast<int64_t>(Value);
+  switch (Kind) {
+  case ARC::fixup_arc_s21h_pcrel: {
+    uint32_t Raw = (static_cast<uint32_t>(SDisp >> 1)) & 0xFFFFF;
+    uint32_t Lo  = Raw & 0x3FF;
+    uint32_t Hi  = (Raw >> 10) & 0x3FF;
+    return (Lo << 17) | (Hi << 6);
+  }
+  case ARC::fixup_arc_s21w_pcrel: {
+    uint32_t Raw = (static_cast<uint32_t>(SDisp >> 2)) & 0x7FFFF;
+    uint32_t Lo  = Raw & 0x1FF;
+    uint32_t Hi  = (Raw >> 9) & 0x3FF;
+    return (Lo << 18) | (Hi << 6);
+  }
+  case ARC::fixup_arc_s25h_pcrel: {
+    uint32_t Raw = (static_cast<uint32_t>(SDisp >> 1)) & 0xFFFFFF;
+    uint32_t Lo  = Raw & 0x3FF;
+    uint32_t Md  = (Raw >> 10) & 0x3FF;
+    uint32_t T   = (Raw >> 20) & 0xF;
+    return (Lo << 17) | (Md << 6) | T;
+  }
+  case ARC::fixup_arc_s25w_pcrel: {
+    uint32_t Raw = (static_cast<uint32_t>(SDisp >> 2)) & 0x7FFFFF;
+    uint32_t Lo  = Raw & 0x1FF;
+    uint32_t Md  = (Raw >> 9) & 0x3FF;
+    uint32_t T   = (Raw >> 19) & 0xF;
+    return (Lo << 18) | (Md << 6) | T;
+  }
+  case ARC::fixup_arc_s9h_pcrel: {
+    // S9 = signed byte offset (bit 0 always 0 for 2-byte alignment).
+    uint32_t S9 = static_cast<uint32_t>(SDisp) & 0x1FF;
+    uint32_t Lo7 = (S9 >> 1) & 0x7F;   // S9[7:1] → Inst[23:17]
+    uint32_t Hi1 = (S9 >> 8) & 0x1;    // S9[8]   → Inst[15]
+    return (Lo7 << 17) | (Hi1 << 15);
+  }
+  default:
+    llvm_unreachable("not a branch fixup");
+  }
+}
+
 void ARCAsmBackend::applyFixup(const MCFragment &F, const MCFixup &Fixup,
                                const MCValue &Target, uint8_t *Data,
                                uint64_t Value, bool IsResolved) {
   maybeAddReloc(F, Fixup, Target, Value, IsResolved);
+  unsigned Kind = Fixup.getKind();
+
+  // ARCompact branch/call fixups use scattered bit fields. Compute the
+  // 32-bit instruction-word patch and OR it into the existing encoding in
+  // the target endianness.
+  switch (Kind) {
+  case ARC::fixup_arc_s21h_pcrel:
+  case ARC::fixup_arc_s21w_pcrel:
+  case ARC::fixup_arc_s25h_pcrel:
+  case ARC::fixup_arc_s25w_pcrel:
+  case ARC::fixup_arc_s9h_pcrel: {
+    // ARC PC-relative branches compute target = (PC & ~3) + offset. LLVM
+    // passes Value = target - fixup_addr where fixup_addr is the exact
+    // byte offset of the instruction. Compensate for the alignment-down
+    // by adding (fixup_addr & 3) so the encoded displacement matches.
+    uint64_t FixupOff = Asm->getFragmentOffset(F) + Fixup.getOffset();
+    int64_t Adjusted = static_cast<int64_t>(Value) +
+                       static_cast<int64_t>(FixupOff & 3);
+    if (!Adjusted)
+      return;
+    uint32_t Patch =
+        scatterBranchFixup(Kind, static_cast<uint64_t>(Adjusted));
+    // ARC branch/call instructions are always 32-bit words. Read the
+    // existing word in the target endianness, merge, write back.
+    uint32_t Insn;
+    if (Endian == llvm::endianness::big)
+      Insn = (uint32_t(Data[0]) << 24) | (uint32_t(Data[1]) << 16) |
+             (uint32_t(Data[2]) << 8)  | uint32_t(Data[3]);
+    else
+      Insn = uint32_t(Data[0]) | (uint32_t(Data[1]) << 8) |
+             (uint32_t(Data[2]) << 16) | (uint32_t(Data[3]) << 24);
+    Insn |= Patch;
+    if (Endian == llvm::endianness::big) {
+      Data[0] = uint8_t(Insn >> 24);
+      Data[1] = uint8_t(Insn >> 16);
+      Data[2] = uint8_t(Insn >> 8);
+      Data[3] = uint8_t(Insn);
+    } else {
+      Data[0] = uint8_t(Insn);
+      Data[1] = uint8_t(Insn >> 8);
+      Data[2] = uint8_t(Insn >> 16);
+      Data[3] = uint8_t(Insn >> 24);
+    }
+    return;
+  }
+  default:
+    break;
+  }
+
+  // Absolute fixups fall through to the generic linear bit-packer below.
   MCFixupKindInfo Info = getFixupKindInfo(Fixup.getKind());
   if (!Value)
     return; // This value doesn't change the encoding.

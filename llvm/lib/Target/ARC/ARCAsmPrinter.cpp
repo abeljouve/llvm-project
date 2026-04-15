@@ -47,6 +47,11 @@ public:
   void emitInstruction(const MachineInstr *MI) override;
 
   bool runOnMachineFunction(MachineFunction &MF) override;
+
+  bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
+                       const char *ExtraCode, raw_ostream &OS) override;
+  bool PrintAsmMemoryOperand(const MachineInstr *MI, unsigned OpNo,
+                             const char *ExtraCode, raw_ostream &OS) override;
 };
 
 } // end anonymous namespace
@@ -83,6 +88,39 @@ bool ARCAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
   // Functions are 4-byte aligned.
   MF.ensureAlignment(Align(4));
   return AsmPrinter::runOnMachineFunction(MF);
+}
+
+bool ARCAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
+                                    const char *ExtraCode, raw_ostream &OS) {
+  // Defer to the generic handler for any modifier letter — we don't
+  // implement any custom ARC-specific ones yet.
+  if (ExtraCode && ExtraCode[0])
+    return AsmPrinter::PrintAsmOperand(MI, OpNo, ExtraCode, OS);
+
+  const MachineOperand &MO = MI->getOperand(OpNo);
+  switch (MO.getType()) {
+  case MachineOperand::MO_Register:
+    OS << ARCInstPrinter::getRegisterName(MO.getReg());
+    return false;
+  case MachineOperand::MO_Immediate:
+    OS << MO.getImm();
+    return false;
+  default:
+    break;
+  }
+  return AsmPrinter::PrintAsmOperand(MI, OpNo, ExtraCode, OS);
+}
+
+bool ARCAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI, unsigned OpNo,
+                                          const char *ExtraCode,
+                                          raw_ostream &OS) {
+  if (ExtraCode && ExtraCode[0])
+    return true;
+  const MachineOperand &Base = MI->getOperand(OpNo);
+  if (!Base.isReg())
+    return true;
+  OS << ARCInstPrinter::getRegisterName(Base.getReg());
+  return false;
 }
 
 char ARCAsmPrinter::ID = 0;

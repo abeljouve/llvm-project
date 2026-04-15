@@ -89,7 +89,10 @@ def callseq_end   : SDNode<"ISD::CALLSEQ_END",   SDT_ARCCallSeqEnd,
 // Instruction predicates
 //===----------------------------------------------------------------------===//
 
-def HasNorm  :       Predicate<"Subtarget->hasNorm()">;
+def HasNorm    :     Predicate<"Subtarget->hasNorm()">;
+def HasMPY     :     Predicate<"Subtarget->hasMPY()">;
+def HasSEXT    :     Predicate<"Subtarget->hasSEXT()">;
+def HasBitScan :     Predicate<"Subtarget->hasBitScan()">;
 
 //===----------------------------------------------------------------------===//
 // Instruction Pattern Stuff
@@ -140,8 +143,10 @@ def STB_FAR : PseudoInstARC<(outs), (ins GPR32:$dst, MEMrlimm:$addr),
                              "STB_FAR $dst, $addr",
                              [(truncstorei8 GPR32:$dst, AddrModeFar:$addr)]>;
 
-// TODO: Add `Requires<[HasBitScan]>` predicate to these when available.
-let Defs = [STATUS32] in {
+// CTLZ/CTTZ pseudos expand to FLS/FFS (ARCv2-only bit-scan instructions) in
+// ARCExpandPseudos. Gate behind HasBitScan so ARCompact lowers these via
+// libcalls through TargetLowering::LibCall.
+let Defs = [STATUS32], Predicates = [HasBitScan] in {
   def CTLZ : PseudoInstARC<(outs GPR32:$A),
                            (ins GPR32:$B),
                            "error.fls $A, $B",
@@ -313,9 +318,11 @@ defm ASL : ArcBinaryEXT5Inst<0b000000, "asl">;
 defm LSR : ArcBinaryEXT5Inst<0b000001, "lsr">;
 defm ASR : ArcBinaryEXT5Inst<0b000010, "asr">;
 defm ROR : ArcBinaryEXT5Inst<0b000011, "ror">;
+let Predicates = [HasMPY] in {
 defm MPY  : ArcBinaryGEN4Inst<0b011010, "mpy",1>;
 defm MPYM : ArcBinaryGEN4Inst<0b011011, "mpym",1>;
 defm MPYMU : ArcBinaryGEN4Inst<0b011100, "mpymu",1>;
+}
 defm SETEQ : ArcBinaryGEN4Inst<0b111000, "seteq",1>;
 let Uses=[STATUS32], isAsCheapAsAMove=0, isReMaterializable=0 in {
   defm ADC : ArcBinaryGEN4Inst<0b000001, "adc",1>;
@@ -334,9 +341,11 @@ defm : MultiPat<shl, ASL_rrr, ASL_rru6, ASL_rrlimm>;
 defm : MultiPat<srl, LSR_rrr, LSR_rru6, LSR_rrlimm>;
 defm : MultiPat<sra, ASR_rrr, ASR_rru6, ASR_rrlimm>;
 defm : MultiPat<rotr, ROR_rrr, ROR_rru6, ROR_rrlimm>;
+let Predicates = [HasMPY] in {
 defm : MultiPat<mul, MPY_rrr, MPY_rru6, MPY_rrlimm>;
 defm : MultiPat<mulhs, MPYM_rrr, MPYM_rru6, MPYM_rrlimm>;
 defm : MultiPat<mulhu, MPYMU_rrr, MPYMU_rru6, MPYMU_rrlimm>;
+}
 
 defm : MultiPat<addc, ADD_f_rrr, ADD_f_rru6, ADD_f_rrlimm>;
 defm : MultiPat<adde, ADC_f_rrr, ADC_f_rru6, ADC_f_rrlimm>;
@@ -347,12 +356,19 @@ defm : MultiPat<sube, SBC_f_rrr, SBC_f_rru6, SBC_f_rrlimm>;
 // Unary Instruction definitions.
 // ---------------------------------------------------------------------------
 // General unary instruction definitions.
+// SEXB/SEXH are ARCv2 base ISA. ARCompact (ARC600/ARC700) does not include
+// them — the Synopsys binutils rejects both mnemonics for -mcpu=arc700.
+let Predicates = [HasSEXT] in {
 defm SEXB : ArcUnaryGEN4Inst<0b000101, "sexb">;
 defm SEXH : ArcUnaryGEN4Inst<0b000110, "sexh">;
+}
 
 // Extension unary instruction definitions.
+// FFS/FLS are ARCv2 only — ARCompact lowers CTLZ/CTTZ via libcalls.
+let Predicates = [HasBitScan] in {
 defm FFS : ArcUnaryEXT5Inst<0b010010, "ffs">;
 defm FLS : ArcUnaryEXT5Inst<0b010011, "fls">;
+}
 
 let Predicates=[HasNorm] in {
   defm NORM  : ArcUnaryEXT5Inst<0b000001,"norm">;
@@ -360,8 +376,10 @@ let Predicates=[HasNorm] in {
 }
 
 // General Unary Instruction fragments.
+let Predicates = [HasSEXT] in {
 def : Pat<(sext_inreg i32:$a, i8), (SEXB_rr i32:$a)>;
 def : Pat<(sext_inreg i32:$a, i16), (SEXH_rr i32:$a)>;
+}
 
 // Comparison instruction definition
 let isCompare = 1, Defs = [STATUS32] in {
@@ -411,11 +429,12 @@ let Uses = [STATUS32], isAsCheapAsAMove = 1, isPredicable=1,
   def MOV_cc : F32_DOP_CC_RR<0b00100, 0b001010, 0,
                  (outs GPR32:$B), (ins GPR32:$C, GPR32:$B2, CCOp:$cc),
                  "mov.$cc\t$B, $C",
-                 [(set GPR32:$B, (cmov i32:$C, i32:$B2, timm:$cc))]>;
+                 [(set GPR32:$B, (cmov i32:$C, i32:$B2, imm32:$cc))]>;
 
   def MOV_cc_ru6 : F32_DOP_CC_RU6<0b00100, 0b001010, 0,
                  (outs GPR32:$B), (ins u6:$U6, CCOp:$cc, GPR32:$B2),
-                 "mov.$cc\t$B, $U6", []>;
+                 "mov.$cc\t$B, $U6",
+                 [(set GPR32:$B, (cmov u6:$U6, i32:$B2, imm32:$cc))]>;
 
   def MOV_cc_f_ru6 : F32_DOP_CC_RU6<0b00100, 0b001010, 1,
                     (outs GPR32:$B), (ins u6:$U6, CCOp:$cc, GPR32:$B2),
@@ -429,6 +448,9 @@ def : Pat<(ARCGAWrapper tglobaladdr:$addr),
 
 def : Pat<(ARCGAWrapper tjumptable:$addr),
            (MOV_rlimm tjumptable:$addr)>;
+
+def : Pat<(ARCGAWrapper tconstpool:$addr),
+           (MOV_rlimm tconstpool:$addr)>;
 
 
 // ---------------------------------------------------------------------------
