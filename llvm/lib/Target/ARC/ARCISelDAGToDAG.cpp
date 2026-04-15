@@ -131,7 +131,7 @@ bool ARCDAGToDAGISel::SelectAddrModeS9(SDValue Addr, SDValue &Base,
       Base = CurDAG->getTargetFrameIndex(
           FI, TLI->getPointerTy(CurDAG->getDataLayout()));
     }
-    Offset = CurDAG->getTargetConstant(RHSC, SDLoc(Addr), MVT::i32);
+    Offset = CurDAG->getTargetConstant((uint32_t)RHSC, SDLoc(Addr), MVT::i32);
     return true;
   }
   Base = Addr;
@@ -151,7 +151,7 @@ bool ARCDAGToDAGISel::SelectAddrModeFar(SDValue Addr, SDValue &Base,
     if (Addr.getOpcode() == ISD::SUB)
       RHSC = -RHSC;
     Base = Addr.getOperand(0);
-    Offset = CurDAG->getTargetConstant(RHSC, SDLoc(Addr), MVT::i32);
+    Offset = CurDAG->getTargetConstant((uint32_t)RHSC, SDLoc(Addr), MVT::i32);
     return true;
   }
   return false;
@@ -174,7 +174,7 @@ bool ARCDAGToDAGISel::SelectFrameADDR_ri(SDValue Addr, SDValue &Base,
       // Constant positive word offset from frame index
       Base = CurDAG->getTargetFrameIndex(FIN->getIndex(), MVT::i32);
       Offset =
-          CurDAG->getTargetConstant(CN->getSExtValue(), SDLoc(Addr), MVT::i32);
+          CurDAG->getTargetConstant((uint32_t)CN->getSExtValue(), SDLoc(Addr), MVT::i32);
       return true;
     }
   }

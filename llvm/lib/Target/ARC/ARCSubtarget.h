@@ -16,6 +16,7 @@
 #include "ARCFrameLowering.h"
 #include "ARCISelLowering.h"
 #include "ARCInstrInfo.h"
+#include "llvm/CodeGen/LibcallLoweringInfo.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
 #include <string>
 
@@ -36,6 +37,16 @@ class ARCSubtarget : public ARCGenSubtargetInfo {
 
   // ARC processor extensions
   bool Xnorm = false;
+
+  // Hardware 32x32 multiply extension (mpy, mpym, mpymu). Absent on
+  // ARC700 cores where MULTIPLY_BUILD BCR 0x7B reads 0.
+  bool HasMPY = false;
+
+  // Sign-extend byte/halfword instructions (sexb, sexh). ARCv2 only.
+  bool HasSEXT = false;
+
+  // Bit-scan instructions (fls, ffs). ARCv2 only.
+  bool HasBitScan = false;
 
   // ISA variant
   bool IsARCompact = false;
@@ -69,8 +80,15 @@ public:
   const SelectionDAGTargetInfo *getSelectionDAGInfo() const override;
 
   bool hasNorm() const { return Xnorm; }
+  bool hasMPY() const { return HasMPY; }
+  bool hasSEXT() const { return HasSEXT; }
+  bool hasBitScan() const { return HasBitScan; }
   bool isARCompact() const { return IsARCompact; }
   bool isBigEndian() const { return IsBigEndian; }
+
+  /// Populate soft-float and integer libcall mappings for arceb targets
+  /// (the RuntimeLibcalls.td predicate only covers Triple::arc LE by default).
+  void initLibcallLoweringInfo(LibcallLoweringInfo &Info) const override;
 };
 
 } // end namespace llvm

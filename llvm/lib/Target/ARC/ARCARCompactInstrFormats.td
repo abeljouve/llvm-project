@@ -53,6 +53,7 @@ class ARCompactInst32<dag outs, dag ins, string asmstr, list<dag> pattern>
 class ARCompactInst32_3op<bits<5> major, bits<6> subop, string mnemonic,
                           dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst32<outs, ins, asmstr, pattern> {
+  string Mnemonic = mnemonic;
   let Inst{31-27} = major;
   let Inst{21-16} = subop;
   // ALU instructions have no side effects and do not access memory.
@@ -67,6 +68,7 @@ class ARCompactInst32_3op<bits<5> major, bits<6> subop, string mnemonic,
 class ARCompactInst32_2op<bits<5> major, bits<6> subop2, string mnemonic,
                           dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst32<outs, ins, asmstr, pattern> {
+  string Mnemonic = mnemonic;
   let Inst{31-27} = major;
   let Inst{21-16} = 0b101111; // 0x2F
   let Inst{5-0} = subop2;
@@ -80,6 +82,7 @@ class ARCompactInst32_2op<bits<5> major, bits<6> subop2, string mnemonic,
 class ARCompactInstBranch<bits<5> major, string mnemonic,
                           dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst32<outs, ins, asmstr, pattern> {
+  string Mnemonic = mnemonic;
   let Inst{31-27} = major;
   let isBranch = 1;
   let isTerminator = 1;
@@ -92,6 +95,7 @@ class ARCompactInstBranch<bits<5> major, string mnemonic,
 class ARCompactInstJump<bits<5> major, string mnemonic,
                         dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst32<outs, ins, asmstr, pattern> {
+  string Mnemonic = mnemonic;
   let Inst{31-27} = major;
   let isBranch = 1;
   let isTerminator = 1;
@@ -105,6 +109,7 @@ class ARCompactInstJump<bits<5> major, string mnemonic,
 class ARCompactInstLoad<bits<5> major, string mnemonic,
                         dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst32<outs, ins, asmstr, pattern> {
+  string Mnemonic = mnemonic;
   let Inst{31-27} = major;
   let hasSideEffects = 0;
   let mayLoad = 1;
@@ -115,6 +120,7 @@ class ARCompactInstLoad<bits<5> major, string mnemonic,
 class ARCompactInstStore<bits<5> major, string mnemonic,
                          dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst32<outs, ins, asmstr, pattern> {
+  string Mnemonic = mnemonic;
   let Inst{31-27} = major;
   let hasSideEffects = 0;
   let mayLoad = 0;
@@ -124,7 +130,9 @@ class ARCompactInstStore<bits<5> major, string mnemonic,
 // Special/control format
 class ARCompactInstSpecial<string mnemonic,
                            dag outs, dag ins, string asmstr, list<dag> pattern>
-    : ARCompactInst32<outs, ins, asmstr, pattern>;
+    : ARCompactInst32<outs, ins, asmstr, pattern> {
+  string Mnemonic = mnemonic;
+}
 
 //===----------------------------------------------------------------------===//
 // 16-bit ARCompact instruction formats
@@ -154,6 +162,7 @@ class ARCompactInst16<dag outs, dag ins, string asmstr, list<dag> pattern>
 class ARCompactInst16_ALU<bits<5> major, string mnemonic,
                           dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst16<outs, ins, asmstr, pattern> {
+  string Mnemonic = mnemonic;
   let Inst{15-11} = major;
   // ALU instructions have no side effects and do not access memory.
   let hasSideEffects = 0;
@@ -165,6 +174,7 @@ class ARCompactInst16_ALU<bits<5> major, string mnemonic,
 class ARCompactInst16_Branch<bits<5> major, string mnemonic,
                              dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst16<outs, ins, asmstr, pattern> {
+  string Mnemonic = mnemonic;
   let Inst{15-11} = major;
   let isBranch = 1;
   let isTerminator = 1;
@@ -177,6 +187,7 @@ class ARCompactInst16_Branch<bits<5> major, string mnemonic,
 class ARCompactInst16_LS<bits<5> major, string mnemonic,
                          dag outs, dag ins, string asmstr, list<dag> pattern>
     : ARCompactInst16<outs, ins, asmstr, pattern> {
+  string Mnemonic = mnemonic;
   let Inst{15-11} = major;
   // mayLoad/mayStore set per-instruction in the individual defs.
   let hasSideEffects = 0;
@@ -186,18 +197,19 @@ class ARCompactInst16_LS<bits<5> major, string mnemonic,
 // Operand definitions for ARCompact
 //===----------------------------------------------------------------------===//
 
-// Immediate operands
-def u3imm : Operand<i32>;
-def u5imm : Operand<i32>;
-def u6imm : Operand<i32>;
-def u7imm : Operand<i32>;
-def u8imm : Operand<i32>;
-def u10imm : Operand<i32>;
-def u12imm : Operand<i32>;
-def s3imm : Operand<i32>;
-def s6imm : Operand<i32>;
-def s9imm : Operand<i32>;
-def s12imm : Operand<i32>;
+// Immediate operands — PatLeaf constraints prevent invalid values from
+// reaching the MC encoder (which would trigger APInt assertion failures).
+def u3imm  : Operand<i32>, PatLeaf<(imm), [{ return isUInt<3>(N->getZExtValue()); }]>;
+def u5imm  : Operand<i32>, PatLeaf<(imm), [{ return isUInt<5>(N->getZExtValue()); }]>;
+def u6imm  : Operand<i32>, PatLeaf<(imm), [{ return isUInt<6>(N->getZExtValue()); }]>;
+def u7imm  : Operand<i32>, PatLeaf<(imm), [{ return isUInt<7>(N->getZExtValue()); }]>;
+def u8imm  : Operand<i32>, PatLeaf<(imm), [{ return isUInt<8>(N->getZExtValue()); }]>;
+def u10imm : Operand<i32>, PatLeaf<(imm), [{ return isUInt<10>(N->getZExtValue()); }]>;
+def u12imm : Operand<i32>, PatLeaf<(imm), [{ return isUInt<12>(N->getZExtValue()); }]>;
+def s3imm  : Operand<i32>, PatLeaf<(imm), [{ return isInt<3>(N->getSExtValue()); }]>;
+def s6imm  : Operand<i32>, PatLeaf<(imm), [{ return isInt<6>(N->getSExtValue()); }]>;
+def s9imm  : Operand<i32>, PatLeaf<(imm), [{ return isInt<9>(N->getSExtValue()); }]>;
+def s12imm : Operand<i32>, PatLeaf<(imm), [{ return isInt<12>(N->getSExtValue()); }]>;
 
 // Aligned immediates
 def u5imm_a32 : Operand<i32>;
@@ -208,32 +220,34 @@ def u10imm_a32 : Operand<i32>;
 def s11imm_a32 : Operand<i32>;
 
 // Branch/call targets
+// s7..s13 are 16-bit compact branches with inline immediate operands in
+// practice; they share the same (unused for symbols) encoder for now.
 def brtarget_s7 : Operand<OtherVT> {
-  let EncoderMethod = "getBranchTargetEncoding";
+  let EncoderMethod = "getBranchTargetS21HEncoding";
   let DecoderMethod = "decodeBranchTarget7";
 }
 def brtarget_s8 : Operand<OtherVT> {
-  let EncoderMethod = "getBranchTargetEncoding";
+  let EncoderMethod = "getBranchTargetS21HEncoding";
   let DecoderMethod = "decodeBranchTarget8";
 }
 def brtarget_s9 : Operand<OtherVT> {
-  let EncoderMethod = "getBranchTargetEncoding";
+  let EncoderMethod = "getBRccTargetEncoding";
   let DecoderMethod = "decodeBranchTarget9";
 }
 def brtarget_s10 : Operand<OtherVT> {
-  let EncoderMethod = "getBranchTargetEncoding";
+  let EncoderMethod = "getBranchTargetS21HEncoding";
   let DecoderMethod = "decodeBranchTarget10";
 }
 def brtarget_s13 : Operand<OtherVT> {
-  let EncoderMethod = "getBranchTargetEncoding";
+  let EncoderMethod = "getBranchTargetS21HEncoding";
   let DecoderMethod = "decodeBranchTarget13";
 }
 def brtarget_s21 : Operand<OtherVT> {
-  let EncoderMethod = "getBranchTargetEncoding";
+  let EncoderMethod = "getBranchTargetS21HEncoding";
   let DecoderMethod = "decodeBranchTarget21";
 }
 def brtarget_s25 : Operand<OtherVT> {
-  let EncoderMethod = "getBranchTargetEncoding";
+  let EncoderMethod = "getBranchTargetS25HEncoding";
   let DecoderMethod = "decodeBranchTarget25";
 }
 def calltarget_s13 : Operand<i32> {

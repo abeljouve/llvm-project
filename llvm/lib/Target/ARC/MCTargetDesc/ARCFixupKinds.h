@@ -33,6 +33,11 @@ enum Fixups {
   // 32-bit PC-relative fixup.
   fixup_arc_32_pcrel,
 
+  // 9-bit signed half-word PC-relative compare-and-branch (BRcc/BBIT0/
+  // BBIT1). Target is half-word aligned; encoding splits the displacement
+  // across bits [23:17] + bit [15] of the 32-bit instruction word.
+  fixup_arc_s9h_pcrel,
+
   // Marker.
   fixup_arc_invalid,
   NumTargetFixupKinds = fixup_arc_invalid - FirstTargetFixupKind

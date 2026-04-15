@@ -136,10 +136,24 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::Constant, MVT::i32, Legal);
   setOperationAction(ISD::UNDEF, MVT::i32, Legal);
 
-  // Need multiplier
-  setOperationAction(ISD::MUL, MVT::i32, Legal);
-  setOperationAction(ISD::MULHS, MVT::i32, Legal);
-  setOperationAction(ISD::MULHU, MVT::i32, Legal);
+  // 32x32 multiply is an optional extension. On ARC700 cores without
+  // MULTIPLY_BUILD (reads 0 on such cores), mul/mulhs/mulhu must lower to
+  // compiler-rt libcalls — __mulsi3, __mulhisi3 (MULHS i16→i32), and the
+  // 64-bit helpers via LibCallLoweringInfo. Using LibCall here keeps the
+  // legalizer away from mpy/mpym/mpymu which the backend can no longer
+  // select once the TableGen patterns are gated behind HasMPY.
+  if (Subtarget.hasMPY()) {
+    setOperationAction(ISD::MUL, MVT::i32, Legal);
+    setOperationAction(ISD::MULHS, MVT::i32, Legal);
+    setOperationAction(ISD::MULHU, MVT::i32, Legal);
+  } else {
+    setOperationAction(ISD::MUL, MVT::i32, LibCall);
+    setOperationAction(ISD::MULHS, MVT::i32, LibCall);
+    setOperationAction(ISD::MULHU, MVT::i32, LibCall);
+    // Also lower 64-bit multiply and SMUL_LOHI/UMUL_LOHI via libcalls.
+    setOperationAction(ISD::SMUL_LOHI, MVT::i32, LibCall);
+    setOperationAction(ISD::UMUL_LOHI, MVT::i32, LibCall);
+  }
   setOperationAction(ISD::LOAD, MVT::i32, Legal);
   setOperationAction(ISD::STORE, MVT::i32, Legal);
 
@@ -153,6 +167,9 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::FRAMEADDR, MVT::i32, Legal);
   // Custom lower global addresses.
   setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
+  // Custom lower constant pool entries — needed by the CTTZ de Bruijn
+  // lookup-table expansion and by soft-float constants.
+  setOperationAction(ISD::ConstantPool, MVT::i32, Custom);
 
   // Expand var-args ops.
   setOperationAction(ISD::VASTART, MVT::Other, Custom);
@@ -167,10 +184,19 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   // Sign extend inreg
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Custom);
 
-  // TODO: Predicate these with `options.hasBitScan() ? Legal : Expand`
-  //       when the HasBitScan predicate is available.
-  setOperationAction(ISD::CTLZ, MVT::i32, Legal);
-  setOperationAction(ISD::CTTZ, MVT::i32, Legal);
+  // CTLZ/CTTZ are Legal when the target has fls/ffs (ARCv2). ARCompact
+  // (ARC600/ARC700) lacks bit-scan instructions, so we lower via libcalls
+  // (__clzsi2/__ctzsi2 from compiler-rt / compiler_builtins).
+  if (Subtarget.hasBitScan()) {
+    setOperationAction(ISD::CTLZ, MVT::i32, Legal);
+    setOperationAction(ISD::CTTZ, MVT::i32, Legal);
+  } else {
+    // CTLZ → libcall (__clzsi2 from compiler-rt / compiler_builtins).
+    setOperationAction(ISD::CTLZ, MVT::i32, LibCall);
+    // CTTZ has no LLVM libcall; expand via (CTLZ of (x & -x)) or the
+    // generic bit-twiddling sequence.
+    setOperationAction(ISD::CTTZ, MVT::i32, Expand);
+  }
 
   setOperationAction(ISD::READCYCLECOUNTER, MVT::i32, Legal);
   setOperationAction(ISD::READCYCLECOUNTER, MVT::i64,
@@ -182,6 +208,33 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
 //===----------------------------------------------------------------------===//
 //  Misc Lower Operation implementation
 //===----------------------------------------------------------------------===//
+
+//===----------------------------------------------------------------------===//
+// Inline assembly constraint handling
+//===----------------------------------------------------------------------===//
+
+TargetLowering::ConstraintType
+ARCTargetLowering::getConstraintType(StringRef Constraint) const {
+  if (Constraint.size() == 1) {
+    switch (Constraint[0]) {
+    case 'r':
+      return C_RegisterClass;
+    default:
+      break;
+    }
+  }
+  return TargetLowering::getConstraintType(Constraint);
+}
+
+std::pair<unsigned, const TargetRegisterClass *>
+ARCTargetLowering::getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
+                                                 StringRef Constraint,
+                                                 MVT VT) const {
+  if (Constraint.size() == 1 && Constraint[0] == 'r')
+    return std::make_pair(0U, &ARC::GPR32RegClass);
+
+  return TargetLowering::getRegForInlineAsmConstraint(TRI, Constraint, VT);
+}
 
 SDValue ARCTargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue LHS = Op.getOperand(0);
@@ -754,6 +807,20 @@ SDValue ARCTargetLowering::LowerGlobalAddress(SDValue Op,
   return DAG.getNode(ARCISD::GAWRAPPER, dl, MVT::i32, GA);
 }
 
+SDValue ARCTargetLowering::LowerConstantPool(SDValue Op,
+                                              SelectionDAG &DAG) const {
+  ConstantPoolSDNode *CP = cast<ConstantPoolSDNode>(Op);
+  SDLoc dl(Op);
+  SDValue Res;
+  if (CP->isMachineConstantPoolEntry())
+    Res = DAG.getTargetConstantPool(CP->getMachineCPVal(), MVT::i32,
+                                    CP->getAlign(), CP->getOffset());
+  else
+    Res = DAG.getTargetConstantPool(CP->getConstVal(), MVT::i32, CP->getAlign(),
+                                    CP->getOffset());
+  return DAG.getNode(ARCISD::GAWRAPPER, dl, MVT::i32, Res);
+}
+
 static SDValue LowerVASTART(SDValue Op, SelectionDAG &DAG) {
   MachineFunction &MF = DAG.getMachineFunction();
   auto *FuncInfo = MF.getInfo<ARCFunctionInfo>();
@@ -772,6 +839,8 @@ SDValue ARCTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
+  case ISD::ConstantPool:
+    return LowerConstantPool(Op, DAG);
   case ISD::FRAMEADDR:
     return LowerFRAMEADDR(Op, DAG);
   case ISD::SELECT_CC:

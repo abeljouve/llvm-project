@@ -92,7 +92,14 @@ void ARCPassConfig::addPreEmitPass() {
 void ARCPassConfig::addPreRegAlloc() {
     addPass(createARCExpandPseudosPass());
     addPass(createARCOptAddrMode());
-    addPass(createARCHardwareLoopsPass());
+    // ARCHardwareLoopsPass is disabled: it runs after phi elimination and
+    // modifies the CFG (inserting HWLOOP_SETUP/HWLOOP_END), which corrupts
+    // live intervals and causes crashes in the greedy register allocator
+    // (SIGSEGV in VirtRegAuxInfo::isRematerializable, assertion failure
+    // in SplitKit::calcLiveBlockInfo). The pass needs to be rewritten to
+    // either run before phi elimination or properly update live intervals.
+    // TODO: Fix and re-enable hardware loops.
+    // addPass(createARCHardwareLoopsPass());
 }
 
 MachineFunctionInfo *ARCTargetMachine::createMachineFunctionInfo(

@@ -60,6 +60,7 @@ private:
   SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSIGN_EXTEND_INREG(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
   SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
 
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
@@ -82,6 +83,15 @@ private:
                       LLVMContext &Context, const Type *RetTy) const override;
 
   bool mayBeEmittedAsTailCall(const CallInst *CI) const override;
+
+  //===--------------------------------------------------------------------===//
+  // Inline assembly constraint handling.
+  //===--------------------------------------------------------------------===//
+  ConstraintType getConstraintType(StringRef Constraint) const override;
+
+  std::pair<unsigned, const TargetRegisterClass *>
+  getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
+                               StringRef Constraint, MVT VT) const override;
 };
 
 } // end namespace llvm

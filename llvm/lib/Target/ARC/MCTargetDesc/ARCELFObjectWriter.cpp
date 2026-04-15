@@ -68,6 +68,13 @@ unsigned ARCELFObjectWriter::getRelocType(const MCFixup &Fixup,
     return ELF::R_ARC_S25W_PCREL;
   case ARC::fixup_arc_32_pcrel:
     return ELF::R_ARC_32_PCREL;
+  case ARC::fixup_arc_s9h_pcrel:
+    // BRcc/BBIT0/BBIT1 are intra-function ±256 byte branches and are
+    // always resolved locally by ARCAsmBackend::applyFixup. There is no
+    // standard ARC ELF reloc for 9-bit PC-relative, so reaching this
+    // point means the assembler was asked to emit a cross-section S9
+    // relocation — which would overflow at link time anyway.
+    report_fatal_error("ARC S9 branch target out of range (no S9 reloc)");
   default:
     llvm_unreachable("Invalid fixup kind!");
   }
