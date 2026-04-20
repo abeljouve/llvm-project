@@ -57,6 +57,14 @@ static void replaceFrameIndex(MachineBasicBlock::iterator II,
 
   if (MI.getOpcode() != ARC::GETFI && (Offset >= 256 || Offset < -256)) {
     // We need to use a scratch register to reach the far-away frame indexes.
+    // For stores, Reg holds the value being stored and must not be reused as
+    // the scratch base — otherwise the ADD that computes the address overwrites
+    // the value before the ST reads it.
+    bool IsStore = MI.getOpcode() == ARC::ST_rs9 ||
+                   MI.getOpcode() == ARC::STH_rs9 ||
+                   MI.getOpcode() == ARC::STB_rs9;
+    if (IsStore)
+      RS->setRegUsed(Reg);
     BaseReg = RS->FindUnusedReg(&ARC::GPR32RegClass);
     if (!BaseReg) {
       // We can be sure that the scavenged-register slot is within the range
