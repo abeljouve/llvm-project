@@ -289,6 +289,7 @@ createTargetCodeGenInfo(CodeGenModule &CGM) {
   case llvm::Triple::xcore:
     return createXCoreTargetCodeGenInfo(CGM);
   case llvm::Triple::arc:
+  case llvm::Triple::arceb:
     return createARCTargetCodeGenInfo(CGM);
   case llvm::Triple::spir:
   case llvm::Triple::spir64:

@@ -117,6 +117,11 @@ std::unique_ptr<TargetInfo> AllocateTarget(const llvm::Triple &Triple,
     return nullptr;
 
   case llvm::Triple::arc:
+  case llvm::Triple::arceb:
+    // arceb is the big-endian ARCompact variant. Triple::computeDataLayout
+    // returns the big-endian (E-prefixed) string for arceb, and ARCTargetInfo
+    // forwards to it via resetDataLayout() so no separate target info class
+    // is needed -- the same constructor produces a BE TargetInfo.
     return std::make_unique<ARCTargetInfo>(Triple, Opts);
 
   case llvm::Triple::xcore:
