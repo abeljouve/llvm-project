@@ -184,18 +184,40 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   // Sign extend inreg
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Custom);
 
+  // ARC700/ARCompact lacks sexb/sexh. Expand to shl+ashr pair so the
+  // legalizer materialises the sign extension via plain shifts.
+  if (!Subtarget.hasSEXT()) {
+    setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8, Expand);
+    setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i16, Expand);
+  }
+
   // CTLZ/CTTZ are Legal when the target has fls/ffs (ARCv2). ARCompact
-  // (ARC600/ARC700) lacks bit-scan instructions, so we lower via libcalls
-  // (__clzsi2/__ctzsi2 from compiler-rt / compiler_builtins).
+  // (ARC600/ARC700) lacks bit-scan instructions, so we expand every
+  // count-bits opcode to shift/or + popcount, and CTPOP itself to the
+  // generic bit-twiddle sequence. This avoids a compiler-rt dependency
+  // (no __clzsi2/__ctzsi2/__popcountsi2 libcall in the sysroot) and
+  // matches what compiler_builtins would emit anyway.
+  //
+  // ConvertNodeToLibcall has no case for plain ISD::CTLZ, so a LibCall
+  // action on that opcode is a trap — the node survives legalization
+  // and reaches ISel as "Cannot select". Hence Expand for all four
+  // and for CTPOP (whose default action is Legal).
   if (Subtarget.hasBitScan()) {
     setOperationAction(ISD::CTLZ, MVT::i32, Legal);
+    setOperationAction(ISD::CTLZ_ZERO_UNDEF, MVT::i32, Legal);
     setOperationAction(ISD::CTTZ, MVT::i32, Legal);
+    setOperationAction(ISD::CTTZ_ZERO_UNDEF, MVT::i32, Legal);
   } else {
-    // CTLZ → libcall (__clzsi2 from compiler-rt / compiler_builtins).
-    setOperationAction(ISD::CTLZ, MVT::i32, LibCall);
-    // CTTZ has no LLVM libcall; expand via (CTLZ of (x & -x)) or the
-    // generic bit-twiddling sequence.
+    setOperationAction(ISD::CTLZ, MVT::i32, Expand);
+    // CTLZ_ZERO_UNDEF escapes the default Expand path on some DAG shapes
+    // (late-combiner insertions from overflow-check / non-zero
+    // leading_zeros expansions in debug / opt-level=s Rust codegen).
+    // Custom-lower to plain CTLZ which then Expand-legalizes to the
+    // shift-OR + popcount bit-twiddle sequence.
+    setOperationAction(ISD::CTLZ_ZERO_UNDEF, MVT::i32, Custom);
     setOperationAction(ISD::CTTZ, MVT::i32, Expand);
+    setOperationAction(ISD::CTTZ_ZERO_UNDEF, MVT::i32, Custom);
+    setOperationAction(ISD::CTPOP, MVT::i32, Expand);
   }
 
   setOperationAction(ISD::READCYCLECOUNTER, MVT::i32, Legal);
@@ -860,6 +882,37 @@ SDValue ARCTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     // i64 version to a widened i32.
     assert(Op.getSimpleValueType() == MVT::i32);
     return Op;
+  case ISD::CTLZ_ZERO_UNDEF: {
+    // Hand-lower to the shift-OR + popcount bit-twiddle sequence from
+    // Hacker's Delight. We cannot delegate to TargetLowering::expandCTLZ
+    // or to plain ISD::CTLZ because both paths eventually construct a
+    // CTLZ_ZERO_UNDEF node (expandCTLZ's LegalOrCustom check matches
+    // our Custom action), which our Custom handler would re-lower and
+    // spin into an infinite recursion.
+    SDLoc dl(Op);
+    EVT VT = Op.getValueType();
+    SDValue X = Op.getOperand(0);
+    unsigned NumBits = VT.getScalarSizeInBits();
+    EVT ShVT = getShiftAmountTy(VT, DAG.getDataLayout());
+    for (unsigned i = 0; (1U << i) < NumBits; ++i) {
+      SDValue Sh = DAG.getConstant(1ULL << i, dl, ShVT);
+      X = DAG.getNode(ISD::OR, dl, VT, X,
+                      DAG.getNode(ISD::SRL, dl, VT, X, Sh));
+    }
+    X = DAG.getNOT(dl, X, VT);
+    return DAG.getNode(ISD::CTPOP, dl, VT, X);
+  }
+  case ISD::CTTZ_ZERO_UNDEF: {
+    // ctz(x) = popcount((x & -x) - 1)
+    SDLoc dl(Op);
+    EVT VT = Op.getValueType();
+    SDValue X = Op.getOperand(0);
+    SDValue Neg = DAG.getNegative(X, dl, VT);
+    SDValue IsolateLow = DAG.getNode(ISD::AND, dl, VT, X, Neg);
+    SDValue Mask = DAG.getNode(ISD::SUB, dl, VT, IsolateLow,
+                               DAG.getConstant(1, dl, VT));
+    return DAG.getNode(ISD::CTPOP, dl, VT, Mask);
+  }
   default:
     llvm_unreachable("unimplemented operand");
   }

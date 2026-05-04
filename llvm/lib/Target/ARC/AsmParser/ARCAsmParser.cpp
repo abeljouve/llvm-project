@@ -10,20 +10,29 @@
 // bare-metal Rust code actually needs:
 //
 //   - `.di` MMIO loads / stores inlined via Rust `asm!` blocks
-//     (`stb.di`, `ldb.di`, `st.di`, `ld.di`, `sth.di`, `ldh.di`)
-//   - The complete set of ARCompact mnemonics used by start.S:
+//     (`stb.di`, `ldb.di`, `st.di`, `ld.di`, `sth.di`, `ldh.di`,
+//      `stw.di`, `ldw.di` — stw/ldw are ARCompact halfword aliases)
+//   - `.x.di` sign-extending uncached loads
+//     (`ldb.x.di`, `ldh.x.di`, `ldw.x.di`)
+//   - The complete set of ARCompact mnemonics used by start.S and by
+//     hand-written inline `asm!` blocks:
 //       mov   (immediate / s12 / LIMM symbol)
-//       st    (register base + signed 9-bit offset)
-//       ld    (register base + signed 9-bit offset)
-//       ld    (register base + register offset)
+//       st / stb / sth / stw      (register base + signed 9-bit offset)
+//       ld / ldb / ldh / ldw      (register base + signed 9-bit offset)
+//       ld    (register base + register offset, word only)
 //       ld.ab (post-increment register + register offset)
-//       add   (r+r+r, r+r+u6, r+r+limm)
+//       add / sub / and / or / xor             (rrr, rru6, rrlimm)
+//       asl / lsr / asr / ror                  (rrr, rru6, rrlimm)
+//       bclr / bset / bmsk / bxor              (rrr, rru6)
 //       brcc  (brge/brne/breq/brlt/brlo/brhs reg, reg|u6, label)
 //       b     (unconditional far branch)
 //       bl    (unconditional far call)
-//       flag  (u6 immediate)
+//       flag  (u6 immediate / register)
+//       j     [reg] / <expr>           (long form, no delay slot)
 //       j_s   [blink]
 //       j.d   [blink]
+//       lr / sr [aux]  (aux-register access, u6 / s12 / limm)
+//       rtie / nop / nop_s / sync / sleep / brk  (zero-operand)
 //
 // Every other mnemonic returns a parse error so misuse is immediately
 // visible. The parser builds an MCInst for each accepted statement and
@@ -31,8 +40,8 @@
 // MCAsmBackend pipeline (including the branch / LIMM fixups and the
 // scattered bit-field encoding) handles relocation and endianness
 // transparently. A small handful of ARCompact-specific encodings
-// (register-offset LD, LD.ab, J.d) bypass MCInst and emit raw 4-byte
-// instruction words because their td definitions are marked
+// (register-offset LD, LD.ab, J.d, LR / SR) bypass MCInst and emit raw
+// 4-byte instruction words because their td definitions are marked
 // `isCodeGenOnly` and don't round-trip cleanly through the matcher.
 //
 //===----------------------------------------------------------------------===//
@@ -219,19 +228,30 @@ class ARCAsmParser : public MCTargetAsmParser {
   bool emitMov(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
   bool emitDiMem(SMLoc IDLoc, StringRef Name, OperandVector &Operands,
                  MCStreamer &Out);
-  bool emitSt(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
-  bool emitLd(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
+  bool emitSt(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out,
+              unsigned Opcode);
+  bool emitLd(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out,
+              unsigned Rs9Op);
   bool emitLdAb(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
-  bool emitAdd(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
+  bool emitBinaryALU(SMLoc IDLoc, StringRef Name, OperandVector &Operands,
+                     MCStreamer &Out, unsigned RRR, unsigned RRU6,
+                     unsigned RRLImm);
+  bool emitBitOp(SMLoc IDLoc, StringRef Name, OperandVector &Operands,
+                 MCStreamer &Out, unsigned RRR, unsigned RRU6);
+  bool emitZeroOp(SMLoc IDLoc, StringRef Name, OperandVector &Operands,
+                  MCStreamer &Out, unsigned Opcode);
   bool emitBr(SMLoc IDLoc, StringRef Name, OperandVector &Operands,
               MCStreamer &Out);
   bool emitBUncond(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
   bool emitBl(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
   bool emitFlag(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
+  bool emitJ(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
   bool emitJsBlink(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
   bool emitJdBlink(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
   bool emitLr(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
   bool emitSr(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
+  bool emitPushPop(SMLoc IDLoc, StringRef Name, OperandVector &Operands,
+                   MCStreamer &Out);
 
   bool parseRegister(MCRegister &Reg, SMLoc &StartLoc,
                      SMLoc &EndLoc) override {
@@ -618,6 +638,11 @@ bool ARCAsmParser::emitDiMem(SMLoc IDLoc, StringRef Name,
                     .Case("ld.di", ARC::LD_DI_rs9)
                     .Case("sth.di", ARC::STH_DI_rs9)
                     .Case("ldh.di", ARC::LDH_DI_rs9)
+                    .Case("stw.di", ARC::STH_DI_rs9)
+                    .Case("ldw.di", ARC::LDH_DI_rs9)
+                    .Case("ldb.x.di", ARC::LDB_X_DI_rs9)
+                    .Case("ldh.x.di", ARC::LDH_X_DI_rs9)
+                    .Case("ldw.x.di", ARC::LDH_X_DI_rs9)
                     .Default(0);
   if (!Op)
     return Error(IDLoc, "unsupported `.di` mnemonic");
@@ -632,18 +657,18 @@ bool ARCAsmParser::emitDiMem(SMLoc IDLoc, StringRef Name,
   return false;
 }
 
-// `st rC, [rB]` / `st rC, [rB, imm]`
+// `st rC, [rB]` / `st rC, [rB, imm]` — also used for stb/sth/stw via Opcode.
 bool ARCAsmParser::emitSt(SMLoc IDLoc, OperandVector &Operands,
-                           MCStreamer &Out) {
+                           MCStreamer &Out, unsigned Opcode) {
   if (Operands.size() != 3)
-    return Error(IDLoc, "expected `st rC, [rB, imm]`");
+    return Error(IDLoc, "expected `st* rC, [rB, imm]`");
   auto &RegOp = static_cast<ARCOperand &>(*Operands[1]);
   auto &MemOp = static_cast<ARCOperand &>(*Operands[2]);
   if (RegOp.Kind != ARCOperand::Register || MemOp.Kind != ARCOperand::Memory)
-    return Error(IDLoc, "st requires register + `[rB, imm]`");
+    return Error(IDLoc, "st* requires register + `[rB, imm]`");
 
   MCInst Inst;
-  Inst.setOpcode(ARC::ST_rs9);
+  Inst.setOpcode(Opcode);
   Inst.addOperand(MCOperand::createReg(RegOp.getReg()));
   Inst.addOperand(MCOperand::createReg(MemOp.getMemBase()));
   Inst.addOperand(MCOperand::createImm(MemOp.getMemOffset()));
@@ -652,9 +677,9 @@ bool ARCAsmParser::emitSt(SMLoc IDLoc, OperandVector &Operands,
   return false;
 }
 
-// `ld rA, [rB, imm]`  → LD_rs9
-// `ld rA, [rB, rC]`   → raw 4-byte instruction (ARCompact alu-form load;
-//                       no MCInst round-trip because the td entry is
+// `ld rA, [rB, imm]`  → Rs9Op (LD_rs9 / LDB_rs9 / LDH_rs9)
+// `ld rA, [rB, rC]`   → raw 4-byte instruction (word loads only;
+//                       ARCompact alu-form load whose td entry is
 //                       isCodeGenOnly).
 //
 // Encoding for `ld rA, [rB, rC]` (big-endian word, captured from GNU as
@@ -670,17 +695,17 @@ bool ARCAsmParser::emitSt(SMLoc IDLoc, OperandVector &Operands,
 //
 // We compose the instruction word from the parsed operand values.
 bool ARCAsmParser::emitLd(SMLoc IDLoc, OperandVector &Operands,
-                           MCStreamer &Out) {
+                           MCStreamer &Out, unsigned Rs9Op) {
   if (Operands.size() != 3)
-    return Error(IDLoc, "expected `ld rA, [rB, imm|rC]`");
+    return Error(IDLoc, "expected `ld* rA, [rB, imm|rC]`");
   auto &RegOp = static_cast<ARCOperand &>(*Operands[1]);
   auto &MemOp = static_cast<ARCOperand &>(*Operands[2]);
   if (RegOp.Kind != ARCOperand::Register)
-    return Error(IDLoc, "ld destination must be a register");
+    return Error(IDLoc, "ld* destination must be a register");
 
   if (MemOp.Kind == ARCOperand::Memory) {
     MCInst Inst;
-    Inst.setOpcode(ARC::LD_rs9);
+    Inst.setOpcode(Rs9Op);
     Inst.addOperand(MCOperand::createReg(RegOp.getReg()));
     Inst.addOperand(MCOperand::createReg(MemOp.getMemBase()));
     Inst.addOperand(MCOperand::createImm(MemOp.getMemOffset()));
@@ -690,6 +715,9 @@ bool ARCAsmParser::emitLd(SMLoc IDLoc, OperandVector &Operands,
   }
 
   if (MemOp.Kind == ARCOperand::MemoryRR) {
+    if (Rs9Op != ARC::LD_rs9)
+      return Error(IDLoc, "register-offset [rB, rC] form only supported "
+                          "for word-size ld; use ld with computed address");
     unsigned A = regEncoding(RegOp.getReg());
     unsigned B = regEncoding(MemOp.getMemRRBase());
     unsigned C = regEncoding(MemOp.getMemRROffReg());
@@ -735,21 +763,29 @@ bool ARCAsmParser::emitLdAb(SMLoc IDLoc, OperandVector &Operands,
   return false;
 }
 
-// `add rA, rB, <expr>` where expr is a register (→ ADD_rrr), u6
-// (→ ADD_rru6), or LIMM (→ ADD_rrlimm).
-bool ARCAsmParser::emitAdd(SMLoc IDLoc, OperandVector &Operands,
-                            MCStreamer &Out) {
+// Shared ALU dispatch used by the GEN4 (major 0x04) binary ops ADD / SUB /
+// AND / OR / XOR and the EXT5 (major 0x05) shift ops ASL / LSR / ASR /
+// ROR. All of them share the same (rA, rB, rC|u6|limm) operand shape and
+// the td multiclass `ArcBinaryInst` generates `_rrr` / `_rru6` /
+// `_rrlimm` definitions with matching MCInst operand ordering. Callers
+// pass the three opcode enums; the helper picks the encoding that fits
+// the third operand.
+bool ARCAsmParser::emitBinaryALU(SMLoc IDLoc, StringRef Name,
+                                  OperandVector &Operands, MCStreamer &Out,
+                                  unsigned RRR, unsigned RRU6,
+                                  unsigned RRLImm) {
   if (Operands.size() != 4)
-    return Error(IDLoc, "expected `add rA, rB, <op>`");
+    return Error(IDLoc, Twine("expected `") + Name + " rA, rB, <op>`");
   auto &A = static_cast<ARCOperand &>(*Operands[1]);
   auto &B = static_cast<ARCOperand &>(*Operands[2]);
   auto &C = static_cast<ARCOperand &>(*Operands[3]);
   if (A.Kind != ARCOperand::Register || B.Kind != ARCOperand::Register)
-    return Error(IDLoc, "add first two operands must be registers");
+    return Error(IDLoc,
+                 Twine(Name) + " first two operands must be registers");
 
   if (C.Kind == ARCOperand::Register) {
     MCInst Inst;
-    Inst.setOpcode(ARC::ADD_rrr);
+    Inst.setOpcode(RRR);
     Inst.addOperand(MCOperand::createReg(A.getReg()));
     Inst.addOperand(MCOperand::createReg(B.getReg()));
     Inst.addOperand(MCOperand::createReg(C.getReg()));
@@ -759,13 +795,14 @@ bool ARCAsmParser::emitAdd(SMLoc IDLoc, OperandVector &Operands,
   }
 
   if (C.Kind != ARCOperand::Immediate)
-    return Error(IDLoc, "add third operand must be register or immediate");
+    return Error(IDLoc, Twine(Name) +
+                            " third operand must be register or immediate");
 
   if (auto *CE = dyn_cast<MCConstantExpr>(C.getImmExpr())) {
     int64_t V = CE->getValue();
     if (fitsInUnsigned(V, 6)) {
       MCInst Inst;
-      Inst.setOpcode(ARC::ADD_rru6);
+      Inst.setOpcode(RRU6);
       Inst.addOperand(MCOperand::createReg(A.getReg()));
       Inst.addOperand(MCOperand::createReg(B.getReg()));
       Inst.addOperand(MCOperand::createImm(V));
@@ -776,13 +813,114 @@ bool ARCAsmParser::emitAdd(SMLoc IDLoc, OperandVector &Operands,
   }
 
   MCInst Inst;
-  Inst.setOpcode(ARC::ADD_rrlimm);
+  Inst.setOpcode(RRLImm);
   Inst.addOperand(MCOperand::createReg(A.getReg()));
   Inst.addOperand(MCOperand::createReg(B.getReg()));
   Inst.addOperand(MCOperand::createExpr(C.getImmExpr()));
   Inst.setLoc(IDLoc);
   Out.emitInstruction(Inst, getSTI());
   return false;
+}
+
+// Single-bit ops (BCLR / BSET / BMSK / BXOR) share the same shape as the
+// ALU binaries but have no usable LIMM encoding in our .td: the
+// `ARC_B{CLR,SET,MSK,XOR}_a_b_limm` definitions are marked
+// `isCodeGenOnly = 1`. In practice bit-position operands are always
+// 0..31 so the u6 form suffices. We emit an error for out-of-range
+// immediates rather than silently falling through to a raw word.
+bool ARCAsmParser::emitBitOp(SMLoc IDLoc, StringRef Name,
+                              OperandVector &Operands, MCStreamer &Out,
+                              unsigned RRR, unsigned RRU6) {
+  if (Operands.size() != 4)
+    return Error(IDLoc, Twine("expected `") + Name + " rA, rB, rC|u6`");
+  auto &A = static_cast<ARCOperand &>(*Operands[1]);
+  auto &B = static_cast<ARCOperand &>(*Operands[2]);
+  auto &C = static_cast<ARCOperand &>(*Operands[3]);
+  if (A.Kind != ARCOperand::Register || B.Kind != ARCOperand::Register)
+    return Error(IDLoc,
+                 Twine(Name) + " first two operands must be registers");
+
+  if (C.Kind == ARCOperand::Register) {
+    MCInst Inst;
+    Inst.setOpcode(RRR);
+    Inst.addOperand(MCOperand::createReg(A.getReg()));
+    Inst.addOperand(MCOperand::createReg(B.getReg()));
+    Inst.addOperand(MCOperand::createReg(C.getReg()));
+    Inst.setLoc(IDLoc);
+    Out.emitInstruction(Inst, getSTI());
+    return false;
+  }
+
+  if (C.Kind != ARCOperand::Immediate)
+    return Error(IDLoc, Twine(Name) +
+                            " third operand must be register or immediate");
+
+  auto *CE = dyn_cast<MCConstantExpr>(C.getImmExpr());
+  if (!CE)
+    return Error(IDLoc, Twine(Name) +
+                            " bit-position operand must be a constant");
+  int64_t V = CE->getValue();
+  if (!fitsInUnsigned(V, 6))
+    return Error(IDLoc, Twine(Name) +
+                            " bit position must fit in u6 (0..63)");
+
+  MCInst Inst;
+  Inst.setOpcode(RRU6);
+  Inst.addOperand(MCOperand::createReg(A.getReg()));
+  Inst.addOperand(MCOperand::createReg(B.getReg()));
+  Inst.addOperand(MCOperand::createImm(V));
+  Inst.setLoc(IDLoc);
+  Out.emitInstruction(Inst, getSTI());
+  return false;
+}
+
+// Zero-operand mnemonics: `rtie`, `nop`, `nop_s`. The underlying td defs
+// pin every instruction bit via `let Inst{31-0} = ...` so we just build
+// an empty MCInst and let the streamer pick the right width (4 bytes for
+// `rtie` / `nop`, 2 bytes for `nop_s`).
+bool ARCAsmParser::emitZeroOp(SMLoc IDLoc, StringRef Name,
+                               OperandVector &Operands, MCStreamer &Out,
+                               unsigned Opcode) {
+  if (Operands.size() != 1)
+    return Error(IDLoc, Twine("expected bare `") + Name + "`");
+  MCInst Inst;
+  Inst.setOpcode(Opcode);
+  Inst.setLoc(IDLoc);
+  Out.emitInstruction(Inst, getSTI());
+  return false;
+}
+
+// `j [<reg>]` — 32-bit indirect jump without delay slot (ARC::J, subop
+// 0x20, F32_DOP_RR with A=0 and B=0 pinned by the td). `j <expr>` — same
+// subop but LIMM form (ARC::J_LImm). Delay-slot `j.d [<reg>]` stays in
+// emitJdBlink because its td def is isCodeGenOnly.
+bool ARCAsmParser::emitJ(SMLoc IDLoc, OperandVector &Operands,
+                          MCStreamer &Out) {
+  if (Operands.size() != 2)
+    return Error(IDLoc, "expected `j [<reg>]` or `j <expr>`");
+  auto &Op = static_cast<ARCOperand &>(*Operands[1]);
+
+  if (Op.Kind == ARCOperand::Memory) {
+    if (Op.getMemBase() == MCRegister() || Op.getMemOffset() != 0)
+      return Error(IDLoc, "j target must be `[<reg>]`");
+    MCInst Inst;
+    Inst.setOpcode(ARC::J);
+    Inst.addOperand(MCOperand::createReg(Op.getMemBase()));
+    Inst.setLoc(IDLoc);
+    Out.emitInstruction(Inst, getSTI());
+    return false;
+  }
+
+  if (Op.Kind == ARCOperand::Immediate) {
+    MCInst Inst;
+    Inst.setOpcode(ARC::J_LImm);
+    Inst.addOperand(MCOperand::createExpr(Op.getImmExpr()));
+    Inst.setLoc(IDLoc);
+    Out.emitInstruction(Inst, getSTI());
+    return false;
+  }
+
+  return Error(IDLoc, "j target must be `[<reg>]` or a constant/symbol");
 }
 
 // `brcc rB, rC_or_u6, label` where `cc` is one of the six compare-branch
@@ -878,16 +1016,27 @@ bool ARCAsmParser::emitBl(SMLoc IDLoc, OperandVector &Operands,
   return false;
 }
 
-// `flag u6` — set / clear status flags. Maps to ARC_FLAG_u6.
+// `flag <op>` — set / clear status flags.
+// Register form maps to ARC_FLAG_c, immediate to ARC_FLAG_u6.
 bool ARCAsmParser::emitFlag(SMLoc IDLoc, OperandVector &Operands,
                              MCStreamer &Out) {
   if (Operands.size() != 2)
-    return Error(IDLoc, "expected `flag u6`");
-  auto &ImmOp = static_cast<ARCOperand &>(*Operands[1]);
-  if (ImmOp.Kind != ARCOperand::Immediate)
-    return Error(IDLoc, "flag operand must be constant");
+    return Error(IDLoc, "expected `flag <reg>` or `flag <u6>`");
+  auto &Op = static_cast<ARCOperand &>(*Operands[1]);
+
+  if (Op.Kind == ARCOperand::Register) {
+    MCInst Inst;
+    Inst.setOpcode(ARC::ARC_FLAG_c);
+    Inst.addOperand(MCOperand::createReg(Op.getReg()));
+    Inst.setLoc(IDLoc);
+    Out.emitInstruction(Inst, getSTI());
+    return false;
+  }
+
+  if (Op.Kind != ARCOperand::Immediate)
+    return Error(IDLoc, "flag operand must be register or constant");
   int64_t V = 0;
-  if (auto *CE = dyn_cast<MCConstantExpr>(ImmOp.getImmExpr()))
+  if (auto *CE = dyn_cast<MCConstantExpr>(Op.getImmExpr()))
     V = CE->getValue();
   else
     return Error(IDLoc, "flag operand must be a constant expression");
@@ -957,10 +1106,23 @@ bool ARCAsmParser::emitLr(SMLoc IDLoc, OperandVector &Operands,
   auto &Src = static_cast<ARCOperand &>(*Operands[2]);
   if (Dst.Kind != ARCOperand::Register)
     return Error(IDLoc, "lr destination must be a register");
-  if (Src.Kind != ARCOperand::Memory || Src.getMemBase() != MCRegister())
-    return Error(IDLoc, "lr source must be `[aux]`");
-  int64_t Aux = Src.getMemOffset();
+  if (Src.Kind != ARCOperand::Memory)
+    return Error(IDLoc, "lr source must be `[aux]` or `[rC]`");
   unsigned B = regEncoding(Dst.getReg());
+
+  // `lr rB, [rC]` — reg-indirect aux access, P=00, rC at bits 11:6.
+  if (Src.getMemBase() != MCRegister()) {
+    if (Src.getMemOffset() != 0)
+      return Error(IDLoc, "lr `[rC, imm]` form not supported");
+    unsigned C = regEncoding(Src.getMemBase());
+    if (C == 62)
+      return Error(IDLoc, "lr `[limm]` use bare immediate instead");
+    uint32_t Insn = encodeLrSrBase(0x2A, B, 0b00);
+    Insn |= ((uint32_t)C & 0x3F) << 6;
+    emitRawInsn32(Out, Insn);
+    return false;
+  }
+  int64_t Aux = Src.getMemOffset();
 
   if (fitsInUnsigned(Aux, 6)) {
     // u6 → P=01, bits 11:6 = u6, bits 5:0 = 0
@@ -996,10 +1158,23 @@ bool ARCAsmParser::emitSr(SMLoc IDLoc, OperandVector &Operands,
   auto &Dst = static_cast<ARCOperand &>(*Operands[2]);
   if (Src.Kind != ARCOperand::Register)
     return Error(IDLoc, "sr source must be a register");
-  if (Dst.Kind != ARCOperand::Memory || Dst.getMemBase() != MCRegister())
-    return Error(IDLoc, "sr destination must be `[aux]`");
-  int64_t Aux = Dst.getMemOffset();
+  if (Dst.Kind != ARCOperand::Memory)
+    return Error(IDLoc, "sr destination must be `[aux]` or `[rC]`");
   unsigned B = regEncoding(Src.getReg());
+
+  // `sr rB, [rC]` — reg-indirect aux access, P=00.
+  if (Dst.getMemBase() != MCRegister()) {
+    if (Dst.getMemOffset() != 0)
+      return Error(IDLoc, "sr `[rC, imm]` form not supported");
+    unsigned C = regEncoding(Dst.getMemBase());
+    if (C == 62)
+      return Error(IDLoc, "sr `[limm]` use bare immediate instead");
+    uint32_t Insn = encodeLrSrBase(0x2B, B, 0b00);
+    Insn |= ((uint32_t)C & 0x3F) << 6;
+    emitRawInsn32(Out, Insn);
+    return false;
+  }
+  int64_t Aux = Dst.getMemOffset();
 
   if (fitsInUnsigned(Aux, 6)) {
     uint32_t Insn = encodeLrSrBase(0x2B, B, 0b01);
@@ -1019,6 +1194,78 @@ bool ARCAsmParser::emitSr(SMLoc IDLoc, OperandVector &Operands,
   Insn |= 62u << 6;
   emitRawInsn32(Out, Insn);
   emitRawInsn32(Out, (uint32_t)(Aux & 0xFFFFFFFF));
+  return false;
+}
+
+// Compact-reg encoding for ARCompact 16-bit insns (h_b table):
+//   r0=0, r1=1, r2=2, r3=3, r12=4, r13=5, r14=6, r15=7.
+// Returns -1 if the register has no compact encoding.
+static int compactRegEncoding(MCRegister R) {
+  unsigned E = regEncoding(R);
+  if (E <= 3) return E;
+  if (E >= 12 && E <= 15) return E - 8;
+  return -1;
+}
+
+// `push rB`     -> st.a   rB, [sp, -4]   (32-bit, ST major 0x03, AA=01)
+// `pop  rB`     -> ld.ab  rB, [sp,  4]   (32-bit, LD major 0x02, AA=10)
+// `push_s rB`   -> 16-bit ARC_PUSH_S_b   (b is compact-reg) | blink form
+// `pop_s  rB`   -> 16-bit ARC_POP_S_b    (b is compact-reg) | blink form
+//
+// Encoding refs: ARCInstrFormats.td F32_ST_RS9 / F32_LD_RS9,
+// ARCARCompactInstr16.td ARC_{PUSH,POP}_S_{b,blink}.
+bool ARCAsmParser::emitPushPop(SMLoc IDLoc, StringRef Name,
+                                OperandVector &Operands, MCStreamer &Out) {
+  if (Operands.size() != 2)
+    return Error(IDLoc, Twine("expected `") + Name + " <reg>`");
+  auto &Op = static_cast<ARCOperand &>(*Operands[1]);
+  if (Op.Kind != ARCOperand::Register)
+    return Error(IDLoc, Twine(Name) + " operand must be a register");
+  MCRegister Reg = Op.getReg();
+
+  // 16-bit compact forms.
+  if (Name == "push_s" || Name == "pop_s") {
+    uint16_t Insn;
+    if (Reg == ARC::BLINK) {
+      Insn = (Name == "push_s") ? 0xC0F1 : 0xC0D1;
+    } else {
+      int B3 = compactRegEncoding(Reg);
+      if (B3 < 0)
+        return Error(IDLoc, Twine(Name) +
+                              " requires r0-r3, r12-r15, or blink");
+      uint16_t Base = (Name == "push_s") ? 0xC0E1 : 0xC0C1;
+      Insn = Base | ((uint16_t)B3 << 8);
+    }
+    emitRawInsn16(Out, Insn);
+    return false;
+  }
+
+  // 32-bit forms via st.a / ld.ab on sp.
+  unsigned C = regEncoding(Reg);                 // operand reg
+  unsigned B = regEncoding(ARC::SP);             // base = sp = 28
+  if (Name == "push") {
+    // st.a C, [sp, -4]: aa=01, di=0, zz=00, S9=-4 (0x1FC in 9-bit)
+    uint32_t S9 = 0x1FCu;
+    uint32_t Insn = 0x18000000u;                 // [31:27]=00011 (ST major)
+    Insn |= ((B & 0x07) << 24);                  // B[2:0]
+    Insn |= ((S9 & 0xFF) << 16);                 // S9[7:0]
+    Insn |= ((S9 >> 8) & 0x1) << 15;             // S9[8]
+    Insn |= ((B & 0x38) << (12 - 3));            // B[5:3] -> 14:12
+    Insn |= ((C & 0x3F) << 6);                   // C
+    Insn |= (0b01u << 3);                        // aa = PreInc
+    emitRawInsn32(Out, Insn);
+    return false;
+  }
+  // pop -> ld.ab C, [sp, 4]: aa=10, di=0, zz=00, x=0, S9=4
+  uint32_t S9 = 0x004u;
+  uint32_t Insn = 0x10000000u;                   // [31:27]=00010 (LD major)
+  Insn |= ((B & 0x07) << 24);                    // B[2:0]
+  Insn |= ((S9 & 0xFF) << 16);                   // S9[7:0]
+  Insn |= ((S9 >> 8) & 0x1) << 15;               // S9[8]
+  Insn |= ((B & 0x38) << (12 - 3));              // B[5:3]
+  Insn |= (0b10u << 9);                          // aa = PostInc
+  Insn |= (C & 0x3F);                            // A field [5:0]
+  emitRawInsn32(Out, Insn);
   return false;
 }
 
@@ -1056,17 +1303,82 @@ bool ARCAsmParser::matchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
 
   if (Name == "mov")
     return emitMov(IDLoc, Operands, Out);
-  if (Name == "stb.di" || Name == "ldb.di" || Name == "st.di" ||
-      Name == "ld.di" || Name == "sth.di" || Name == "ldh.di")
+  if (Name.ends_with(".di"))
     return emitDiMem(IDLoc, Name, Operands, Out);
   if (Name == "st")
-    return emitSt(IDLoc, Operands, Out);
+    return emitSt(IDLoc, Operands, Out, ARC::ST_rs9);
+  if (Name == "stb")
+    return emitSt(IDLoc, Operands, Out, ARC::STB_rs9);
+  if (Name == "sth" || Name == "stw")
+    return emitSt(IDLoc, Operands, Out, ARC::STH_rs9);
   if (Name == "ld")
-    return emitLd(IDLoc, Operands, Out);
+    return emitLd(IDLoc, Operands, Out, ARC::LD_rs9);
+  if (Name == "ldb")
+    return emitLd(IDLoc, Operands, Out, ARC::LDB_rs9);
+  if (Name == "ldh" || Name == "ldw")
+    return emitLd(IDLoc, Operands, Out, ARC::LDH_rs9);
   if (Name == "ld.ab")
     return emitLdAb(IDLoc, Operands, Out);
+
+  // GEN4 ALU binary ops — major opcode 0b00100 (0x04).
   if (Name == "add")
-    return emitAdd(IDLoc, Operands, Out);
+    return emitBinaryALU(IDLoc, Name, Operands, Out, ARC::ADD_rrr,
+                         ARC::ADD_rru6, ARC::ADD_rrlimm);
+  if (Name == "sub")
+    return emitBinaryALU(IDLoc, Name, Operands, Out, ARC::SUB_rrr,
+                         ARC::SUB_rru6, ARC::SUB_rrlimm);
+  if (Name == "and")
+    return emitBinaryALU(IDLoc, Name, Operands, Out, ARC::AND_rrr,
+                         ARC::AND_rru6, ARC::AND_rrlimm);
+  if (Name == "or")
+    return emitBinaryALU(IDLoc, Name, Operands, Out, ARC::OR_rrr,
+                         ARC::OR_rru6, ARC::OR_rrlimm);
+  if (Name == "xor")
+    return emitBinaryALU(IDLoc, Name, Operands, Out, ARC::XOR_rrr,
+                         ARC::XOR_rru6, ARC::XOR_rrlimm);
+
+  // EXT5 shifts — major opcode 0b00101 (0x05).
+  if (Name == "asl")
+    return emitBinaryALU(IDLoc, Name, Operands, Out, ARC::ASL_rrr,
+                         ARC::ASL_rru6, ARC::ASL_rrlimm);
+  if (Name == "lsr")
+    return emitBinaryALU(IDLoc, Name, Operands, Out, ARC::LSR_rrr,
+                         ARC::LSR_rru6, ARC::LSR_rrlimm);
+  if (Name == "asr")
+    return emitBinaryALU(IDLoc, Name, Operands, Out, ARC::ASR_rrr,
+                         ARC::ASR_rru6, ARC::ASR_rrlimm);
+  if (Name == "ror")
+    return emitBinaryALU(IDLoc, Name, Operands, Out, ARC::ROR_rrr,
+                         ARC::ROR_rru6, ARC::ROR_rrlimm);
+
+  // Single-bit ops — GEN4 sub-opcodes 0x0F..0x13.
+  if (Name == "bclr")
+    return emitBitOp(IDLoc, Name, Operands, Out, ARC::ARC_BCLR_a_b_c,
+                     ARC::ARC_BCLR_a_b_u6);
+  if (Name == "bset")
+    return emitBitOp(IDLoc, Name, Operands, Out, ARC::ARC_BSET_a_b_c,
+                     ARC::ARC_BSET_a_b_u6);
+  if (Name == "bmsk")
+    return emitBitOp(IDLoc, Name, Operands, Out, ARC::ARC_BMSK_a_b_c,
+                     ARC::ARC_BMSK_a_b_u6);
+  if (Name == "bxor")
+    return emitBitOp(IDLoc, Name, Operands, Out, ARC::ARC_BXOR_a_b_c,
+                     ARC::ARC_BXOR_a_b_u6);
+
+  // Zero-operand mnemonics.
+  if (Name == "rtie")
+    return emitZeroOp(IDLoc, Name, Operands, Out, ARC::ARC_RTIE_0);
+  if (Name == "nop")
+    return emitZeroOp(IDLoc, Name, Operands, Out, ARC::ARC_NOP_0);
+  if (Name == "nop_s")
+    return emitZeroOp(IDLoc, Name, Operands, Out, ARC::ARC_NOP_S_0);
+  if (Name == "sync")
+    return emitZeroOp(IDLoc, Name, Operands, Out, ARC::ARC_SYNC_0);
+  if (Name == "sleep")
+    return emitZeroOp(IDLoc, Name, Operands, Out, ARC::ARC_SLEEP_0);
+  if (Name == "brk")
+    return emitZeroOp(IDLoc, Name, Operands, Out, ARC::ARC_BRK_0);
+
   if (Name == "breq" || Name == "brne" || Name == "brlt" || Name == "brge" ||
       Name == "brlo" || Name == "brhs")
     return emitBr(IDLoc, Name, Operands, Out);
@@ -1076,6 +1388,8 @@ bool ARCAsmParser::matchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
     return emitBl(IDLoc, Operands, Out);
   if (Name == "flag")
     return emitFlag(IDLoc, Operands, Out);
+  if (Name == "j")
+    return emitJ(IDLoc, Operands, Out);
   if (Name == "j_s")
     return emitJsBlink(IDLoc, Operands, Out);
   if (Name == "j.d")
@@ -1084,6 +1398,8 @@ bool ARCAsmParser::matchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
     return emitLr(IDLoc, Operands, Out);
   if (Name == "sr")
     return emitSr(IDLoc, Operands, Out);
+  if (Name == "push" || Name == "pop" || Name == "push_s" || Name == "pop_s")
+    return emitPushPop(IDLoc, Name, Operands, Out);
 
   return Error(IDLoc, Twine("ARC asm parser: unsupported mnemonic `") + Name +
                            "`");
