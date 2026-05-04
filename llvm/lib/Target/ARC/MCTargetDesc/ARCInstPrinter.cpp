@@ -156,10 +156,21 @@ void ARCInstPrinter::printOperand(const MCInst *MI, unsigned OpNum,
 
 void ARCInstPrinter::printMemOperandRI(const MCInst *MI, unsigned OpNum,
                                        raw_ostream &O) {
+  // The disassembler can produce MCInsts whose operand count doesn't match
+  // what the AsmWriter table expects (incomplete decoder methods, custom
+  // pseudos that share a print method, etc.). Guard the operand access so
+  // `llvm-objdump` prints `<invalid>` and continues instead of asserting
+  // out of bounds in SmallVector::operator[].
+  if (OpNum + 1 >= MI->getNumOperands()) {
+    O << "<invalid memop>";
+    return;
+  }
   const MCOperand &base = MI->getOperand(OpNum);
   const MCOperand &offset = MI->getOperand(OpNum + 1);
-  assert(base.isReg() && "Base should be register.");
-  assert(offset.isImm() && "Offset should be immediate.");
+  if (!base.isReg() || !offset.isImm()) {
+    O << "<invalid memop>";
+    return;
+  }
   printRegName(O, base.getReg());
   O << "," << offset.getImm();
 }
