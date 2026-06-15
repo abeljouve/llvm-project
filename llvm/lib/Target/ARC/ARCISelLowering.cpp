@@ -916,15 +916,24 @@ SDValue ARCTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     assert(Op.getSimpleValueType() == MVT::i32);
     return Op;
   case ISD::CTLZ_ZERO_UNDEF: {
+    SDLoc dl(Op);
+    EVT VT = Op.getValueType();
+    SDValue X = Op.getOperand(0);
+    if (Subtarget.hasNorm()) {
+      // clz(x) = norm((unsigned)x >> 1) for x != 0 (NORM counts redundant
+      // sign bits; shifting in a 0 MSB makes norm equal the leading-zero
+      // count). Two instructions: lsr + norm.
+      EVT ShVT = getShiftAmountTy(VT, DAG.getDataLayout());
+      SDValue Sh =
+          DAG.getNode(ISD::SRL, dl, VT, X, DAG.getConstant(1, dl, ShVT));
+      return DAG.getNode(ARCISD::NORM, dl, VT, Sh);
+    }
     // Hand-lower to the shift-OR + popcount bit-twiddle sequence from
     // Hacker's Delight. We cannot delegate to TargetLowering::expandCTLZ
     // or to plain ISD::CTLZ because both paths eventually construct a
     // CTLZ_ZERO_UNDEF node (expandCTLZ's LegalOrCustom check matches
     // our Custom action), which our Custom handler would re-lower and
     // spin into an infinite recursion.
-    SDLoc dl(Op);
-    EVT VT = Op.getValueType();
-    SDValue X = Op.getOperand(0);
     unsigned NumBits = VT.getScalarSizeInBits();
     EVT ShVT = getShiftAmountTy(VT, DAG.getDataLayout());
     for (unsigned i = 0; (1U << i) < NumBits; ++i) {
@@ -936,12 +945,20 @@ SDValue ARCTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     return DAG.getNode(ISD::CTPOP, dl, VT, X);
   }
   case ISD::CTTZ_ZERO_UNDEF: {
-    // ctz(x) = popcount((x & -x) - 1)
     SDLoc dl(Op);
     EVT VT = Op.getValueType();
     SDValue X = Op.getOperand(0);
     SDValue Neg = DAG.getNegative(X, dl, VT);
     SDValue IsolateLow = DAG.getNode(ISD::AND, dl, VT, X, Neg);
+    if (Subtarget.hasNorm()) {
+      // ctz(x) = 31 - norm((x & -x) >> 1) for x != 0.
+      EVT ShVT = getShiftAmountTy(VT, DAG.getDataLayout());
+      SDValue Sh = DAG.getNode(ISD::SRL, dl, VT, IsolateLow,
+                               DAG.getConstant(1, dl, ShVT));
+      SDValue N = DAG.getNode(ARCISD::NORM, dl, VT, Sh);
+      return DAG.getNode(ISD::SUB, dl, VT, DAG.getConstant(31, dl, VT), N);
+    }
+    // ctz(x) = popcount((x & -x) - 1)
     SDValue Mask = DAG.getNode(ISD::SUB, dl, VT, IsolateLow,
                                DAG.getConstant(1, dl, VT));
     return DAG.getNode(ISD::CTPOP, dl, VT, Mask);

@@ -48,6 +48,10 @@ def SDT_ARCCallSeqEnd   : SDCallSeqEnd<[ SDTCisVT<0, i32>,
 // Global Address.
 def ARCGAWrapper : SDNode<"ARCISD::GAWRAPPER", SDT_ARCmov, []>;
 
+// NORM extension: count of redundant leading sign bits. Used by the
+// CTLZ/CTTZ custom lowering (clz(x)=norm(x>>1), ctz(x)=31-norm((x&-x)>>1)).
+def ARCnorm : SDNode<"ARCISD::NORM", SDT_ARCmov, []>;
+
 // Comparison
 def ARCcmp : SDNode<"ARCISD::CMP", SDT_ARCcmptst, [SDNPOutGlue]>;
 
@@ -404,6 +408,7 @@ defm FLS : ArcUnaryEXT5Inst<0b010011, "fls">;
 let Predicates=[HasNorm] in {
   defm NORM  : ArcUnaryEXT5Inst<0b000001,"norm">;
   defm NORMH : ArcUnaryEXT5Inst<0b001000,"normh">;
+  def : Pat<(ARCnorm i32:$C), (NORM_rr i32:$C)>;
 }
 
 // General Unary Instruction fragments.
