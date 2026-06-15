@@ -118,11 +118,10 @@ void ARCSubtarget::initLibcallLoweringInfo(LibcallLoweringInfo &Info) const {
       {RTLIB::MUL_I64, LI::impl___muldi3},
       // 32x32 multiply helpers (ARC700 ships without MULTIPLY_BUILD)
       {RTLIB::MUL_I32, LI::impl___mulsi3},
-      // Count leading zeros (ARCv2 fls unavailable on ARCompact).
-      // Note: there is no RTLIB::CTTZ_I32 — LLVM only provides CTLZ as a
-      // libcall. For CTTZ we rely on Expand via ctpop/or-tricks (both
-      // Expand by default on i32).
-      {RTLIB::CTLZ_I32, LI::impl___clzsi2},
+      // CTLZ/CTTZ are NOT registered as libcalls: ARCISelLowering sets
+      // ISD::CTLZ/CTTZ to Expand (or Custom→inline shift-OR + popcount), so a
+      // CTLZ_I32 libcall impl would never be consulted (and a LibCall action on
+      // CTLZ is itself a trap — ConvertNodeToLibcall has no CTLZ case).
       // Memory functions
       {RTLIB::MEMCPY,  LI::impl_memcpy},
       {RTLIB::MEMMOVE, LI::impl_memmove},

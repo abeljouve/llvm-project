@@ -40,8 +40,8 @@ def FeatureSEXT
                        "Enable sexb/sexh sign-extend instructions">;
 
 // Bit-scan instructions (fls, ffs). Part of ARCv2 base ISA, NOT available
-// on ARCompact. Without it, CTLZ/CTTZ lower via libcalls (__clzsi2/__ctzsi2
-// from compiler-rt).
+// on ARCompact. Without it, CTLZ/CTTZ are Expand-lowered to an inline
+// shift-OR + popcount sequence (no libcall).
 def FeatureBitScan
     : SubtargetFeature<"bitscan", "HasBitScan", "true",
                        "Enable fls/ffs bit-scan instructions">;
