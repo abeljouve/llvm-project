@@ -176,9 +176,9 @@ static bool dominatesAllUsesOf(const MachineInstr *MI, unsigned VReg,
 
 // Return true if \p MI is load/store instruction with immediate offset
 // which can be adjusted by \p Disp
-static bool isLoadStoreThatCanHandleDisplacement(const TargetInstrInfo *TII,
-                                                 const MachineInstr &MI,
-                                                 int64_t Disp) {
+[[maybe_unused]] static bool
+isLoadStoreThatCanHandleDisplacement(const TargetInstrInfo *TII,
+                                     const MachineInstr &MI, int64_t Disp) {
   unsigned BasePos, OffPos;
   if (!TII->getBaseAndOffsetPosition(MI, BasePos, OffPos))
     return false;
@@ -353,19 +353,34 @@ bool ARCOptAddrMode::canFixPastUses(const ArrayRef<MachineInstr *> &Uses,
                                     MachineOperand &Incr, unsigned BaseReg) {
 
   assert(Incr.isImm() && "Expected immediate increment");
+  // Dry-run fixPastUses: it walks the uses accumulating NewOffset (add-const
+  // uses add their amount, ld/st uses add their own displacement) and asserts
+  // validity at each step. Mirror that accumulation here and early-return
+  // false instead of letting fixPastUses hit an assert. The previous code
+  // validated each add against the *initial* offset, which diverged from
+  // fixPastUses' running sum and could let an invalid multi-add chain through
+  // (the real bug the ARCompact guard was papering over).
   int64_t NewOffset = Incr.getImm();
   for (MachineInstr *MI : Uses) {
-    int64_t Dummy;
-    if (isAddConstantOp(*MI, Dummy)) {
-      if (isValidIncrementOffset(Dummy + NewOffset))
-        continue;
+    int64_t Amount;
+    unsigned BasePos, OffPos;
+    if (isAddConstantOp(*MI, Amount)) {
+      NewOffset += Amount;
+      if (!isValidIncrementOffset(NewOffset))
+        return false;
+    } else if (AII->getBaseAndOffsetPosition(*MI, BasePos, OffPos)) {
+      const MachineOperand &MO = MI->getOperand(OffPos);
+      if (!MO.isImm())
+        return false;
+      NewOffset += MO.getImm();
+      if (!isValidLoadStoreOffset(NewOffset)) {
+        LLVM_DEBUG(dbgs() << "Use cannot handle accumulated displacement "
+                          << NewOffset << ": " << *MI);
+        return false;
+      }
+    } else {
       return false;
     }
-    if (isLoadStoreThatCanHandleDisplacement(AII, *MI, -NewOffset))
-      continue;
-    LLVM_DEBUG(dbgs() << "Instruction cannot handle displacement " << -NewOffset
-                      << ": " << *MI);
-    return false;
   }
   return true;
 }
@@ -498,13 +513,12 @@ bool ARCOptAddrMode::runOnMachineFunction(MachineFunction &MF) {
   if (skipFunction(MF.getFunction()) || KILL_PASS())
     return false;
 
-  // ARCOptAddrMode is designed for ARCv2 pre/post-increment addressing modes.
-  // ARCompact (ARC600/ARC700) has different addressing mode constraints and
-  // canFixPastUses does not properly track cumulative offsets, causing
-  // assertion failures when large stack frames generate out-of-range offsets.
-  // Skip this pass entirely for ARCompact targets.
-  if (MF.getSubtarget<ARCSubtarget>().isARCompact())
-    return false;
+  // Post-increment ld.ab/st.ab folding is valid on ARCompact (ARC700): the
+  // pass runs pre-RA on virtual regs, bails on non-virtual bases, and only
+  // folds offset==0 loads via getPostIncOpcode (byte/half/word + .di + sign-
+  // ext all covered). It was previously disabled because canFixPastUses did
+  // not mirror fixPastUses' cumulative-offset accumulation and tripped an
+  // assert on multi-add chains; that is now fixed above, so enable it.
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
   if (DUMP_BEFORE())
