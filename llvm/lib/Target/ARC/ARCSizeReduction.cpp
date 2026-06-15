@@ -76,6 +76,32 @@ static const ReduceEntry ReduceTable[] = {
   { ARC::ARC_ASR_a_b_c, ARC::ARC_ASR_S_b_c_v1,   2, true  },
   { ARC::ARC_LSR_a_b_c, ARC::ARC_LSR_S_b_c_v1,   2, true  },
 
+  // ---- Real ISel-emitted GEN4 ALU opcodes ------------------------------
+  // The entries above reference ARCompact-namespace opcodes that ISel never
+  // produces. ISel lowers add/sub/and/or/xor to the *_rrr forms
+  // (ArcBinaryGEN4Inst), whose operand layout is exactly
+  //   (outs GPR32:$A), (ins GPR32:$B, GPR32:$C)  ==  [A(def), B(use), C(use)]
+  // -- the same shape the DestEqSrc1 path already handles. Reduce them to the
+  // identical 16-bit b,b,c encodings when A==B and all regs are in GPR_S.
+  // (verified: ADD_S 0x6018, SUB_S 0x7802, AND_S 0x7804, OR_S 0x7805,
+  //  XOR_S 0x7807 all encode rb_s[10:8]/rc_s[7:5] correctly and match the
+  //  ARCompact 0x0F general-ops sub-opcode table.)
+  { ARC::ADD_rrr, ARC::ARC_ADD_S_ra_s_b_c, 3, true },
+  { ARC::SUB_rrr, ARC::ARC_SUB_S_b_c,      2, true },
+  { ARC::AND_rrr, ARC::ARC_AND_S_b_c,      2, true },
+  { ARC::OR_rrr,  ARC::ARC_OR_S_b_c,       2, true },
+  { ARC::XOR_rrr, ARC::ARC_XOR_S_b_c,      2, true },
+  // NOTE: shift reductions (ASL_rrr/ASR_rrr/LSR_rrr) are deliberately NOT
+  // added. The 16-bit shift defs in ARCARCompactInstr16.td are buggy: the
+  // operand-encoding variants ARC_{ASL,ASR,LSR}_S_b_c_v1 (sub-opcodes
+  // 0x18/0x1A/0x19, the correct "B <- B SHIFT C" operation) do NOT bind
+  // rb_s/rc_s to any instruction bits, so they assemble to a fixed r0,r0
+  // encoding; the *_S_b_c forms that DO encode operands (0x1B/0x1C/0x1D) are
+  // the "shift by one" sub-opcodes (B <- C+C etc.), a different operation.
+  // Reducing shifts with either would silently miscompile (caught by the
+  // test suite on a shift-by-register case). Leave shifts at 32-bit
+  // until the .td shift encodings are fixed.
+
   // 2-operand: MOV_S, CMP_S  (b,c form -- any GPR32 for src is OK via ARC_MOV_S_b_h)
   // We use the reg-reg form which requires dest in GPR_S; src can be any reg.
   { ARC::ARC_MOV_b_c,   ARC::ARC_MOV_S_b_h,       1, false },
