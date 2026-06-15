@@ -123,6 +123,14 @@ static const ReduceEntry ReduceTable[] = {
   // the original pointer). Leave reg-reg moves at 32-bit until the r6h
   // encoding is fixed.
 
+  // NOTE: CMP_ru6 -> CMP_S b,u7 is NOT reduced. The narrow ARC_CMP_S_b_u7
+  // declares (outs GPR_S:$rb_s) in TableGen, but cmp only READS that register
+  // (it sets flags, never writes). There is no way to fill that output slot
+  // with a use without the MachineVerifier rejecting it ("Explicit definition
+  // marked as use"), and marking it a real/dead def would falsely clobber a
+  // live register. Reducing cmp safely needs the .td def reworked so $rb_s is
+  // a use; left at 32-bit until then.
+
   // 1-operand (dest+src both in GPR_S): NOT_S, NEG_S
   { ARC::ARC_NOT_b_c,   ARC::ARC_NOT_S_b_c,        2, false },
   { ARC::ARC_NEG_a_b,   ARC::ARC_NEG_S_b_c,        2, false },
