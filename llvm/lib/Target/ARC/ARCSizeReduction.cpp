@@ -115,6 +115,16 @@ static const ReduceEntry ReduceTable[] = {
   // This is the single largest reduction contributor (mov-imm is the most
   // common opcode ISel emits).
   { ARC::MOV_rs12,      ARC::ARC_MOV_S_b_u8,      1, false },
+
+  // SP-relative word load/store. ISel emits these as 3-operand forms:
+  //   LD_rs9: $dst = LD_rs9 $base, imm   -> op[0]=dst(def), [1]=base, [2]=imm
+  //   ST_rs9: ST_rs9 $val, $base, imm    -> op[0]=val(use), [1]=base, [2]=imm
+  // When the base is SP, the value/dest reg is in GPR_S, and the byte offset
+  // fits the 4-byte-aligned u7 field [0,124], reduce to the 2-byte
+  // SP_LD_S / SP_ST_S (ld_s/st_s b3,[%sp,u7]). Handled by a dedicated path in
+  // tryReduce (SP base + offset checks).
+  { ARC::LD_rs9,        ARC::SP_LD_S,             1, false },
+  { ARC::ST_rs9,        ARC::SP_ST_S,             1, false },
   // NOTE: the ISel reg-reg copy MOV_rr is deliberately NOT reduced to
   // ARC_MOV_S_b_h. That 16-bit "mov_s b,h" form mis-encodes the source
   // register (the 6-bit r6h field scatter produces the wrong source for high
@@ -271,6 +281,57 @@ bool ARCSizeReduction::tryReduce(MachineBasicBlock &MBB,
       if (MO.isImplicit())
         MIB.add(MO);
     }
+
+    MI->eraseFromParent();
+    ++NumReduced;
+    return true;
+  }
+
+  // Dedicated path: SP-relative word load/store -> 2-byte SP_LD_S / SP_ST_S.
+  //   LD_rs9: op[0]=dst(def),  op[1]=base(use), op[2]=imm offset
+  //   ST_rs9: op[0]=val(use),  op[1]=base(use), op[2]=imm offset
+  // Reduce only when base == SP, the value/dest reg is in GPR_S, and the byte
+  // offset fits the 4-byte-aligned u7 field [0,124]. The compact forms encode
+  // [%sp, u7]; SP is implicit.
+  if (Entry.WideOpc == ARC::LD_rs9 || Entry.WideOpc == ARC::ST_rs9) {
+    if (NumOps < 3)
+      return false;
+    const bool IsLoad = (Entry.WideOpc == ARC::LD_rs9);
+    const MachineOperand &OpVal = Old.getOperand(0);   // dst (load) / val (store)
+    const MachineOperand &OpBase = Old.getOperand(1);  // base register
+    const MachineOperand &OpOff = Old.getOperand(2);   // byte offset
+    if (!OpVal.isReg() || !OpBase.isReg() || !OpOff.isImm())
+      return false;
+    Register RVal = OpVal.getReg();
+    Register RBase = OpBase.getReg();
+    int64_t Off = OpOff.getImm();
+    // Base must be SP; value/dest reg in the compact set; offset 4-byte-aligned
+    // within [0,124].
+    if (RBase != ARC::SP || !isGPR_S(RVal, TRI) || Off < 0 || Off > 124 ||
+        (Off & 0x3) != 0)
+      return false;
+
+    LLVM_DEBUG(dbgs() << "  Reducing " << Old << " to 16-bit (SP_"
+                      << (IsLoad ? "LD" : "ST") << "_S)\n");
+
+    MachineInstrBuilder MIB;
+    if (IsLoad) {
+      // SP_LD_S: (outs GPR32Reduced:$b3), (ins immU<7>:$u7)  -- ld_s b3,[%sp,u7]
+      MIB = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(ARC::SP_LD_S))
+                .addReg(RVal, getDefRegState(true) |
+                                  getDeadRegState(OpVal.isDead()))
+                .addImm(Off);
+    } else {
+      // SP_ST_S: (outs), (ins GPR32Reduced:$b3, immU<7>:$u7) -- st_s b3,[%sp,u7]
+      MIB = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(ARC::SP_ST_S))
+                .addReg(RVal, getKillRegState(OpVal.isKill()))
+                .addImm(Off);
+    }
+    // SP is implicit in the compact form -- model the SP use for liveness.
+    MIB.addReg(ARC::SP, RegState::Implicit);
+    // Carry over the memory operand so alias analysis / scheduling stay correct.
+    for (const MachineMemOperand *MMO : Old.memoperands())
+      MIB.addMemOperand(const_cast<MachineMemOperand *>(MMO));
 
     MI->eraseFromParent();
     ++NumReduced;
