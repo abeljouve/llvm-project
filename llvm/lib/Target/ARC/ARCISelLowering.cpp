@@ -342,14 +342,31 @@ SDValue ARCTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   CallingConv::ID CallConv = CLI.CallConv;
   bool IsVarArg = CLI.IsVarArg;
   bool &IsTailCall = CLI.IsTailCall;
-
-  IsTailCall = false; // Do not support tail calls yet.
+  bool WantTail = IsTailCall; // frontend hint (call in tail position)
+  IsTailCall = false;
 
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
 
   CCInfo.AnalyzeCallOperands(Outs, CC_ARC);
+
+  // Tail-call eligibility (conservative): direct call (GA/extsym) under the
+  // C/Fast conv, no varargs, and every argument in a register (no outgoing
+  // stack args). The frontend already gates WantTail on tail position + a
+  // compatible return, so we trust it for the return contract. Indirect tail
+  // calls and stack-arg tail calls are left as normal calls.
+  bool CalleeIsDirect =
+      isa<GlobalAddressSDNode>(Callee) || isa<ExternalSymbolSDNode>(Callee);
+  if (WantTail && !IsVarArg && CalleeIsDirect &&
+      (CallConv == CallingConv::C || CallConv == CallingConv::Fast)) {
+    IsTailCall = true;
+    for (const CCValAssign &VA : ArgLocs)
+      if (!VA.isRegLoc()) {
+        IsTailCall = false;
+        break;
+      }
+  }
 
   SmallVector<CCValAssign, 16> RVLocs;
   // Analyze return values to determine the number of bytes of stack required.
@@ -361,7 +378,10 @@ SDValue ARCTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   // Get a count of how many bytes are to be pushed on the stack.
   unsigned NumBytes = RetCCInfo.getStackSize();
 
-  Chain = DAG.getCALLSEQ_START(Chain, NumBytes, 0, dl);
+  // A tail call has no outgoing stack args (eligibility required all-reg args)
+  // and reuses the caller's frame, so no call-frame sequence is emitted.
+  if (!IsTailCall)
+    Chain = DAG.getCALLSEQ_START(Chain, NumBytes, 0, dl);
 
   SmallVector<std::pair<unsigned, SDValue>, 4> RegsToPass;
   SmallVector<SDValue, 12> MemOpChains;
@@ -458,6 +478,12 @@ SDValue ARCTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
   if (Glue.getNode())
     Ops.push_back(Glue);
+
+  // Tail call: emit the terminator return-jump. PEI inserts the epilogue before
+  // it (frame teardown); TCRETURN_di then expands to `mov r12,@callee; j[r12]`.
+  // No CALLSEQ_END / result copy -- the callee returns straight to our caller.
+  if (IsTailCall)
+    return DAG.getNode(ARCISD::TC_RETURN, dl, MVT::Other, Ops);
 
   Chain = DAG.getNode(IsDirect ? ARCISD::BL : ARCISD::JL, dl, NodeTys, Ops);
   Glue = Chain.getValue(1);
@@ -833,9 +859,10 @@ bool ARCTargetLowering::isLegalAddressingMode(const DataLayout &DL,
   return AM.Scale == 0;
 }
 
-// Don't emit tail calls for the time being.
+// Allow the generic code to mark calls as tail-call candidates; LowerCall
+// applies the conservative eligibility (direct, C/Fast, no stack args).
 bool ARCTargetLowering::mayBeEmittedAsTailCall(const CallInst *CI) const {
-  return false;
+  return CI->isTailCall();
 }
 
 SDValue ARCTargetLowering::LowerFRAMEADDR(SDValue Op, SelectionDAG &DAG) const {

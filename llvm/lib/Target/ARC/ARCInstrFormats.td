@@ -1008,6 +1008,14 @@ def calltargetS25: CallTargetS<25> {
   let EncoderMethod = "getCallTargetEncoding";
 }
 
+// i32-typed S25 target (accepts a GlobalAddress, like calltargetS25) but using
+// the half-word branch scatter (getBranchTargetS25HEncoding / s25h pcrel),
+// matching the F32_BR0_UCOND_FAR branch format. Used by the direct tail-call
+// branch (TCB), which targets a function via `b @sym` rather than `bl @sym`.
+def tcalltargetS25: CallTargetS<25> {
+  let EncoderMethod = "getBranchTargetS25HEncoding";
+}
+
 // Compact Branch on Compare Register with Zero.
 class F16_BCC_REG<bit i, string asmstr> :
   InstARC<2, (outs), (ins GPR32:$b, btargetS8:$s8),
