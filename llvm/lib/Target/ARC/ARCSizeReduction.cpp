@@ -107,6 +107,22 @@ static const ReduceEntry ReduceTable[] = {
   { ARC::ARC_MOV_b_c,   ARC::ARC_MOV_S_b_h,       1, false },
   { ARC::ARC_CMP_b_c,   ARC::ARC_CMP_S_b_h,       1, false },
 
+  // Real ISel-emitted move-immediate. MOV_rs12 layout:
+  //   (outs GPR32:$B), (ins immS<12>:$S12)  -- reg dest + signed-12 imm.
+  // Reduced to the 2-byte MOV_S b,u8 when dest is in GPR_S and the immediate
+  // fits an unsigned 8-bit field (0..255). Handled by a dedicated path in
+  // tryReduce (the immediate operand needs special checking, not GPR_S).
+  // This is the single largest reduction contributor (mov-imm is the most
+  // common opcode ISel emits).
+  { ARC::MOV_rs12,      ARC::ARC_MOV_S_b_u8,      1, false },
+  // NOTE: the ISel reg-reg copy MOV_rr is deliberately NOT reduced to
+  // ARC_MOV_S_b_h. That 16-bit "mov_s b,h" form mis-encodes the source
+  // register (the 6-bit r6h field scatter produces the wrong source for high
+  // GPRs), so reducing reg-reg moves silently copies the wrong register --
+  // caught by the test suite (a value-returning move produced the wrong register instead of
+  // the original pointer). Leave reg-reg moves at 32-bit until the r6h
+  // encoding is fixed.
+
   // 1-operand (dest+src both in GPR_S): NOT_S, NEG_S
   { ARC::ARC_NOT_b_c,   ARC::ARC_NOT_S_b_c,        2, false },
   { ARC::ARC_NEG_a_b,   ARC::ARC_NEG_S_b_c,        2, false },
@@ -218,6 +234,40 @@ bool ARCSizeReduction::tryReduce(MachineBasicBlock &MBB,
 
   const MachineInstr &Old = *MI;
   unsigned NumOps = Old.getNumExplicitOperands();
+
+  // Dedicated path: MOV_rs12 (reg <- signed-12 imm) -> MOV_S b,u8 (reg <- u8).
+  // The 16-bit form only carries an unsigned 8-bit immediate and requires the
+  // destination in GPR_S. Layout: op[0]=dest(reg), op[1]=imm.
+  if (Entry.WideOpc == ARC::MOV_rs12) {
+    if (NumOps < 2)
+      return false;
+    const MachineOperand &OpB = Old.getOperand(0); // dest
+    const MachineOperand &OpImm = Old.getOperand(1); // signed-12 immediate
+    if (!OpB.isReg() || !OpImm.isImm())
+      return false;
+    Register RB = OpB.getReg();
+    int64_t Imm = OpImm.getImm();
+    // Dest must be in the compact register set; immediate must fit u8 [0,255].
+    if (!isGPR_S(RB, TRI) || Imm < 0 || Imm > 255)
+      return false;
+
+    LLVM_DEBUG(dbgs() << "  Reducing " << Old << " to 16-bit (MOV_S b,u8)\n");
+
+    MachineInstrBuilder MIB =
+        BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(Entry.NarrowOpc))
+            .addReg(RB, RegState::Define)
+            .addImm(Imm);
+
+    for (unsigned i = 2, e = Old.getNumOperands(); i != e; ++i) {
+      const MachineOperand &MO = Old.getOperand(i);
+      if (MO.isImplicit())
+        MIB.add(MO);
+    }
+
+    MI->eraseFromParent();
+    ++NumReduced;
+    return true;
+  }
 
   if (Entry.DestEqSrc1) {
     // Pattern: A,B,C where we need A==B and all three in GPR_S.
