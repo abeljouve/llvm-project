@@ -296,16 +296,14 @@ void ARCFrameLowering::emitEpilogue(MachineFunction &MF,
     SavedBlink = true;
   }
 
-  // Move the stack pointer up to the point of the funclet.
+  // Move the stack pointer up to the point of the funclet. Route through
+  // generateStackAdjustment so the 2-byte compact add_s %sp,%sp,u7 form is
+  // used when the amount fits (positive amount => add).
   if (unsigned MoveAmount = StackSize - AmountAboveFunclet) {
-    unsigned Opc = ARC::ADD_rrlimm;
-    if (isUInt<6>(MoveAmount))
-      Opc = ARC::ADD_rru6;
-    else if (isInt<12>(MoveAmount))
-      Opc = ARC::ADD_rrs12;
-    BuildMI(MBB, MBBI, MBB.findDebugLoc(MBBI), TII->get(Opc), ARC::SP)
-        .addReg(ARC::SP)
-        .addImm(StackSize - AmountAboveFunclet);
+    (void)MoveAmount;
+    generateStackAdjustment(MBB, MBBI, *ST.getInstrInfo(),
+                            MBB.findDebugLoc(MBBI),
+                            (int)(StackSize - AmountAboveFunclet), ARC::SP);
   }
 
   if (StackSlotsUsedByFunclet) {
