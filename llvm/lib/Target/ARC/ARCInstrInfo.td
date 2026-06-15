@@ -117,6 +117,8 @@ def imm32 : ImmLeaf<i32, [{
 def FrameADDR_ri : ComplexPattern<i32, 2, "SelectFrameADDR_ri",
                                   [add, frameindex], []>;
 def AddrModeS9 : ComplexPattern<i32, 2, "SelectAddrModeS9", []>;
+// base + (index<<2), both registers, for the scaled word load `ld.as`.
+def AddrModeAS : ComplexPattern<i32, 2, "SelectAddrModeAS", []>;
 def AddrModeImm : ComplexPattern<i32, 2, "SelectAddrModeImm", []>;
 def AddrModeFar : ComplexPattern<i32, 2, "SelectAddrModeFar", []>;
 
@@ -1046,8 +1048,30 @@ foreach di = [NoCC, UncachedCC] in {
   }
 }
 
+// Scaled reg+reg word load: `ld.as rA,[rB,rC]` = load(rB + rC*4) in one insn
+// (GEN4 ALU-form load, major 0x04, AA=0b11 scaled). Encoding mirrors the
+// AsmParser's byte-verified reg+reg base 0x20300000 with AA=11 (0x20F00000):
+// B[2:0] at [26:24], B[5:3] at [14:12], C at [11:6], A at [5:0].
+let mayLoad = 1, isCodeGenOnly = 1 in
+def LD_AS_rr : InstARC<4, (outs GPR32:$A), (ins MEMrr:$addr),
+                       "ld.as\t$A, [$addr]", []> {
+  bits<6>  A;
+  bits<12> addr;               // [11:6]=B, [5:0]=C (from getMEMrrOpValue)
+  let Inst{31-27} = 0b00100;   // major 0x04 (GEN4 ALU-form load)
+  let Inst{26-24} = addr{8-6};   // B[2:0]
+  let Inst{23-22} = 0b11;      // AA = scaled (.as)
+  let Inst{21-16} = 0b110000;  // load sub-opcode
+  let Inst{15}    = 0;
+  let Inst{14-12} = addr{11-9};  // B[5:3]
+  let Inst{11-6}  = addr{5-0};   // C
+  let Inst{5-0}   = A{5-0};
+}
+
 // Load instruction patterns.
-// 32-bit loads.
+// 32-bit loads. Try the scaled reg+reg form first (AddedComplexity) so an
+// indexed word access folds the scale into the load instead of a separate add2.
+let AddedComplexity = 10 in
+def : Pat<(load AddrModeAS:$addr), (LD_AS_rr AddrModeAS:$addr)>;
 def : Pat<(load AddrModeS9:$addr), (LD_rs9 AddrModeS9:$addr)>;
 def : Pat<(load AddrModeImm:$addr), (LD_limm AddrModeImm:$addr)>;
 def : Pat<(load AddrModeFar:$addr), (LD_rs9 AddrModeFar:$addr)>;

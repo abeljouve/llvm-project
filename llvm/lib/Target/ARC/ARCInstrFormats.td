@@ -46,6 +46,13 @@ def MEMrs9 : Operand<iAny> {
   let DecoderMethod = "DecodeMEMrs9";
 }
 
+// Register base + register index for the scaled word load `ld.as` (reg+reg).
+def MEMrr : Operand<iAny> {
+  let MIOperandInfo = (ops GPR32:$B, GPR32:$C);
+  let PrintMethod = "printMemOperandRI";
+  let EncoderMethod = "getMEMrrOpValue";
+}
+
 def MEMrlimm : Operand<iAny> {
   let MIOperandInfo = (ops GPR32:$B, i32imm:$LImm);
   let PrintMethod = "printMemOperandRI";

@@ -78,6 +78,13 @@ public:
                              SmallVectorImpl<MCFixup> &Fixups,
                              const MCSubtargetInfo &STI) const;
 
+  // getMEMrrOpValue - 12-bit encoding for the MEMrr compound operand
+  // (GPR32 $B, GPR32 $C): [11:6]=B, [5:0]=C. The LD_AS_rr `let addr{}` slices
+  // scatter these into the reg+reg scaled-load instruction word.
+  uint64_t getMEMrrOpValue(const MCInst &MI, unsigned OpNo,
+                            SmallVectorImpl<MCFixup> &Fixups,
+                            const MCSubtargetInfo &STI) const;
+
   // getBranchTargetS21HEncoding - Return binary encoding for a 21-bit
   // half-word branch target operand (ARCompact Bcc).
   unsigned getBranchTargetS21HEncoding(const MCInst &MI, unsigned OpNo,
@@ -150,6 +157,21 @@ uint64_t ARCMCCodeEmitter::getMEMrs9OpValue(const MCInst &MI, unsigned OpNo,
   uint64_t S9 = static_cast<uint64_t>(OffImm) & 0x1FF;
   uint64_t B = BaseEnc & 0x3F;
   return (B << 9) | S9;
+}
+
+uint64_t ARCMCCodeEmitter::getMEMrrOpValue(const MCInst &MI, unsigned OpNo,
+                                            SmallVectorImpl<MCFixup> &Fixups,
+                                            const MCSubtargetInfo &STI) const {
+  // MEMrr = (GPR32 $B, GPR32 $C). Pack as 12 bits [11:6]=B, [5:0]=C.
+  const MCOperand &Base = MI.getOperand(OpNo);
+  const MCOperand &Index = MI.getOperand(OpNo + 1);
+  uint64_t B = Base.isReg()
+                   ? Ctx.getRegisterInfo()->getEncodingValue(Base.getReg()) & 0x3F
+                   : 0;
+  uint64_t C = Index.isReg()
+                   ? Ctx.getRegisterInfo()->getEncodingValue(Index.getReg()) & 0x3F
+                   : 0;
+  return (B << 6) | C;
 }
 
 uint64_t ARCMCCodeEmitter::getMemIIOpValue(const MCInst &MI, unsigned OpNo,

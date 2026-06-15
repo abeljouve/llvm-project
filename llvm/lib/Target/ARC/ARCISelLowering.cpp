@@ -856,7 +856,10 @@ bool ARCTargetLowering::isLegalAddressingMode(const DataLayout &DL,
                                               const AddrMode &AM, Type *Ty,
                                               unsigned AS,
                                               Instruction *I) const {
-  return AM.Scale == 0;
+  // Allow reg + reg<<2 (the scaled `ld.as` word addressing mode) so LSR keeps
+  // an indexed word access folded instead of pre-computing the scaled add.
+  return AM.Scale == 0 ||
+         (AM.Scale == 4 && !AM.BaseGV && AM.BaseOffs == 0 && AM.HasBaseReg);
 }
 
 // Allow the generic code to mark calls as tail-call candidates; LowerCall
