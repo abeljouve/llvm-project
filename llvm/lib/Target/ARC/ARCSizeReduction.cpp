@@ -116,6 +116,13 @@ static const ReduceEntry ReduceTable[] = {
   // common opcode ISel emits).
   { ARC::MOV_rs12,      ARC::ARC_MOV_S_b_u8,      1, false },
 
+  // Real ISel-emitted add-immediate. ADD_rru6 layout:
+  //   (outs GPR32:$A), (ins GPR32:$B, immU6:$U6)  -- op[0]=A(def),[1]=B(use),[2]=imm
+  // Reduce to the 2-byte add_s b,b,u7 when A==B, A in GPR_S, and the immediate
+  // fits u7 [0,127] (immU6 is 0..63, always fits). Handled by a dedicated path
+  // in tryReduce (A==B + immediate check). add-imm is a very common ALU op.
+  { ARC::ADD_rru6,      ARC::ARC_ADD_S_b_u7,      1, false },
+
   // SP-relative word load/store. ISel emits these as 3-operand forms:
   //   LD_rs9: $dst = LD_rs9 $base, imm   -> op[0]=dst(def), [1]=base, [2]=imm
   //   ST_rs9: ST_rs9 $val, $base, imm    -> op[0]=val(use), [1]=base, [2]=imm
@@ -333,6 +340,39 @@ bool ARCSizeReduction::tryReduce(MachineBasicBlock &MBB,
     for (const MachineMemOperand *MMO : Old.memoperands())
       MIB.addMemOperand(const_cast<MachineMemOperand *>(MMO));
 
+    MI->eraseFromParent();
+    ++NumReduced;
+    return true;
+  }
+
+  // Dedicated path: ADD_rru6 (A <- B + u6) -> add_s b,b,u7 (B <- B + u7).
+  // The 16-bit form ties dest==src1, so reduce only when A==B. Layout:
+  //   op[0]=A(def), op[1]=B(use), op[2]=imm.
+  if (Entry.WideOpc == ARC::ADD_rru6) {
+    if (NumOps < 3)
+      return false;
+    const MachineOperand &OpA = Old.getOperand(0);   // dest
+    const MachineOperand &OpB = Old.getOperand(1);   // src1
+    const MachineOperand &OpImm = Old.getOperand(2); // u6 immediate
+    if (!OpA.isReg() || !OpB.isReg() || !OpImm.isImm())
+      return false;
+    Register RA = OpA.getReg();
+    Register RB = OpB.getReg();
+    int64_t Imm = OpImm.getImm();
+    if (RA != RB || !isGPR_S(RA, TRI) || Imm < 0 || Imm > 127)
+      return false;
+
+    LLVM_DEBUG(dbgs() << "  Reducing " << Old << " to 16-bit (add_s b,b,u7)\n");
+
+    MachineInstrBuilder MIB =
+        BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(ARC::ARC_ADD_S_b_u7))
+            .addReg(RA, RegState::Define)
+            .addImm(Imm);
+    for (unsigned i = 3, e = Old.getNumOperands(); i != e; ++i) {
+      const MachineOperand &MO = Old.getOperand(i);
+      if (MO.isImplicit())
+        MIB.add(MO);
+    }
     MI->eraseFromParent();
     ++NumReduced;
     return true;
