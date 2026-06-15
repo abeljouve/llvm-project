@@ -63,6 +63,11 @@ private:
   SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
   SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
 
+  // Decompose `mul x, C` for 2^N±1 constants into shl+add/sub instead of a
+  // __mulsi3 libcall (ARC700 has no hardware multiplier).
+  bool decomposeMulByConstant(LLVMContext &Context, EVT VT,
+                              SDValue C) const override;
+
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
                                bool isVarArg,
                                const SmallVectorImpl<ISD::InputArg> &Ins,
