@@ -253,6 +253,13 @@ multiclass ArcSpecialDOPInst<bits<6> subop, string opasm, bit F> {
                !strconcat(opasm, "\t$B, $LImm"),
                []>
   { let A = 0; }
+
+  // Signed 12-bit immediate compare form (cmp B, s12). No dest, B read-only,
+  // so no $B=$in constraint (F32_DOP_RS12 has no A field).
+  def _rs12 : F32_DOP_RS12<0b00100, subop, F, (outs),
+               (ins GPR32:$B, immS<12>:$S12),
+               !strconcat(opasm, "\t$B, $S12"),
+               []>;
 }
 
 // Generic 2-operand unary instructions.
@@ -370,6 +377,10 @@ def : Pat<(and  i32:$B, immS12NotU6:$S12), (AND_rrs12 i32:$B, immS12NotU6:$S12)>
 def : Pat<(xor  i32:$B, immS12NotU6:$S12), (XOR_rrs12 i32:$B, immS12NotU6:$S12)>;
 def : Pat<(smax i32:$B, immS12NotU6:$S12), (MAX_rrs12 i32:$B, immS12NotU6:$S12)>;
 def : Pat<(smin i32:$B, immS12NotU6:$S12), (MIN_rrs12 i32:$B, immS12NotU6:$S12)>;
+// C - x (reverse subtract): rsub B,B,imm computes imm - B. u6 covers 0..63,
+// s12 covers the rest of -2048..2047; without these `C - x` is mov+sub.
+def : Pat<(sub immU6:$U6,        i32:$B), (RSUB_rru6  i32:$B, immU6:$U6)>;
+def : Pat<(sub immS12NotU6:$S12, i32:$B), (RSUB_rrs12 i32:$B, immS12NotU6:$S12)>;
 }
 
 // ---------------------------------------------------------------------------
@@ -408,6 +419,9 @@ defm CMP : ArcSpecialDOPInst<0b001100, "cmp", 1>;
 
 def cmp : PatFrag<(ops node:$op1, node:$op2), (ARCcmp $op1, $op2)>;
 defm : MultiPat<cmp, CMP_rr, CMP_ru6, CMP_rlimm>;
+// Signed 12-bit immediate compare (cmp x, negC / medium C) in 4 bytes vs limm.
+let AddedComplexity = 2 in
+def : Pat<(cmp i32:$B, immS12NotU6:$S12), (CMP_rs12 i32:$B, immS12NotU6:$S12)>;
 
 // ---------------------------------------------------------------------------
 // MOV instruction and variants (conditional mov).
