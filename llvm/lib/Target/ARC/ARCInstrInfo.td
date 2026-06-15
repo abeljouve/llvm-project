@@ -352,6 +352,26 @@ defm : MultiPat<adde, ADC_f_rrr, ADC_f_rru6, ADC_f_rrlimm>;
 defm : MultiPat<subc, SUB_f_rrr, SUB_f_rru6, SUB_f_rrlimm>;
 defm : MultiPat<sube, SBC_f_rrr, SBC_f_rru6, SBC_f_rrlimm>;
 
+// Signed 12-bit immediate ALU forms (ARCompact `op B,B,s12`, dest==src1).
+// Cover -2048..-1 and 64..2047 in a single 4-byte insn. Without them a
+// negative/medium constant materializes via an 8-byte `op B,B,limm` or a
+// `mov rN,C; op` pair. immU6 (0..63) keeps priority via the existing _rru6
+// MultiPat entry; immS12NotU6 excludes that range so the two never overlap.
+// AddedComplexity prefers the 4-byte s12 form over the 8-byte limm form.
+def immS12NotU6 : PatLeaf<(imm), [{
+  int64_t V = N->getSExtValue();
+  return isInt<12>(V) && !isUInt<6>(V);
+}]>;
+let AddedComplexity = 2 in {
+def : Pat<(add  i32:$B, immS12NotU6:$S12), (ADD_rrs12 i32:$B, immS12NotU6:$S12)>;
+def : Pat<(sub  i32:$B, immS12NotU6:$S12), (SUB_rrs12 i32:$B, immS12NotU6:$S12)>;
+def : Pat<(or   i32:$B, immS12NotU6:$S12), (OR_rrs12  i32:$B, immS12NotU6:$S12)>;
+def : Pat<(and  i32:$B, immS12NotU6:$S12), (AND_rrs12 i32:$B, immS12NotU6:$S12)>;
+def : Pat<(xor  i32:$B, immS12NotU6:$S12), (XOR_rrs12 i32:$B, immS12NotU6:$S12)>;
+def : Pat<(smax i32:$B, immS12NotU6:$S12), (MAX_rrs12 i32:$B, immS12NotU6:$S12)>;
+def : Pat<(smin i32:$B, immS12NotU6:$S12), (MIN_rrs12 i32:$B, immS12NotU6:$S12)>;
+}
+
 // ---------------------------------------------------------------------------
 // Unary Instruction definitions.
 // ---------------------------------------------------------------------------
