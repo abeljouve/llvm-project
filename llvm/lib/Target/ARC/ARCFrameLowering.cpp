@@ -437,7 +437,18 @@ void ARCFrameLowering::processFunctionBeforeFrameFinalized(
   MachineFrameInfo &MFI = MF.getFrameInfo();
   LLVM_DEBUG(dbgs() << "Current stack size: " << MFI.getStackSize() << "\n");
   const TargetRegisterClass *RC = &ARC::GPR32RegClass;
-  if (MFI.hasStackObjects()) {
+  // Only reserve a register-scavenging emergency spill slot when the function
+  // has *real* (non-fixed) stack objects -- locals or register-allocator spill
+  // slots. hasStackObjects() is also true when the only stack objects are the
+  // fixed BLINK / callee-save slots (negative frame indices), which a non-leaf
+  // function always has; those slots live at tiny offsets (<64 bytes from SP)
+  // that always fit the S9 frame-index field, so eliminateFrameIndex never
+  // needs to scavenge a scratch register for them. Reserving the slot anyway
+  // forced a spurious sub/add sp,sp,4 prologue/epilogue on every non-leaf
+  // function. getObjectIndexEnd() counts only the non-fixed objects, so this
+  // matches the ARM/RISC-V policy of reserving the emergency slot only when
+  // frame-index elimination can actually require one.
+  if (MFI.getObjectIndexEnd() > 0) {
     int RegScavFI = MFI.CreateSpillStackObject(RegInfo->getSpillSize(*RC),
                                                RegInfo->getSpillAlign(*RC));
     RS->addScavengingFrameIndex(RegScavFI);
