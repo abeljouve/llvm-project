@@ -225,6 +225,17 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
                      isTypeLegal(MVT::i64) ? Legal : Custom);
 
   setMaxAtomicSizeInBitsSupported(0);
+
+  // Inline fixed-size memcpy/memset/memmove as ld/st runs instead of calling
+  // the compiler-rt helpers. ARC700 has 32-bit word load/store only, so each
+  // store covers up to 4 bytes; 16 stores inlines an aligned 64-byte copy. The
+  // base defaults (8 / 4) collapse every copy >32B (>16B at -Oz) to a `bl`.
+  MaxStoresPerMemcpy = 16;
+  MaxStoresPerMemcpyOptSize = 8;
+  MaxStoresPerMemset = 16;
+  MaxStoresPerMemsetOptSize = 8;
+  MaxStoresPerMemmove = 16;
+  MaxStoresPerMemmoveOptSize = 8;
 }
 
 //===----------------------------------------------------------------------===//
@@ -785,6 +796,28 @@ ARCTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
 SDValue ARCTargetLowering::PerformDAGCombine(SDNode *N,
                                              DAGCombinerInfo &DCI) const {
   return {};
+}
+
+// ARC700 has no hardware multiplier, so `mul x, C` would otherwise lower to a
+// __mulsi3 libcall (push blink / mov C / bl / pop blink). For constants of the
+// form 2^N±1 / 2^N±2^M the generic DAGCombiner.visitMUL decomposition (gated on
+// this hook) rewrites the multiply into shl + add/sub, which select to the
+// already-emitted asl/add/sub (and add1/add2/add3 scaled-adds for x*3/5/9) —
+// 1-3 single-cycle ALU ops instead of a call. Constants that don't match the
+// two-term shapes keep the libcall path automatically.
+bool ARCTargetLowering::decomposeMulByConstant(LLVMContext &Context, EVT VT,
+                                               SDValue C) const {
+  // With a hardware multiplier MUL is Legal and decomposition is undesirable.
+  if (Subtarget.hasMPY())
+    return false;
+  if (VT != MVT::i32)
+    return false;
+  auto *CN = dyn_cast<ConstantSDNode>(C);
+  if (!CN)
+    return false;
+  const APInt &MulC = CN->getAPIntValue();
+  return (MulC + 1).isPowerOf2() || (MulC - 1).isPowerOf2() ||
+         (1 - MulC).isPowerOf2() || (-(MulC + 1)).isPowerOf2();
 }
 
 //===----------------------------------------------------------------------===//
