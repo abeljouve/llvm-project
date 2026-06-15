@@ -62,6 +62,26 @@ static void generateStackAdjustment(MachineBasicBlock &MBB,
                     << AbsAmount << "\n");
 
   assert((AbsAmount % 4 == 0) && "Stack adjustments must be 4-byte aligned.");
+
+  // Prefer the 2-byte compact SP-relative forms (sub_s %sp,%sp,u7 /
+  // add_s %sp,%sp,u7) over the 4-byte add/sub rru6 when adjusting SP itself.
+  // The 16-bit F16_SP_OPS form (ARCompact only) carries a 7-bit, 4-byte-
+  // aligned immediate -- encoding u7[6:2], with u7[1:0] forced to 0 -- so the
+  // representable byte range is 0..124 in steps of 4. SP is implicit in the
+  // encoding; model the SP read+write explicitly so post-RA liveness stays
+  // correct. This saves 2 bytes on every small SP adjustment (the common
+  // prologue/epilogue case once the scavenger-slot fix removed the spurious
+  // +/-4 adjustments).
+  if (StackPtr == ARC::SP && AbsAmount <= 124 &&
+      MBB.getParent()->getSubtarget<ARCSubtarget>().isARCompact()) {
+    unsigned CAdjOp = Positive ? ARC::SP_ADD_SP_S : ARC::SP_SUB_SP_S;
+    BuildMI(MBB, MBBI, dl, TII.get(CAdjOp))
+        .addImm(AbsAmount)
+        .addReg(ARC::SP, RegState::ImplicitDefine)
+        .addReg(ARC::SP, RegState::Implicit);
+    return;
+  }
+
   if (isUInt<6>(AbsAmount))
     AdjOp = Positive ? ARC::ADD_rru6 : ARC::SUB_rru6;
   else if (isInt<12>(AbsAmount))
