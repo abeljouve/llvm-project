@@ -82,6 +82,13 @@ def ARCJumpLink       : SDNode<"ARCISD::JL",SDT_ARCBranchLink,
 def ret      : SDNode<"ARCISD::RET", SDTNone,
                       [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 
+// Tail call: jump to the callee (direct) with our frame torn down, so the
+// callee returns straight to our caller. One pointer operand = the callee
+// address; variadic arg-reg uses + reg-mask attach like a normal call.
+def SDT_ARCTcRet : SDTypeProfile<0, 1, [SDTCisPtrTy<0>]>;
+def ARCtcreturn : SDNode<"ARCISD::TC_RETURN", SDT_ARCTcRet,
+                         [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
 // Call sequencing nodes.
 // These are target-independent nodes, but have target-specific formats.
 def callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_ARCCallSeqStart,
@@ -575,6 +582,21 @@ let isCall = 1, isBarrier = 1, Defs = [BLINK], Uses = [SP] in {
 
 // Pattern to generate BL instruction.
 def : Pat<(ARCBranchLink texternalsym:$dst), (BL texternalsym:$dst)>;
+
+// Direct tail call = a far unconditional branch to the callee (major 0x00,
+// s25h pcrel, same range that reaches any BL target). It does NOT set BLINK, so
+// the callee returns straight to our caller. isReturn+isTerminator so PEI tears
+// down the frame before it; isCall so the variadic arg-reg uses + the call
+// reg-mask attach (like BL). Encoded directly via getBranchTargetS25HEncoding
+// (fixup_arc_s25h_pcrel) -- no pseudo expansion, so analyzeBranch never sees a
+// branch with a non-MBB target.
+let isCall = 1, isReturn = 1, isTerminator = 1, isBarrier = 1,
+    isCodeGenOnly = 1, Uses = [SP] in
+def TCB : F32_BR0_UCOND_FAR<(outs), (ins tcalltargetS25:$S25), "b\t$S25",
+                            [(ARCtcreturn tglobaladdr:$S25)]>
+{ let N = 0; }
+
+def : Pat<(ARCtcreturn texternalsym:$dst), (TCB texternalsym:$dst)>;
 
 // Return from call.
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in
