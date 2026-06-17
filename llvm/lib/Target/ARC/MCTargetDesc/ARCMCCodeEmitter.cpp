@@ -221,14 +221,27 @@ uint64_t ARCMCCodeEmitter::getMemIIOpValue(const MCInst &MI, unsigned OpNo,
   // 32-bit long immediate in the upper word of the 64-bit encoding.
   // The first sub-operand is typically 0 (base), and the second is the
   // immediate address.
+  //
+  // Either sub-operand may be a symbol expression rather than a literal --
+  // e.g. `ld rA, [@global]` (load AddrModeImm -> LD_limm) folds a global
+  // address into the LIMM. Such operands MUST emit an absolute fixup, else the
+  // relocation is silently dropped, the LIMM stays 0, and every access to a
+  // linker-placed global reads address 0 (the IVT). encodeInstruction adds +4
+  // to these fixups so they land on the LIMM word of the 8-byte encoding.
   const MCOperand &Base = MI.getOperand(OpNo);
   const MCOperand &Offset = MI.getOperand(OpNo + 1);
 
   uint64_t Value = 0;
   if (Base.isImm())
     Value |= static_cast<uint64_t>(static_cast<uint32_t>(Base.getImm()));
+  else if (Base.isExpr())
+    Fixups.push_back(
+        MCFixup::create(0, Base.getExpr(), MCFixupKind(ARC::fixup_arc_32)));
   if (Offset.isImm())
     Value |= static_cast<uint64_t>(static_cast<uint32_t>(Offset.getImm()));
+  else if (Offset.isExpr())
+    Fixups.push_back(
+        MCFixup::create(0, Offset.getExpr(), MCFixupKind(ARC::fixup_arc_32)));
 
   return Value;
 }
