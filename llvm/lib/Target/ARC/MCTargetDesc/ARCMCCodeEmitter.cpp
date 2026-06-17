@@ -78,6 +78,17 @@ public:
                              SmallVectorImpl<MCFixup> &Fixups,
                              const MCSubtargetInfo &STI) const;
 
+  // getMEMrlimmOpValue - Return 38-bit encoding for the MEMrlimm compound
+  // operand (register base + 32-bit long-immediate offset). Composes the two
+  // MI sub-operands into [37:32]=B | [31:0]=LImm, matching the `bits<38> addr`
+  // split in F32_LD_RLIMM (B=addr{37-32}, LImm=addr{31-0}). Without this the
+  // default TableGen encoder reads only the base register and writes its 6-bit
+  // number into the LIMM slot, so every LDB/LDH/LD_rlimm loads from
+  // *(r0 + base-reg-number) instead of *(base + offset).
+  uint64_t getMEMrlimmOpValue(const MCInst &MI, unsigned OpNo,
+                              SmallVectorImpl<MCFixup> &Fixups,
+                              const MCSubtargetInfo &STI) const;
+
   // getMEMrrOpValue - 12-bit encoding for the MEMrr compound operand
   // (GPR32 $B, GPR32 $C): [11:6]=B, [5:0]=C. The LD_AS_rr `let addr{}` slices
   // scatter these into the reg+reg scaled-load instruction word.
@@ -157,6 +168,34 @@ uint64_t ARCMCCodeEmitter::getMEMrs9OpValue(const MCInst &MI, unsigned OpNo,
   uint64_t S9 = static_cast<uint64_t>(OffImm) & 0x1FF;
   uint64_t B = BaseEnc & 0x3F;
   return (B << 9) | S9;
+}
+
+uint64_t ARCMCCodeEmitter::getMEMrlimmOpValue(const MCInst &MI, unsigned OpNo,
+                                              SmallVectorImpl<MCFixup> &Fixups,
+                                              const MCSubtargetInfo &STI) const {
+  // MEMrlimm is a compound operand: (GPR32 $B, i32imm $LImm).
+  // Pack as 38 bits [37:32]=B | [31:0]=LImm, which matches the `bits<38> addr`
+  // field split in F32_LD_RLIMM (let B = addr{37-32}; let LImm = addr{31-0}).
+  const MCOperand &Base = MI.getOperand(OpNo);
+  const MCOperand &Offset = MI.getOperand(OpNo + 1);
+
+  uint64_t BaseEnc = 0;
+  if (Base.isReg())
+    BaseEnc = Ctx.getRegisterInfo()->getEncodingValue(Base.getReg());
+
+  uint64_t LImm = 0;
+  if (Offset.isImm()) {
+    LImm = static_cast<uint32_t>(Offset.getImm());
+  } else if (Offset.isExpr()) {
+    // A symbol folded into the LIMM (far load of a global address). Emit a
+    // 32-bit absolute fixup; encodeInstruction shifts it +4 onto the LIMM word.
+    Fixups.push_back(
+        MCFixup::create(0, Offset.getExpr(), MCFixupKind(ARC::fixup_arc_32)));
+    LImm = 0;
+  }
+
+  uint64_t B = BaseEnc & 0x3F;
+  return (B << 32) | (LImm & 0xFFFFFFFFULL);
 }
 
 uint64_t ARCMCCodeEmitter::getMEMrrOpValue(const MCInst &MI, unsigned OpNo,

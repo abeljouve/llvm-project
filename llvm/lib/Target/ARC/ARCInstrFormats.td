@@ -56,6 +56,7 @@ def MEMrr : Operand<iAny> {
 def MEMrlimm : Operand<iAny> {
   let MIOperandInfo = (ops GPR32:$B, i32imm:$LImm);
   let PrintMethod = "printMemOperandRI";
+  let EncoderMethod = "getMEMrlimmOpValue";
   let DecoderMethod = "DecodeMEMrlimm";
 }
 
