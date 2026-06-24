@@ -1074,7 +1074,11 @@ let AddedComplexity = 10 in
 def : Pat<(load AddrModeAS:$addr), (LD_AS_rr AddrModeAS:$addr)>;
 def : Pat<(load AddrModeS9:$addr), (LD_rs9 AddrModeS9:$addr)>;
 def : Pat<(load AddrModeImm:$addr), (LD_limm AddrModeImm:$addr)>;
-def : Pat<(load AddrModeFar:$addr), (LD_rs9 AddrModeFar:$addr)>;
+// 32-bit far load MUST use the rlimm (LIMM-offset) form, not rs9: an
+// out-of-s9 offset (e.g. partitions[p].flash_addr @ 0x8EC) stuffed into the
+// 9-bit rs9 field is silently truncated by getMEMrs9OpValue (0x8EC -> 0xEC).
+// The 16-/8-bit far loads already use LDH_rlimm/LDB_rlimm correctly below.
+def : Pat<(load AddrModeFar:$addr), (LD_rlimm AddrModeFar:$addr)>;
 
 // 16-bit loads
 def : Pat<(zextloadi16 AddrModeS9:$addr), (LDH_rs9 AddrModeS9:$addr)>;
