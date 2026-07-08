@@ -8555,11 +8555,23 @@ static SDValue getMemsetValue(SDValue Value, EVT VT, SelectionDAG &DAG,
 
   Value = DAG.getNode(ISD::ZERO_EXTEND, dl, IntVT, Value);
   if (NumBits > 8) {
-    // Use a multiplication with 0x010101... to extend the input to the
-    // required length.
-    APInt Magic = APInt::getSplat(NumBits, APInt(8, 0x01));
-    Value = DAG.getNode(ISD::MUL, dl, IntVT, Value,
-                        DAG.getConstant(Magic, dl, IntVT));
+    const TargetLowering &TLI = DAG.getTargetLoweringInfo();
+    if (TLI.isOperationLegalOrCustom(ISD::MUL, IntVT)) {
+      // Use a multiplication with 0x010101... to extend the input to the
+      // required length.
+      APInt Magic = APInt::getSplat(NumBits, APInt(8, 0x01));
+      Value = DAG.getNode(ISD::MUL, dl, IntVT, Value,
+                          DAG.getConstant(Magic, dl, IntVT));
+    } else {
+      // The target has no usable multiply (it would be lowered to a
+      // libcall), and this node can be created after legalization, where
+      // it would fail instruction selection. Broadcast the byte with a
+      // shift-or chain instead.
+      for (unsigned Shift = 8; Shift < NumBits; Shift <<= 1)
+        Value = DAG.getNode(ISD::OR, dl, IntVT, Value,
+                            DAG.getNode(ISD::SHL, dl, IntVT, Value,
+                                        DAG.getConstant(Shift, dl, IntVT)));
+    }
   }
 
   if (VT != Value.getValueType() && !VT.isInteger())
