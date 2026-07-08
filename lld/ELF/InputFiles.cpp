@@ -1755,6 +1755,15 @@ static uint16_t getBitcodeMachineKind(Ctx &ctx, StringRef path,
   case Triple::amdgcn:
   case Triple::r600:
     return EM_AMDGPU;
+  case Triple::arc:
+  case Triple::arceb:
+    // The ARC MC backend emits EM_ARC_COMPACT2 by default (its AsmBackend only
+    // selects EM_ARC_COMPACT when the subtarget CPU starts with "arc700", and
+    // no CPU is passed by default). Match native output so LTO-generated
+    // objects link cleanly against regular .o files. If the default CPU ever
+    // changes to arc700, this must change to match — ideally by reading the
+    // bitcode module's "target-cpu" attribute instead of hardcoding.
+    return EM_ARC_COMPACT2;
   case Triple::arm:
   case Triple::armeb:
   case Triple::thumb:
