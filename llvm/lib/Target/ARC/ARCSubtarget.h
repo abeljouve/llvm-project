@@ -30,10 +30,19 @@ class TargetMachine;
 
 class ARCSubtarget : public ARCGenSubtargetInfo {
   virtual void anchor();
-  ARCInstrInfo InstrInfo;
-  ARCFrameLowering FrameLowering;
-  ARCTargetLowering TLInfo;
-  std::unique_ptr<const SelectionDAGTargetInfo> TSInfo;
+
+  // NOTE: the feature flags below MUST be declared before InstrInfo /
+  // FrameLowering / TLInfo. Members are constructed in declaration order, and
+  // ARCTargetLowering's constructor reads these flags (e.g. hasMPY() gates
+  // whether MUL/MULHU are Legal or LibCall). If the flags were declared after
+  // TLInfo they would still be indeterminate when TLInfo is built — the flag
+  // member initializers (= false) and ParseSubtargetFeatures both run too
+  // late, so TLInfo would latch a garbage feature set. That desync makes
+  // codegen non-deterministic: e.g. a stale hasMPY()==true marks MUL Legal so
+  // the div-by-constant combine emits mulhu/mul, but ISel (which reads the
+  // correctly-parsed hasMPY()==false) has no MPY pattern -> "Cannot select
+  // mul". See initializeSubtargetDependencies(), which parses features before
+  // any dependent member is constructed.
 
   // ARC processor extensions
   bool Xnorm = false;
@@ -54,11 +63,24 @@ class ARCSubtarget : public ARCGenSubtargetInfo {
   // Endianness
   bool IsBigEndian = false;
 
+  ARCInstrInfo InstrInfo;
+  ARCFrameLowering FrameLowering;
+  ARCTargetLowering TLInfo;
+  std::unique_ptr<const SelectionDAGTargetInfo> TSInfo;
+
 public:
   /// This constructor initializes the data members to match that
   /// of the specified triple.
   ARCSubtarget(const Triple &TT, const std::string &CPU, const std::string &FS,
                const TargetMachine &TM);
+
+  /// Parse the subtarget features and endianness before any feature-dependent
+  /// member (InstrInfo / FrameLowering / TLInfo) is constructed, then return
+  /// *this. Call this in the constructor initializer list as the argument to
+  /// the first such member so the feature flags are already correct when those
+  /// members latch them.
+  ARCSubtarget &initializeSubtargetDependencies(const Triple &TT, StringRef CPU,
+                                                StringRef FS);
 
   ~ARCSubtarget() override;
 
