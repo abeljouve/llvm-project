@@ -27,17 +27,29 @@ using namespace llvm;
 
 void ARCSubtarget::anchor() {}
 
-ARCSubtarget::ARCSubtarget(const Triple &TT, const std::string &CPU,
-                           const std::string &FS, const TargetMachine &TM)
-    : ARCGenSubtargetInfo(TT, CPU, /*TuneCPU=*/CPU, FS), InstrInfo(*this),
-      FrameLowering(*this), TLInfo(TM, *this) {
-  // Parse the subtarget features to set IsARCompact, IsBigEndian, etc.
+ARCSubtarget &ARCSubtarget::initializeSubtargetDependencies(const Triple &TT,
+                                                           StringRef CPU,
+                                                           StringRef FS) {
+  // Parse the subtarget features to set HasMPY, IsARCompact, IsBigEndian, etc.
   ParseSubtargetFeatures(CPU, /*TuneCPU=*/CPU, FS);
 
   // Also detect big-endian from triple as a fallback.
   if (TT.getArch() == Triple::arceb)
     IsBigEndian = true;
 
+  return *this;
+}
+
+ARCSubtarget::ARCSubtarget(const Triple &TT, const std::string &CPU,
+                           const std::string &FS, const TargetMachine &TM)
+    : ARCGenSubtargetInfo(TT, CPU, /*TuneCPU=*/CPU, FS),
+      // Parse features FIRST (via initializeSubtargetDependencies) so the
+      // feature flags are correct before InstrInfo / FrameLowering / TLInfo
+      // read them. TLInfo's constructor gates MUL/MULHU lowering on hasMPY();
+      // latching a stale flag here causes a TargetLowering/ISel desync that
+      // surfaces as "Cannot select mul" under LTO codegen.
+      InstrInfo(initializeSubtargetDependencies(TT, CPU, FS)),
+      FrameLowering(*this), TLInfo(TM, *this) {
   TSInfo = std::make_unique<ARCSelectionDAGInfo>();
 }
 
