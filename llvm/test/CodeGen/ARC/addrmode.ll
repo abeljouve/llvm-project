@@ -66,3 +66,45 @@ for.body:
   %exitcond = icmp eq i32 %inc, %n
   br i1 %exitcond, label %for.cond.cleanup, label %for.body
 }
+
+; When the offset==0 load is folded into a post-increment, the remaining
+; (sibling) loads off the same base must be rebased onto the post-increment
+; result with their displacement reduced by the increment -- each independently.
+; Regression for a fixPastUses bug that accumulated a running offset and applied
+; it with the wrong sign/base: the src[1]/src[2] byte loads (past a +3 advance)
+; became [b,4]/[b,6] instead of [b,-2]/[b,-1], reading the wrong bytes.
+; CHECK-LABEL: past_uses
+; CHECK:       ldb.ab %r{{[0-9]+}}, {{\[}}[[B:%r[0-9]+]],3]
+; CHECK:       ldb %r{{[0-9]+}}, {{\[}}[[B]],-2]
+; CHECK:       ldb %r{{[0-9]+}}, {{\[}}[[B]],-1]
+; CHECK-NOT:   ldb %r{{[0-9]+}}, {{\[}}[[B]],4]
+; CHECK-NOT:   ldb %r{{[0-9]+}}, {{\[}}[[B]],6]
+define void @past_uses(ptr inreg nocapture %dst, ptr inreg nocapture readonly %src, i32 inreg %n) {
+entry:
+  %c = icmp sgt i32 %n, 0
+  br i1 %c, label %body, label %done
+done:
+  ret void
+body:
+  %i = phi i32 [ %inc, %body ], [ 0, %entry ]
+  %s = phi ptr [ %s.next, %body ], [ %src, %entry ]
+  %d = phi ptr [ %d.next, %body ], [ %dst, %entry ]
+  %p0 = load i8, ptr %s, align 1
+  %g1 = getelementptr inbounds i8, ptr %s, i32 1
+  %p1 = load i8, ptr %g1, align 1
+  %g2 = getelementptr inbounds i8, ptr %s, i32 2
+  %p2 = load i8, ptr %g2, align 1
+  %z0 = zext i8 %p0 to i32
+  %z1 = zext i8 %p1 to i32
+  %z2 = zext i8 %p2 to i32
+  %s1 = shl i32 %z1, 8
+  %s2 = shl i32 %z2, 16
+  %o1 = or i32 %z0, %s1
+  %o2 = or i32 %o1, %s2
+  store i32 %o2, ptr %d, align 4
+  %s.next = getelementptr inbounds i8, ptr %s, i32 3
+  %d.next = getelementptr inbounds i8, ptr %d, i32 4
+  %inc = add nuw nsw i32 %i, 1
+  %e = icmp eq i32 %inc, %n
+  br i1 %e, label %done, label %body
+}

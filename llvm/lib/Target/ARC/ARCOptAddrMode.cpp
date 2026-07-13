@@ -100,10 +100,11 @@ private:
   bool canFixPastUses(const ArrayRef<MachineInstr *> &Uses,
                       MachineOperand &Incr, unsigned BaseReg);
 
-  // Update all instructions in \p Uses to accomodate increment
-  // of \p BaseReg by \p Offset
-  void fixPastUses(ArrayRef<MachineInstr *> Uses, unsigned BaseReg,
-                   int64_t Offset);
+  // Rebase all instructions in \p Uses onto the post-increment write-back
+  // register \p NewBase (= old base + \p Incr), reducing each use's own
+  // displacement by \p Incr. Independent per use -- no running offset.
+  void fixPastUses(ArrayRef<MachineInstr *> Uses, unsigned NewBase,
+                   int64_t Incr);
 
   // Change instruction \p Ldst to postincrement form.
   // \p NewBase is register to hold update base value
@@ -258,11 +259,13 @@ MachineInstr *ARCOptAddrMode::tryToCombine(MachineInstr &Ldst) {
     if (Result == &Add)
       Result = Result->getNextNode();
 
-    fixPastUses(Uses, B, Incr);
+    // Rebase past uses onto the post-increment's write-back register (the ADD
+    // result), NOT the old base: after the fold that register holds base+Incr.
+    unsigned NewBaseReg = Add.getOperand(0).getReg();
+    fixPastUses(Uses, NewBaseReg, Incr);
 
     int NewOpcode = ARC::getPostIncOpcode(Ldst.getOpcode());
     assert(NewOpcode > 0 && "No postincrement form found");
-    unsigned NewBaseReg = Add.getOperand(0).getReg();
     changeToAddrMode(Ldst, NewOpcode, NewBaseReg, Add.getOperand(2));
     Add.eraseFromParent();
 
@@ -353,29 +356,29 @@ bool ARCOptAddrMode::canFixPastUses(const ArrayRef<MachineInstr *> &Uses,
                                     MachineOperand &Incr, unsigned BaseReg) {
 
   assert(Incr.isImm() && "Expected immediate increment");
-  // Dry-run fixPastUses: it walks the uses accumulating NewOffset (add-const
-  // uses add their amount, ld/st uses add their own displacement) and asserts
-  // validity at each step. Mirror that accumulation here and early-return
-  // false instead of letting fixPastUses hit an assert. The previous code
-  // validated each add against the *initial* offset, which diverged from
-  // fixPastUses' running sum and could let an invalid multi-add chain through
-  // (the real bug the ARCompact guard was papering over).
-  int64_t NewOffset = Incr.getImm();
+  // Dry-run fixPastUses. After the fold the base register is post-incremented
+  // by Incr *in place*, so every past use of it now observes OldBase+Incr.
+  // fixPastUses rebases each such use onto the post-increment result and
+  // compensates by SUBTRACTING Incr from that use's own displacement. The uses
+  // are independent direct users of the base, so each is validated on its own
+  // -- there is no running sum between them. (The previous code accumulated a
+  // running offset, which both diverged from correct post-increment semantics
+  // and mangled sibling loads/stores of the same base -- e.g. two byte loads at
+  // [B,1]/[B,2] past a `+0xc` advance became [B,0xf]/[B,0xe].)
+  int64_t IncrVal = Incr.getImm();
   for (MachineInstr *MI : Uses) {
     int64_t Amount;
     unsigned BasePos, OffPos;
     if (isAddConstantOp(*MI, Amount)) {
-      NewOffset += Amount;
-      if (!isValidIncrementOffset(NewOffset))
+      if (!isValidIncrementOffset(Amount - IncrVal))
         return false;
     } else if (AII->getBaseAndOffsetPosition(*MI, BasePos, OffPos)) {
       const MachineOperand &MO = MI->getOperand(OffPos);
       if (!MO.isImm())
         return false;
-      NewOffset += MO.getImm();
-      if (!isValidLoadStoreOffset(NewOffset)) {
-        LLVM_DEBUG(dbgs() << "Use cannot handle accumulated displacement "
-                          << NewOffset << ": " << *MI);
+      if (!isValidLoadStoreOffset(MO.getImm() - IncrVal)) {
+        LLVM_DEBUG(dbgs() << "Use cannot handle displacement "
+                          << (MO.getImm() - IncrVal) << ": " << *MI);
         return false;
       }
     } else {
@@ -386,28 +389,34 @@ bool ARCOptAddrMode::canFixPastUses(const ArrayRef<MachineInstr *> &Uses,
 }
 
 void ARCOptAddrMode::fixPastUses(ArrayRef<MachineInstr *> Uses,
-                                 unsigned NewBase, int64_t NewOffset) {
-
+                                 unsigned NewBase, int64_t Incr) {
+  // NewBase is the post-increment's write-back register, which holds
+  // OldBase + Incr after the folded load/store. Each remaining use of the old
+  // base that is ordered after the post-increment must be rebased onto NewBase
+  // with its displacement reduced by Incr so it still targets the original
+  // address. The uses are independent direct users of the old base, so each is
+  // fixed on its own -- do NOT carry a running offset between them.
   for (MachineInstr *MI : Uses) {
     int64_t Amount;
     unsigned BasePos, OffPos;
     if (isAddConstantOp(*MI, Amount)) {
-      NewOffset += Amount;
-      assert(isValidIncrementOffset(NewOffset) &&
+      int64_t NewAmount = Amount - Incr;
+      assert(isValidIncrementOffset(NewAmount) &&
              "New offset won't fit into ADD instr");
       BasePos = 1;
       OffPos = 2;
+      MI->getOperand(OffPos).setImm(NewAmount);
     } else if (AII->getBaseAndOffsetPosition(*MI, BasePos, OffPos)) {
       MachineOperand &MO = MI->getOperand(OffPos);
       assert(MO.isImm() && "expected immediate operand");
-      NewOffset += MO.getImm();
+      int64_t NewOffset = MO.getImm() - Incr;
       assert(isValidLoadStoreOffset(NewOffset) &&
              "New offset won't fit into LD/ST");
+      MI->getOperand(OffPos).setImm(NewOffset);
     } else
       llvm_unreachable("unexpected instruction");
 
     MI->getOperand(BasePos).setReg(NewBase);
-    MI->getOperand(OffPos).setImm(NewOffset);
   }
 }
 
