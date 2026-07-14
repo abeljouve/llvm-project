@@ -57,6 +57,17 @@ class ARCSubtarget : public ARCGenSubtargetInfo {
   // Bit-scan instructions (fls, ffs). ARCv2 only.
   bool HasBitScan = false;
 
+  // Full-32-bit byte-reversal instruction (swape). ARCv2 only; ABSENT on
+  // ARC700/ARCompact (BCM55030 included) — never enabled by any current
+  // Proc, kept purely so the bswap DAG Pat can be gated behind it.
+  bool HasSwape = false;
+
+  // Interrupt-return instruction (rtie). ABSENT/traps on the BCM55030 ARC700
+  // integration — never enabled by any current Proc, kept purely so the
+  // hand-coded asm parser can reject `rtie` with a feature diagnostic
+  // instead of silently assembling a trapping opcode.
+  bool HasRTIE = false;
+
   // ISA variant
   bool IsARCompact = false;
 
@@ -105,6 +116,8 @@ public:
   bool hasMPY() const { return HasMPY; }
   bool hasSEXT() const { return HasSEXT; }
   bool hasBitScan() const { return HasBitScan; }
+  bool hasSwape() const { return HasSwape; }
+  bool hasRTIE() const { return HasRTIE; }
   bool isARCompact() const { return IsARCompact; }
   bool isBigEndian() const { return IsBigEndian; }
 

@@ -90,16 +90,31 @@ static void replaceFrameIndex(MachineBasicBlock::iterator II,
   }
   switch (MI.getOpcode()) {
   // The S9 field of LD_rs9 / ST_rs9 is a signed byte offset; the ARC700
-  // encoding itself imposes no alignment. Misaligned word/halfword
-  // accesses are supported at runtime via STATUS32.AD (unaligned-access
-  // enable). Source code that takes addresses inside packed buffers
-  // (e.g. `*(u32 *)(buf + 1)` on a u16 buffer) legitimately produces
-  // such offsets after DAG combine sinks the +N constant into the load.
-  // Upstream LLVM asserted Offset%4 / Offset%2 to catch ISel bugs, but
-  // those asserts also fire for valid user code on ARC700; drop them.
+  // encoding itself imposes no alignment. On real BCM55030 silicon,
+  // misaligned word/half-word accesses do NOT trap and are NOT hardware
+  // fixed up: STATUS32.AD does not provide an unaligned-access-enable path
+  // on this core, and a misaligned effective address is silently rounded
+  // down (word: addr & ~3, half-word: addr & ~1), corrupting the accessed
+  // data. See docs/notes/isa-characterization.md. A prior comment here
+  // claiming "STATUS32.AD" performs a runtime fixup was an unverified
+  // assumption, disproved by silicon characterization -- do not
+  // reintroduce it.
+  //
+  // ARCTargetLowering::allowsMisalignedMemoryAccesses (ARCISelLowering.cpp)
+  // now unconditionally reports misaligned multi-byte accesses as illegal,
+  // so SelectionDAG legalization always peels an insufficiently-aligned IR
+  // load/store into byte/half-word ops before an LD_rs9/ST_rs9/LDH_rs9/
+  // STH_rs9 can ever be selected. A frame-relative multi-byte access
+  // reaching here with a non-naturally-aligned effective offset is
+  // therefore a backend bug, not valid user code -- reinstate the
+  // assertion to catch it.
   case ARC::LD_rs9:
+    assert((Offset % 4 == 0) && "LD needs 4 byte alignment.");
+    [[fallthrough]];
   case ARC::LDH_rs9:
   case ARC::LDH_X_rs9:
+    assert((Offset % 2 == 0) && "LDH needs 2 byte alignment.");
+    [[fallthrough]];
   case ARC::LDB_rs9:
   case ARC::LDB_X_rs9:
     LLVM_DEBUG(dbgs() << "Building LDFI\n");
@@ -109,7 +124,11 @@ static void replaceFrameIndex(MachineBasicBlock::iterator II,
         .addMemOperand(*MI.memoperands_begin());
     break;
   case ARC::ST_rs9:
+    assert((Offset % 4 == 0) && "ST needs 4 byte alignment.");
+    [[fallthrough]];
   case ARC::STH_rs9:
+    assert((Offset % 2 == 0) && "STH needs 2 byte alignment.");
+    [[fallthrough]];
   case ARC::STB_rs9:
     LLVM_DEBUG(dbgs() << "Building STFI\n");
     BuildMI(MBB, II, DL, TII.get(MI.getOpcode()))

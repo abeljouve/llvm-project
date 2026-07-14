@@ -883,6 +883,17 @@ bool ARCAsmParser::emitZeroOp(SMLoc IDLoc, StringRef Name,
                                unsigned Opcode) {
   if (Operands.size() != 1)
     return Error(IDLoc, Twine("expected bare `") + Name + "`");
+  // `rtie` is a negative-legality mnemonic: it is a valid ARCompact encoding
+  // but the BCM55030 ARC700 integration does not implement it (silicon
+  // characterization: RTIE enters Instruction Error vector 2; the required
+  // interrupt-return mechanism on this profile is `j.f [ILINK1/2]`). Refuse
+  // to assemble it unless FeatureRTIE is explicitly enabled, so misuse is a
+  // diagnostic instead of a silently-emitted trapping opcode.
+  if (Opcode == ARC::ARC_RTIE_0 &&
+      !getSTI().getFeatureBits()[ARC::FeatureRTIE])
+    return Error(IDLoc, "rtie is not available on this ARC700 profile "
+                         "(ABSENT/traps on BCM55030; use `j.f [ILINK1/2]` "
+                         "for interrupt return)");
   MCInst Inst;
   Inst.setOpcode(Opcode);
   Inst.setLoc(IDLoc);

@@ -46,6 +46,25 @@ def FeatureBitScan
     : SubtargetFeature<"bitscan", "HasBitScan", "true",
                        "Enable fls/ffs bit-scan instructions">;
 
+// Full-32-bit byte-reversal instruction (swape). ARCv2-only; ABSENT on
+// ARC700/ARCompact cores (no encoding on ARC700; traps as an illegal
+// instruction on ARCv2 word-mode per the silicon oracle). Stays OFF for
+// every currently-defined Proc (generic/arc700/arc700eb/bcm55030) so the
+// bswap DAG combine can never select ARC_SWAPE_* on this profile.
+def FeatureSwape
+    : SubtargetFeature<"swape", "HasSwape", "true",
+                       "Enable swape full-32-bit byte-reversal (ABSENT on BCM55030 ARC700)">;
+
+// Interrupt-return instruction (rtie). ABSENT/traps on the BCM55030 ARC700
+// integration -- silicon characterization confirmed RTIE enters Instruction
+// Error vector 2 (docs/notes/isa-characterization.md). The required
+// interrupt-return mechanism on this profile is `j.f [ILINK1/2]`, not RTIE.
+// Stays OFF for every currently-defined Proc so the assembler rejects `rtie`
+// by default and codegen must never emit/reference it.
+def FeatureRTIE
+    : SubtargetFeature<"rtie", "HasRTIE", "true",
+                       "Enable rtie (interrupt return; ABSENT/traps on BCM55030 ARC700)">;
+
 //===----------------------------------------------------------------------===//
 // Registers, calling conventions, instruction descriptions
 //===----------------------------------------------------------------------===//
@@ -77,6 +96,13 @@ class Proc<string Name, list<SubtargetFeature> Features>
 def : Proc<"generic", [FeatureMPY, FeatureSEXT, FeatureBitScan]>;
 def : Proc<"arc700", [FeatureARCompact, FeatureNORM]>;
 def : Proc<"arc700eb", [FeatureARCompact, FeatureNORM, FeatureBigEndian]>;
+
+// BCM55030's ARC700 core. Feature list is deliberately IDENTICAL to
+// arc700eb's today (ARCompact + NORM + big-endian, nothing else) — this CPU
+// name exists so future -mcpu=bcm55030 usage documents silicon intent, but
+// it must NOT gain FeatureMPY/FeatureSEXT/FeatureBitScan/FeatureSwape: none
+// of those are present on this silicon (see docs/notes/isa-characterization.md).
+def : Proc<"bcm55030", [FeatureARCompact, FeatureNORM, FeatureBigEndian]>;
 
 def ARC : Target {
   let InstructionSet = ARCInstrInfo;

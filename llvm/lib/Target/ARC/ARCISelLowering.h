@@ -41,6 +41,17 @@ public:
                              unsigned AS,
                              Instruction *I = nullptr) const override;
 
+  /// Return true if the target allows unaligned memory accesses of the
+  /// specified type in the given address space, and set *Fast accordingly.
+  /// ARC700/BCM55030 misaligned word/half-word accesses do not trap and are
+  /// NOT hardware-fixed-up: the low address bits are silently cleared
+  /// (word: addr & ~3, half-word: addr & ~1), corrupting the access. Always
+  /// return false. See docs/notes/isa-characterization.md.
+  bool allowsMisalignedMemoryAccesses(
+      EVT VT, unsigned AddrSpace = 0, Align Alignment = Align(1),
+      MachineMemOperand::Flags Flags = MachineMemOperand::MONone,
+      unsigned *Fast = nullptr) const override;
+
 private:
   const ARCSubtarget &Subtarget;
 
@@ -61,6 +72,7 @@ private:
   SDValue LowerSIGN_EXTEND_INREG(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerBSWAP(SDValue Op, SelectionDAG &DAG) const;
   SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
 
   // Decompose `mul x, C` for 2^N±1 constants into shl+add/sub instead of a

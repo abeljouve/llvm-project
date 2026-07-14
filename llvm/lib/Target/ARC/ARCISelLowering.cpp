@@ -133,6 +133,24 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SRL, MVT::i32, Legal);
   setOperationAction(ISD::ROTR, MVT::i32, Legal);
 
+  // SWAPE (the ARCompact full-32-bit byte-reversal instruction) has NO
+  // encoding on ARC700 / BCM55030 -- it is an ARCv2-only opcode that this
+  // silicon does not implement (confirmed by silicon characterization, see
+  // docs/notes/isa-characterization.md). BSWAP must therefore never select
+  // ARC_SWAPE_b_c on this profile. We Custom-lower ISD::BSWAP to a
+  // mask/shift/or halfword-lane swap followed by ISD::ROTR by 16, which
+  // reaches ISel already in Legal form and selects the existing `swap`
+  // (halfword-exchange) instruction -- itself a real, present ARC700
+  // instruction, unrelated to and unaffected by the absent SWAPE. The
+  // bswap->SWAPE Pat in ARCARCompactPatterns.td is gated behind the
+  // off-by-default HasSwape predicate so it can never fire here; it exists
+  // only for a hypothetical future ARCv2-word CPU that genuinely has swape.
+  //
+  // ABS executes on this silicon (wrapping, non-saturating: ABS(INT_MIN) ==
+  // INT_MIN) and keeps its single-instruction Legal lowering + Pat below.
+  setOperationAction(ISD::BSWAP, MVT::i32, Custom);
+  setOperationAction(ISD::ABS, MVT::i32, Legal);
+
   setOperationAction(ISD::Constant, MVT::i32, Legal);
   setOperationAction(ISD::UNDEF, MVT::i32, Legal);
 
@@ -301,6 +319,33 @@ SDValue ARCTargetLowering::LowerSIGN_EXTEND_INREG(SDValue Op,
   SDValue SR = DAG.getNode(ISD::SRA, dl, MVT::i32, LS,
                            DAG.getConstant(32 - Width, dl, MVT::i32));
   return SR;
+}
+
+SDValue ARCTargetLowering::LowerBSWAP(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc dl(Op);
+  EVT VT = Op.getValueType();
+  assert(VT == MVT::i32 && "Only know how to BSWAP i32");
+  SDValue X = Op.getOperand(0);
+  SDValue Mask = DAG.getConstant(0x00FF00FFU, dl, VT);
+  EVT ShVT = getShiftAmountTy(VT, DAG.getDataLayout());
+  // t = ((x & 0x00FF00FF) << 8) | ((x >> 8) & 0x00FF00FF)
+  // This swaps byte 0<->1 and byte 2<->3 within each halfword lane.
+  SDValue Lo = DAG.getNode(ISD::SHL, dl, VT,
+                           DAG.getNode(ISD::AND, dl, VT, X, Mask),
+                           DAG.getConstant(8, dl, ShVT));
+  SDValue Hi = DAG.getNode(ISD::AND, dl, VT,
+                           DAG.getNode(ISD::SRL, dl, VT, X,
+                                       DAG.getConstant(8, dl, ShVT)),
+                           Mask);
+  SDValue T = DAG.getNode(ISD::OR, dl, VT, Lo, Hi);
+  // bswap(x) = SWAP(t) -- exchange the two halfword lanes. ISD::ROTR by 16
+  // is Legal (set above) and the existing
+  // Pat<(rotr GPR32:$c, (i32 16)), (ARC_SWAP_b_c GPR32:$c)> in
+  // ARCARCompactPatterns.td selects it directly to the real ARC700 `swap`
+  // instruction. Do NOT use ROTL here: it is not marked Legal (falls
+  // through the blanket Expand set at the top of this constructor) and
+  // would re-enter legalization instead of hitting the SWAP Pat.
+  return DAG.getNode(ISD::ROTR, dl, VT, T, DAG.getConstant(16, dl, ShVT));
 }
 
 SDValue ARCTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
@@ -871,6 +916,39 @@ bool ARCTargetLowering::isLegalAddressingMode(const DataLayout &DL,
          (AM.Scale == 4 && !AM.BaseGV && AM.BaseOffs == 0 && AM.HasBaseReg);
 }
 
+bool ARCTargetLowering::allowsMisalignedMemoryAccesses(
+    EVT VT, unsigned AddrSpace, Align Alignment,
+    MachineMemOperand::Flags Flags, unsigned *Fast) const {
+  // ARC700/BCM55030 has no hardware unaligned-access fixup and no
+  // STATUS32.AD "unaligned enable" behavior (that assumption was disproved
+  // by silicon characterization -- see docs/notes/isa-characterization.md
+  // and the deleted comment this replaces in ARCRegisterInfo.cpp).
+  // Misaligned word/half-word loads/stores silently clear the low address
+  // bits (word: addr & ~3, half-word: addr & ~1) instead of trapping or
+  // being fixed up, so an under-aligned multi-byte access reads/writes the
+  // wrong location without any error signal. Unconditionally report every
+  // misaligned scalar access as neither legal nor fast, for every width and
+  // address space, so callers (SelectionDAGBuilder / DAG Legalize / the
+  // memcpy-inlining combine) never emit a naturally-misaligned LD/ST and
+  // instead peel to byte/half-word operations.
+  //
+  // This is a pinning override, not a behavior change: TargetLoweringBase's
+  // default implementation already returns false unconditionally, and
+  // allowsMemoryAccessForAlignment() only calls into this hook once it has
+  // already proven Alignment < the type's ABI alignment -- so the aligned
+  // fast path (Alignment >= ABI align) never reaches this function and is
+  // unaffected. Made explicit so behavior cannot silently change if a
+  // future legalization/vectorization feature relies on a friendlier
+  // generic default.
+  (void)VT;
+  (void)AddrSpace;
+  (void)Alignment;
+  (void)Flags;
+  if (Fast)
+    *Fast = 0;
+  return false;
+}
+
 // Allow the generic code to mark calls as tail-call candidates; LowerCall
 // applies the conservative eligibility (direct, C/Fast, no stack args).
 bool ARCTargetLowering::mayBeEmittedAsTailCall(const CallInst *CI) const {
@@ -945,6 +1023,8 @@ SDValue ARCTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     return LowerSIGN_EXTEND_INREG(Op, DAG);
   case ISD::JumpTable:
     return LowerJumpTable(Op, DAG);
+  case ISD::BSWAP:
+    return LowerBSWAP(Op, DAG);
   case ISD::VASTART:
     return LowerVASTART(Op, DAG);
   case ISD::READCYCLECOUNTER:

@@ -43,6 +43,27 @@ let Predicates = [IsARCompact] in {
 }
 
 //===----------------------------------------------------------------------===//
+// SUB1/SUB2/SUB3: a = b - (c << {1,2,3})
+//
+// Mirror of ADD1/2/3 above. The generated ARC_SUB{1,2,3}_a_b_c encodings exist
+// but had NO ISel pattern (an in-file comment wrongly claimed they were already
+// covered), so scaled-subtract index / pointer-difference-by-element-size math
+// fell back to a separate `asl` + `sub` pair. `sub` is not commutative so there
+// is no operand-order ambiguity.
+//===----------------------------------------------------------------------===//
+
+let Predicates = [IsARCompact] in {
+  def : Pat<(sub GPR32:$b, (shl GPR32:$c, (i32 1))),
+            (ARC_SUB1_a_b_c GPR32:$b, GPR32:$c)>;
+
+  def : Pat<(sub GPR32:$b, (shl GPR32:$c, (i32 2))),
+            (ARC_SUB2_a_b_c GPR32:$b, GPR32:$c)>;
+
+  def : Pat<(sub GPR32:$b, (shl GPR32:$c, (i32 3))),
+            (ARC_SUB3_a_b_c GPR32:$b, GPR32:$c)>;
+}
+
+//===----------------------------------------------------------------------===//
 // BIC: a = b & ~c  (bit clear / AND-NOT)
 // Not in ARCv2 ISA.
 //===----------------------------------------------------------------------===//
@@ -90,6 +111,61 @@ let Predicates = [IsARCompact] in {
 }
 
 //===----------------------------------------------------------------------===//
+// Constant-bit-position bit ops: bset/bxor/bclr/bmsk with a compile-time bit.
+//
+// The register-index patterns above match `(op x, (shl 1, r))`; when the bit
+// position is a *constant*, `(shl 1, n)` folds to a literal before those match,
+// so the whole family was dead for constants. AND/OR/XOR already have u6 (<64)
+// and s12 (<2048) immediate forms, so those are already 1 instruction -- the
+// only loss is a HIGH bit / WIDE mask that needs an 8-byte LIMM. These leafs
+// fire ONLY in that strictly-beneficial range (so existing codegen is
+// byte-stable) and stay clear of the extb/extw widths (0xFF / 0xFFFF).
+//===----------------------------------------------------------------------===//
+
+// or/xor with a single set bit >= 1<<11 (u6 covers <64, s12 covers <2048).
+def bit_pos_hi : ImmLeaf<i32, [{
+  return isPowerOf2_32((uint32_t)Imm) && (uint32_t)Imm > 2047;
+}]>;
+def log2_bit_pos_hi : SDNodeXForm<imm, [{
+  return CurDAG->getTargetConstant(Log2_32((uint32_t)N->getZExtValue()),
+                                   SDLoc(N), MVT::i32);
+}]>;
+
+// and with ~(1<<n) where the (negative) mask does not fit s12 -> n >= 11.
+def bclr_mask_hi : ImmLeaf<i32, [{
+  return isPowerOf2_32(~(uint32_t)Imm) && !isInt<12>((int32_t)Imm);
+}]>;
+def log2_bclr_mask_hi : SDNodeXForm<imm, [{
+  return CurDAG->getTargetConstant(Log2_32(~(uint32_t)N->getZExtValue()),
+                                   SDLoc(N), MVT::i32);
+}]>;
+
+// and with a low-bit mask (2^k - 1) that does not fit s12 and is not the
+// 8/16-bit width already handled by extb/extw, nor the all-ones no-op.
+def bmsk_mask_hi : ImmLeaf<i32, [{
+  uint32_t M = (uint32_t)Imm;
+  return M > 2047 && M != 0xFFFFu && M != 0xFFFFFFFFu && isMask_32(M);
+}]>;
+def log2_bmsk_mask_hi : SDNodeXForm<imm, [{
+  // Bit position for bmsk = (number of low set bits) - 1 = log2(mask+1) - 1.
+  return CurDAG->getTargetConstant(Log2_32((uint32_t)N->getZExtValue() + 1) - 1,
+                                   SDLoc(N), MVT::i32);
+}]>;
+
+// AddedComplexity so the 4-byte bit op wins over the 8-byte `op B,B,limm`
+// fallback that also matches (or/and/xor with an out-of-range immediate).
+let Predicates = [IsARCompact], AddedComplexity = 4 in {
+  def : Pat<(or  GPR32:$b, bit_pos_hi:$m),
+            (ARC_BSET_a_b_u6 GPR32:$b, (log2_bit_pos_hi bit_pos_hi:$m))>;
+  def : Pat<(xor GPR32:$b, bit_pos_hi:$m),
+            (ARC_BXOR_a_b_u6 GPR32:$b, (log2_bit_pos_hi bit_pos_hi:$m))>;
+  def : Pat<(and GPR32:$b, bclr_mask_hi:$m),
+            (ARC_BCLR_a_b_u6 GPR32:$b, (log2_bclr_mask_hi bclr_mask_hi:$m))>;
+  def : Pat<(and GPR32:$b, bmsk_mask_hi:$m),
+            (ARC_BMSK_a_b_u6 GPR32:$b, (log2_bmsk_mask_hi bmsk_mask_hi:$m))>;
+}
+
+//===----------------------------------------------------------------------===//
 // NOT: b = ~c  (bitwise complement)
 // ARCv2 does NOT have a NOT instruction with pattern.
 //===----------------------------------------------------------------------===//
@@ -115,7 +191,19 @@ let Predicates = [IsARCompact] in {
   def : Pat<(rotr GPR32:$c, (i32 16)),
             (ARC_SWAP_b_c GPR32:$c)>;
 
-  // SWAPE: full byte reversal (bswap)
+}
+
+// SWAPE: full byte reversal (bswap). SWAPE has NO encoding on ARC700 /
+// BCM55030 -- confirmed absent by silicon characterization (see
+// docs/notes/isa-characterization.md). Gate this Pat behind the
+// off-by-default HasSwape predicate so it is dead on this profile; only a
+// hypothetical future ARCv2-word CPU that genuinely implements swape would
+// enable HasSwape and let this fire. ISD::BSWAP is Custom-lowered
+// (ARCTargetLowering::LowerBSWAP) to a mask/shift/or + SWAP(halfword)
+// sequence instead -- see ARCISelLowering.cpp. The ARC_SWAPE_* instruction
+// *encodings* in ARCARCompactInstrALU.td stay defined (available as an
+// assembler mnemonic); only their ISel selection is forbidden here.
+let Predicates = [IsARCompact, HasSwape] in {
   def : Pat<(bswap GPR32:$c),
             (ARC_SWAPE_b_c GPR32:$c)>;
 }
@@ -280,34 +368,14 @@ def log2_pow2 : SDNodeXForm<imm, [{
                                    SDLoc(N), MVT::i32);
 }]>;
 
-// PatFrag to match (and X, power-of-2) == 0 as a setcc.
-// We use custom PatFrags to combine the and+setcc into a single match.
-
-// Match: (brcond (seteq (and $src, (1 << N)), 0), bb) where N is a register
-// This variant uses bbit0 with register bit position (RC operand).
-// Not common in practice -- the constant variant below is more useful.
-
-let Predicates = [IsARCompact] in {
-  // --- bbit0: branch if bit is 0 ---
-  // Lowered from LowerBR_CC: (ARCISD::BBIT0 dest, reg, bitpos)
-  def : Pat<(ARCbbit0 bb:$target, GPR32:$rb, immU6:$bit),
-            (ARC_BBIT0_b_u6_s9_d GPR32:$rb, immU6:$bit,
-              brtarget_s9:$target)>;
-
-  def : Pat<(ARCbbit0 bb:$target, GPR32:$rb, GPR32:$rc),
-            (ARC_BBIT0_b_c_s9_d GPR32:$rb, GPR32:$rc,
-              brtarget_s9:$target)>;
-
-  // --- bbit1: branch if bit is 1 ---
-  // Lowered from LowerBR_CC: (ARCISD::BBIT1 dest, reg, bitpos)
-  def : Pat<(ARCbbit1 bb:$target, GPR32:$rb, immU6:$bit),
-            (ARC_BBIT1_b_u6_s9_d GPR32:$rb, immU6:$bit,
-              brtarget_s9:$target)>;
-
-  def : Pat<(ARCbbit1 bb:$target, GPR32:$rb, GPR32:$rc),
-            (ARC_BBIT1_b_c_s9_d GPR32:$rb, GPR32:$rc,
-              brtarget_s9:$target)>;
-}
+// Bit-test-and-branch (bbit0/bbit1) is NOT selected via an ISel pattern. A
+// dedicated node/pseudo would be unanalyzable by analyzeBranch and break
+// MachineBlockPlacement (a conditional branch to a fall-through block would
+// lose its label). Instead ARCBranchFinalize fuses an adjacent single-bit
+// `and` feeding an in-range compare-and-branch against zero into a real
+// `bbit0`/`bbit1` as a late peephole (see ARCBranchFinalize.cpp). Because it
+// only fires on a branch already chosen to be the in-range BRcc form, the
+// resulting bbit is guaranteed to be within s9 range -- no fallback needed.
 
 //===----------------------------------------------------------------------===//
 // LR/SR: Auxiliary Register Access Intrinsics
