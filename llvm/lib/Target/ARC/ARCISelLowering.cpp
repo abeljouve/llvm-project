@@ -841,9 +841,18 @@ bool ARCTargetLowering::decomposeMulByConstant(LLVMContext &Context, EVT VT,
   auto *CN = dyn_cast<ConstantSDNode>(C);
   if (!CN)
     return false;
-  const APInt &MulC = CN->getAPIntValue();
-  return (MulC + 1).isPowerOf2() || (MulC - 1).isPowerOf2() ||
-         (1 - MulC).isPowerOf2() || (-(MulC + 1)).isPowerOf2();
+  // Mirror EXACTLY the predicate under which DAGCombiner::visitMUL sets its
+  // MathOp (see DAGCombiner.cpp, "multiply-by-(power-of-2 +/- power-of-2)"):
+  // take the magnitude, strip the trailing-zero 2^M factor, then require the
+  // residue to be 2^N±1. This covers BOTH the single-term 2^N±1 shapes
+  // (3,5,9,15,17,33,…) and the two-term 2^N±2^M shapes (6,12,20,24,40,48,…) —
+  // every constant the generic combine can turn into <=2 shifts + 1 add/sub.
+  // The previous predicate omitted the trailing-zero strip, so e.g. C=12 (=
+  // 0b1100 = (x<<3)+(x<<2)) fell through to a __mulsi3 libcall in a hot loop.
+  APInt MulC = CN->getAPIntValue().abs();
+  unsigned TZeros = MulC == 2 ? 0 : MulC.countr_zero();
+  MulC.lshrInPlace(TZeros);
+  return (MulC - 1).isPowerOf2() || (MulC + 1).isPowerOf2();
 }
 
 //===----------------------------------------------------------------------===//
