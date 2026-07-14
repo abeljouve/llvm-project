@@ -279,6 +279,10 @@ MCAsmBackend *llvm::createARCAsmBackend(const Target &T,
   llvm::endianness End = TT.isLittleEndian() ? llvm::endianness::little
                                               : llvm::endianness::big;
   uint8_t OSABI = MCELFObjectTargetWriter::getOSABI(TT.getOS());
-  bool IsARCompact = STI.getCPU().starts_with("arc700");
+  // Derive ARCompact-ness from the parsed subtarget feature, not a CPU-name
+  // prefix: a CPU like "bcm55030" enables FeatureARCompact (see ARC.td) but
+  // does not start with "arc700", and a name-prefix check would silently
+  // mis-tag it as ARCv2 (wrong branch-encoding scatter + wrong ELF e_machine).
+  bool IsARCompact = STI.getFeatureBits()[ARC::FeatureARCompact];
   return new ARCAsmBackend(End, OSABI, IsARCompact);
 }

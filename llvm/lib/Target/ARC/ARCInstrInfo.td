@@ -104,6 +104,7 @@ def HasNorm    :     Predicate<"Subtarget->hasNorm()">;
 def HasMPY     :     Predicate<"Subtarget->hasMPY()">;
 def HasSEXT    :     Predicate<"Subtarget->hasSEXT()">;
 def HasBitScan :     Predicate<"Subtarget->hasBitScan()">;
+def HasSwape   :     Predicate<"Subtarget->hasSwape()">;
 
 //===----------------------------------------------------------------------===//
 // Instruction Pattern Stuff
