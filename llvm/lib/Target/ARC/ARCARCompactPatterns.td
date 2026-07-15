@@ -300,13 +300,17 @@ let Predicates = [IsARCompact] in {
 // STATUS32-writing instruction can land between the producer and the RLC
 // consumer. ARC_RLC_b_c / ARC_RRC_b_c carry a corrected Uses=[STATUS32]
 // (not Defs -- F=0 on both, they don't write the flag, only read it) so
-// LiveIntervals models the real dependency. RRC has no consumer here yet
-// (no right-shift carry-chain idiom in scope for this dossier); it keeps
-// the same Uses=[STATUS32] fix for the same liveness-accuracy reason.
-// Neither RLC nor RRC has a direct ISel Pat of its own -- they are ONLY
-// ever constructed inside the two expand functions above, so there is no
-// path by which a shift/rotate outside the pinned 1-bit carry-chain shapes
-// could ever reach an RLC/RRC opcode.
+// LiveIntervals models the real dependency. RRC's first real consumer is
+// AVGFLOORU_PSEUDO / expandAVGFLOORU in ARCExpandPseudos.cpp (dossier 19,
+// docs/llvm-arc700-optimizations/19-flag-consuming-arithmetic-idioms.md):
+// add.f produces the raw carry-out (bit 32 of the true 33-bit sum) and rrc
+// folds it into the vacated MSB while shifting right by one, giving the
+// exact unsigned floor((a+b)/2) even when the 32-bit sum wraps. Neither RLC
+// nor RRC has a direct ISel Pat of its own -- they are ONLY ever constructed
+// inside the three expand functions above/below (expandSHL64_1,
+// expandBitRevStep, expandAVGFLOORU), so there is no path by which a
+// shift/rotate outside the pinned 1-bit carry-chain shapes could ever reach
+// an RLC/RRC opcode.
 //===----------------------------------------------------------------------===//
 
 //===----------------------------------------------------------------------===//

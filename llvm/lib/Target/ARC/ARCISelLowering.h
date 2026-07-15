@@ -101,6 +101,15 @@ private:
   // overflow result (LegalizeDAG.cpp's multi-result Custom-lowering path).
   SDValue LowerUADDO(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerUSUBO(SDValue Op, SelectionDAG &DAG) const;
+  // Signed add/sub-with-overflow -- same 2-result-node shape/rationale as
+  // LowerUADDO/LowerUSUBO above (see docs/llvm-arc700-optimizations/
+  // 19-flag-consuming-arithmetic-idioms.md), building ARCISD::SADDO/SSUBO
+  // instead. SADDSAT/SSUBSAT/AVGFLOORU need no Lower* hook at all: like
+  // UADDSAT/USUBSAT, they reuse upstream's ready-made generic PatFrags
+  // (`saddsat`/`ssubsat`/`avgflooru`) directly via a Legal-marked pseudo
+  // Pat, so LegalizeDAG never calls into Custom lowering for them.
+  SDValue LowerSADDO(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerSSUBO(SDValue Op, SelectionDAG &DAG) const;
   SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
 
   // Bounded scaled-add/shift/sub/neg synthesizer for `mul x, C` on cores
@@ -181,6 +190,16 @@ private:
   // result -- in every such case the ORIGINAL node proceeds untouched through
   // the existing value-materializing path (LowerUADDO/LowerUSUBO ->
   // UADDO_PSEUDO/USUBO_PSEUDO), correct for a genuinely-used overflow value.
+  //
+  // Deliberately NOT extended to SADDO/SSUBO: the fusion above reduces the
+  // overflow predicate to a single unsigned SETULT comparison
+  // (buildOverflowCompare's `Sum <u A` / `A <u B`), which has no signed
+  // analogue -- signed add/sub overflow is a function of both operands'
+  // signs vs. the result's sign, not a single compare. isOverflowResult()
+  // in the .cpp is intentionally hard-restricted to ISD::UADDO/ISD::USUBO;
+  // do not loosen that check without also building the signed-safe
+  // predicate, or the fusion would silently reuse unsigned comparison
+  // semantics for a signed overflow test.
   SDValue performOverflowBrcondCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performOverflowSelectCombine(SDNode *N, DAGCombinerInfo &DCI) const;
 

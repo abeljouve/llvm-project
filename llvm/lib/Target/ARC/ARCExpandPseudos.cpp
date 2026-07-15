@@ -42,15 +42,23 @@ private:
   void expandLRImm(MachineFunction &, MachineBasicBlock::iterator);
   void expandSR(MachineFunction &, MachineBasicBlock::iterator);
   void expandSRImm(MachineFunction &, MachineBasicBlock::iterator);
-  // Unsigned carry-consuming arithmetic idioms -- docs/llvm-arc700-
+  // Carry/overflow-consuming arithmetic idioms -- docs/llvm-arc700-
   // optimizations/19-flag-consuming-arithmetic-idioms.md. Each expansion
   // keeps the `.f`-form STATUS32 producer immediately adjacent to its
-  // conditional-mov consumer (nothing else is inserted between the two
-  // BuildMI calls), the same atomicity CTLZ/CTTZ above rely on.
+  // conditional-mov (or, for AVGFLOORU, rrc) consumer (nothing else is
+  // inserted between the two final BuildMI calls), the same atomicity
+  // CTLZ/CTTZ above rely on. SADDSAT/SSUBSAT's data-dependent clamp-limit
+  // construction runs entirely BEFORE the producer (see the comment above
+  // expandSADDSAT), so it never sits between a producer and its consumer.
   void expandUADDSAT(MachineFunction &, MachineBasicBlock::iterator);
   void expandUSUBSAT(MachineFunction &, MachineBasicBlock::iterator);
   void expandUADDO(MachineFunction &, MachineBasicBlock::iterator);
   void expandUSUBO(MachineFunction &, MachineBasicBlock::iterator);
+  void expandSADDSAT(MachineFunction &, MachineBasicBlock::iterator);
+  void expandSSUBSAT(MachineFunction &, MachineBasicBlock::iterator);
+  void expandSADDO(MachineFunction &, MachineBasicBlock::iterator);
+  void expandSSUBO(MachineFunction &, MachineBasicBlock::iterator);
+  void expandAVGFLOORU(MachineFunction &, MachineBasicBlock::iterator);
   // Carry-chain fusions (dossier 24, docs/llvm-arc700-optimizations/24-
   // carry-chain-and-bit-serial-idioms.md): i64<<1 and one bit-reverse step.
   // Same atomicity requirement as the carry-consuming idioms above -- the
@@ -322,6 +330,242 @@ void ARCExpandPseudos::expandUSUBO(MachineFunction &MF,
   MI.eraseFromParent();
 }
 
+// Signed overflow polarity (silicon/vendor-manual-verified, cross-checked
+// against the emulator's condition.rs -- VS=0x7 raw `v`, VC=0x8 raw `!v`):
+// STATUS32.V is set by `.f`-form ADD/SUB iff the SIGNED result overflowed
+// (both operands same sign, result flips sign) -- unambiguous for both
+// producers, unlike C which is producer-dependent (see the polarity comment
+// above expandUADDSAT). SADDSAT/SSUBSAT/SADDO/SSUBO therefore ALL consume V
+// via the VS condition code off their respective `.f` producer; there is no
+// LO/HS-style disambiguation needed here.
+//
+// SADDSAT(a,b)/SSUBSAT(a,b) additionally need a clamp limit that depends
+// only on the SIGN of `a` (verified against the required edge cases:
+// SADDSAT(INT_MIN,-1)=INT_MIN and SSUBSAT(INT_MIN,1)=INT_MIN both have
+// a<0 -> limit=INT_MIN; SADDSAT(INT_MAX,1)=INT_MAX and
+// SSUBSAT(INT_MAX,-1)=INT_MAX both have a>=0 -> limit=INT_MAX), so ADD and
+// SUB share IDENTICAL limit-construction code -- only the producer opcode
+// differs. The limit is built as:
+//   t   = asr(a, 31)      ; non-`.f` -- t = 0 (a>=0) or -1 (a<0)
+//   max = lsr(-1, 1)      ; non-`.f` -- max = 0x7FFFFFFF (INT_MAX), built via
+//                          ; MOV_rs12 -1 (fits s12) + a logical shift instead
+//                          ; of an 8-byte LIMM for the literal
+//   lim = t ^ max         ; non-`.f` -- INT_MAX when t=0, INT_MIN when t=-1
+// None of these four instructions is a `.f` form, so they are built entirely
+// BEFORE the atomic producer/consumer pair -- keeping the STATUS32-adjacency
+// discipline scoped to exactly the final two real instructions, the same
+// shape as every other idiom in this family.
+void ARCExpandPseudos::expandSADDSAT(MachineFunction &MF,
+                                     MachineBasicBlock::iterator MII) {
+  // Expand:
+  //   %Dst<def> = SADDSAT_PSEUDO %A, %B, %STATUS<imp-def>
+  // To:
+  //   %T<def>    = ASR_rru6 %A, 31
+  //   %Ones<def> = MOV_rs12 -1
+  //   %Max<def>  = LSR_rru6 %Ones, 1
+  //   %Lim<def>  = XOR_rrr %T, %Max
+  //   %Sum<def>  = ADD_f_rrr %A, %B, %STATUS<imp-def>
+  //   %Dst<def,tied1> = MOV_cc %Lim, %Sum<tied0>, vs, %STATUS<imp-use>
+  MachineInstr &MI = *MII;
+  const MachineOperand &Dst = MI.getOperand(0);
+  const MachineOperand &A = MI.getOperand(1);
+  const MachineOperand &B = MI.getOperand(2);
+  MachineRegisterInfo &MRI = MF.getRegInfo();
+  Register TReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+  Register OnesReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+  Register MaxReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+  Register LimReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+  Register SumReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+
+  // %A is read here AND again by the producer below -- only the LAST read
+  // of a vreg may carry a kill flag, so this first use is built from a bare
+  // .addReg(A.getReg()) (no flags copied) rather than .add(A) (which would
+  // copy A's kill flag, if any, onto BOTH uses and trip the MachineVerifier
+  // with "Using a killed virtual register").
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ASR_rru6),
+         TReg)
+      .addReg(A.getReg())
+      .addImm(31);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_rs12),
+         OnesReg)
+      .addImm(-1);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::LSR_rru6),
+         MaxReg)
+      .addReg(OnesReg)
+      .addImm(1);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::XOR_rrr),
+         LimReg)
+      .addReg(TReg)
+      .addReg(MaxReg);
+  // sum = a+b; V=1 (vs) iff signed overflow. This IS the last use of %A (and
+  // the only use of %B), so it is safe to .add() both verbatim.
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ADD_f_rrr),
+         SumReg)
+      .add(A)
+      .add(B);
+  // Dst = VS(signed overflow) ? lim : sum.
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_cc))
+      .add(Dst)
+      .addReg(LimReg)
+      .addReg(SumReg)
+      .addImm(ARCCC::VS);
+  MI.eraseFromParent();
+}
+
+void ARCExpandPseudos::expandSSUBSAT(MachineFunction &MF,
+                                     MachineBasicBlock::iterator MII) {
+  // Same limit construction as expandSADDSAT (keyed off the sign of %A
+  // only); the producer becomes SUB_f_rrr.
+  // Expand:
+  //   %Dst<def> = SSUBSAT_PSEUDO %A, %B, %STATUS<imp-def>
+  // To:
+  //   %T<def>    = ASR_rru6 %A, 31
+  //   %Ones<def> = MOV_rs12 -1
+  //   %Max<def>  = LSR_rru6 %Ones, 1
+  //   %Lim<def>  = XOR_rrr %T, %Max
+  //   %Diff<def> = SUB_f_rrr %A, %B, %STATUS<imp-def>
+  //   %Dst<def,tied1> = MOV_cc %Lim, %Diff<tied0>, vs, %STATUS<imp-use>
+  MachineInstr &MI = *MII;
+  const MachineOperand &Dst = MI.getOperand(0);
+  const MachineOperand &A = MI.getOperand(1);
+  const MachineOperand &B = MI.getOperand(2);
+  MachineRegisterInfo &MRI = MF.getRegInfo();
+  Register TReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+  Register OnesReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+  Register MaxReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+  Register LimReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+  Register DiffReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+
+  // See the identical note in expandSADDSAT: %A is read again by the
+  // producer below, so this first read must not copy A's kill flag.
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ASR_rru6),
+         TReg)
+      .addReg(A.getReg())
+      .addImm(31);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_rs12),
+         OnesReg)
+      .addImm(-1);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::LSR_rru6),
+         MaxReg)
+      .addReg(OnesReg)
+      .addImm(1);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::XOR_rrr),
+         LimReg)
+      .addReg(TReg)
+      .addReg(MaxReg);
+  // diff = a-b; V=1 (vs) iff signed overflow. Last use of %A, only use of
+  // %B -- safe to .add() both verbatim.
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::SUB_f_rrr),
+         DiffReg)
+      .add(A)
+      .add(B);
+  // Dst = VS(signed overflow) ? lim : diff.
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_cc))
+      .add(Dst)
+      .addReg(LimReg)
+      .addReg(DiffReg)
+      .addImm(ARCCC::VS);
+  MI.eraseFromParent();
+}
+
+void ARCExpandPseudos::expandSADDO(MachineFunction &MF,
+                                   MachineBasicBlock::iterator MII) {
+  // Exact structural mirror of expandUADDO, cc=VS (signed overflow) instead
+  // of LO (carry).
+  // Expand:
+  //   %Sum<def>, %Ovf<def> = SADDO_PSEUDO %A, %B, %STATUS<imp-def>
+  // To:
+  //   %Sum<def> = ADD_f_rrr %A, %B, %STATUS<imp-def>
+  //   %Zero<def> = MOV_ru6 0
+  //   %Ovf<def,tied1> = MOV_cc_ru6 1, vs, %Zero<tied0>, %STATUS<imp-use>
+  MachineInstr &MI = *MII;
+  const MachineOperand &SumDst = MI.getOperand(0);
+  const MachineOperand &OvfDst = MI.getOperand(1);
+  const MachineOperand &A = MI.getOperand(2);
+  const MachineOperand &B = MI.getOperand(3);
+  MachineRegisterInfo &MRI = MF.getRegInfo();
+  Register ZeroReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ADD_f_rrr))
+      .add(SumDst)
+      .add(A)
+      .add(B);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_ru6),
+         ZeroReg)
+      .addImm(0);
+  // Ovf = VS(signed add overflow) ? 1 : 0.
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_cc_ru6))
+      .add(OvfDst)
+      .addImm(1)
+      .addImm(ARCCC::VS)
+      .addReg(ZeroReg);
+  MI.eraseFromParent();
+}
+
+void ARCExpandPseudos::expandSSUBO(MachineFunction &MF,
+                                   MachineBasicBlock::iterator MII) {
+  // Exact structural mirror of expandUSUBO, cc=VS instead of LO.
+  // Expand:
+  //   %Diff<def>, %Ovf<def> = SSUBO_PSEUDO %A, %B, %STATUS<imp-def>
+  // To:
+  //   %Diff<def> = SUB_f_rrr %A, %B, %STATUS<imp-def>
+  //   %Zero<def> = MOV_ru6 0
+  //   %Ovf<def,tied1> = MOV_cc_ru6 1, vs, %Zero<tied0>, %STATUS<imp-use>
+  MachineInstr &MI = *MII;
+  const MachineOperand &DiffDst = MI.getOperand(0);
+  const MachineOperand &OvfDst = MI.getOperand(1);
+  const MachineOperand &A = MI.getOperand(2);
+  const MachineOperand &B = MI.getOperand(3);
+  MachineRegisterInfo &MRI = MF.getRegInfo();
+  Register ZeroReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::SUB_f_rrr))
+      .add(DiffDst)
+      .add(A)
+      .add(B);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_ru6),
+         ZeroReg)
+      .addImm(0);
+  // Ovf = VS(signed sub overflow) ? 1 : 0.
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_cc_ru6))
+      .add(OvfDst)
+      .addImm(1)
+      .addImm(ARCCC::VS)
+      .addReg(ZeroReg);
+  MI.eraseFromParent();
+}
+
+// AVGFLOORU: exact unsigned floor((a+b)/2) over the true 33-bit sum, correct
+// across a 32-bit wrap. add.f's C is the raw carry-out (bit 32 of the true
+// sum, i.e. NOT a compare/borrow flag -- same reading as the SHL64_1/
+// BitRevStep producers below, not the SUB/CMP polarity discussion above
+// expandUADDSAT). rrc folds that carry into the vacated MSB while shifting
+// right by one: rrc(t) = (C<<31)|(t>>1) = exact floor((a+b)/2), including
+// when the raw 32-bit sum wrapped.
+void ARCExpandPseudos::expandAVGFLOORU(MachineFunction &MF,
+                                       MachineBasicBlock::iterator MII) {
+  // Expand:
+  //   %Dst<def> = AVGFLOORU_PSEUDO %A, %B, %STATUS<imp-def>
+  // To:
+  //   %T<def>   = ADD_f_rrr %A, %B, %STATUS<imp-def>  ; C = bit 32 of sum
+  //   %Dst<def> = ARC_RRC_b_c %T, %STATUS<imp-use>     ; Dst=(C<<31)|(T>>1)
+  MachineInstr &MI = *MII;
+  const MachineOperand &Dst = MI.getOperand(0);
+  const MachineOperand &A = MI.getOperand(1);
+  const MachineOperand &B = MI.getOperand(2);
+  MachineRegisterInfo &MRI = MF.getRegInfo();
+  Register SumReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ADD_f_rrr),
+         SumReg)
+      .add(A)
+      .add(B);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ARC_RRC_b_c))
+      .add(Dst)
+      .addReg(SumReg);
+  MI.eraseFromParent();
+}
+
 // i64 `shl x, 1` fused into a 2-instruction carry chain (dossier 24). C is
 // the raw ejected bit from asl.f -- NOT a compare/borrow flag, so none of
 // the SUB/CMP carry-polarity discussion above expandUADDSAT applies here;
@@ -478,6 +722,26 @@ bool ARCExpandPseudos::runOnMachineFunction(MachineFunction &MF) {
         break;
       case ARC::USUBO_PSEUDO:
         expandUSUBO(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::SADDSAT_PSEUDO:
+        expandSADDSAT(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::SSUBSAT_PSEUDO:
+        expandSSUBSAT(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::SADDO_PSEUDO:
+        expandSADDO(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::SSUBO_PSEUDO:
+        expandSSUBO(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::AVGFLOORU_PSEUDO:
+        expandAVGFLOORU(MF, MBBI);
         Expanded = true;
         break;
       case ARC::SHL64_1_PSEUDO:

@@ -100,6 +100,15 @@ def SDT_ARCUAddSubO : SDTypeProfile<2, 2, [SDTCisVT<0, i32>, SDTCisVT<1, i32>,
 def ARCuaddo : SDNode<"ARCISD::UADDO", SDT_ARCUAddSubO, []>;
 def ARCusubo : SDNode<"ARCISD::USUBO", SDT_ARCUAddSubO, []>;
 
+// Signed add/sub-with-overflow. Same shape as ARCuaddo/ARCusubo above (the
+// SDTypeProfile carries no signedness, only 2-in/2-out i32 shape) -- reuse
+// SDT_ARCUAddSubO verbatim rather than duplicating it. LowerSADDO/LowerSSUBO
+// in ARCISelLowering.cpp build these target nodes explicitly; a Pat below
+// matches them into SADDO_PSEUDO/SSUBO_PSEUDO. See docs/llvm-arc700-
+// optimizations/19-flag-consuming-arithmetic-idioms.md.
+def ARCsaddo : SDNode<"ARCISD::SADDO", SDT_ARCUAddSubO, []>;
+def ARCssubo : SDNode<"ARCISD::SSUBO", SDT_ARCUAddSubO, []>;
+
 // Carry-chain fusions: i64 `shl x, 1` and one bit-reverse step (dossier 24,
 // docs/llvm-arc700-optimizations/24-carry-chain-and-bit-serial-idioms.md).
 // 2-result target nodes, same shape as SDT_ARCUAddSubO above -- everything
@@ -238,22 +247,40 @@ let Defs = [STATUS32], Predicates = [HasBitScan] in {
                            [(set GPR32:$A, (cttz i32:$B))]>;
 }
 
-// Unsigned carry-consuming arithmetic idioms (UADDSAT/USUBSAT/UADDO/USUBO).
+// Unsigned AND signed carry/overflow-consuming arithmetic idioms
+// (UADDSAT/USUBSAT/UADDO/USUBO, SADDSAT/SSUBSAT/SADDO/SSUBO, AVGFLOORU).
 // Each pseudo bundles a `.f`-form ADD/SUB producer with its conditional-mov
-// consumer as ONE atomic pre-RA pseudo (mirroring the CTLZ/CTTZ mechanism
-// above) so nothing can be scheduled between the STATUS32 producer and
-// consumer; ARCExpandPseudos.cpp expands each into its real instruction
-// sequence. No `Predicates` gate: ADD/SUB/MOV/mov.cc are baseline ARCompact,
-// always present (unlike CTLZ/CTTZ's HasBitScan gate). See
-// docs/llvm-arc700-optimizations/19-flag-consuming-arithmetic-idioms.md and
-// docs/notes/isa-characterization.md for the silicon carry-polarity facts.
-// The carry polarity is standard ARCompact (NOT ARM-style): after SUB,
-// C=1 means BORROW (a<b unsigned) and C=0 means no borrow (a>=b); after ADD,
-// C=1 is the unsigned carry-out. The full per-idiom .c/.cc selection and its
-// silicon derivation live in the polarity comment above expandUADDSAT() in
-// ARCExpandPseudos.cpp, which the expansions rely on. (UMIN/UMAX are left to
-// generic Expand -- a Legal pseudo for them regressed .text; see
-// ARCISelLowering.cpp.)
+// (or, for AVGFLOORU, RRC) consumer as ONE atomic pre-RA pseudo (mirroring
+// the CTLZ/CTTZ mechanism above) so nothing can be scheduled between the
+// STATUS32 producer and consumer; ARCExpandPseudos.cpp expands each into its
+// real instruction sequence. No `Predicates` gate: ADD/SUB/MOV/mov.cc/rrc are
+// baseline ARCompact, always present (unlike CTLZ/CTTZ's HasBitScan gate).
+// See docs/llvm-arc700-optimizations/19-flag-consuming-arithmetic-idioms.md
+// and docs/notes/isa-characterization.md for the silicon carry/overflow-flag
+// facts.
+//
+// UNSIGNED family: the carry polarity is standard ARCompact (NOT ARM-style):
+// after SUB, C=1 means BORROW (a<b unsigned) and C=0 means no borrow (a>=b);
+// after ADD, C=1 is the unsigned carry-out. The full per-idiom .c/.cc
+// selection and its silicon derivation live in the polarity comment above
+// expandUADDSAT() in ARCExpandPseudos.cpp, which the expansions rely on.
+// (UMIN/UMAX are left to generic Expand -- a Legal pseudo for them regressed
+// .text; see ARCISelLowering.cpp.)
+//
+// SIGNED family (SADDSAT/SSUBSAT/SADDO/SSUBO): keyed off STATUS32.V, set by
+// `.f`-form ADD/SUB on SIGNED overflow -- unambiguous for both producers,
+// unlike carry. Consumed via the VS (0x7) condition code, never LO/HS.
+// SADDSAT/SSUBSAT additionally need a data-dependent clamp limit
+// (INT_MAX/INT_MIN, keyed off the sign of the first operand); that limit is
+// built with plain (non-`.f`) ASR/MOV/LSR/XOR entirely BEFORE the atomic
+// producer/consumer pair, so the flag-adjacency discipline below only ever
+// has to hold across the final two real instructions of each expansion. See
+// the polarity/limit-construction comment above expandSADDSAT() in
+// ARCExpandPseudos.cpp.
+//
+// AVGFLOORU is UNSIGNED-only (RRC injects the raw carry bit, not a sign) and
+// needs no clamp -- see the RRC comment in ARCARCompactPatterns.td and
+// expandAVGFLOORU() in ARCExpandPseudos.cpp.
 let Defs = [STATUS32] in {
   def UADDSAT_PSEUDO : PseudoInstARC<(outs GPR32:$Dst),
                            (ins GPR32:$A, GPR32:$B),
@@ -276,6 +303,33 @@ let Defs = [STATUS32] in {
                            "# USUBO_PSEUDO $Diff, $Ovf, $A, $B",
                            [(set GPR32:$Diff, GPR32:$Ovf,
                                  (ARCusubo i32:$A, i32:$B))]>;
+
+  def SADDSAT_PSEUDO : PseudoInstARC<(outs GPR32:$Dst),
+                           (ins GPR32:$A, GPR32:$B),
+                           "# SADDSAT_PSEUDO $Dst, $A, $B",
+                           [(set GPR32:$Dst, (saddsat i32:$A, i32:$B))]>;
+
+  def SSUBSAT_PSEUDO : PseudoInstARC<(outs GPR32:$Dst),
+                           (ins GPR32:$A, GPR32:$B),
+                           "# SSUBSAT_PSEUDO $Dst, $A, $B",
+                           [(set GPR32:$Dst, (ssubsat i32:$A, i32:$B))]>;
+
+  def SADDO_PSEUDO : PseudoInstARC<(outs GPR32:$Sum, GPR32:$Ovf),
+                           (ins GPR32:$A, GPR32:$B),
+                           "# SADDO_PSEUDO $Sum, $Ovf, $A, $B",
+                           [(set GPR32:$Sum, GPR32:$Ovf,
+                                 (ARCsaddo i32:$A, i32:$B))]>;
+
+  def SSUBO_PSEUDO : PseudoInstARC<(outs GPR32:$Diff, GPR32:$Ovf),
+                           (ins GPR32:$A, GPR32:$B),
+                           "# SSUBO_PSEUDO $Diff, $Ovf, $A, $B",
+                           [(set GPR32:$Diff, GPR32:$Ovf,
+                                 (ARCssubo i32:$A, i32:$B))]>;
+
+  def AVGFLOORU_PSEUDO : PseudoInstARC<(outs GPR32:$Dst),
+                           (ins GPR32:$A, GPR32:$B),
+                           "# AVGFLOORU_PSEUDO $Dst, $A, $B",
+                           [(set GPR32:$Dst, (avgflooru i32:$A, i32:$B))]>;
 }
 
 // Carry-chain fusions for i64<<1 and the bit-reverse step (dossier 24,

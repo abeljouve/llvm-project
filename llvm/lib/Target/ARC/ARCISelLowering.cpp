@@ -290,9 +290,9 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::CTPOP, MVT::i32, Expand);
   }
 
-  // Unsigned carry-consuming arithmetic idioms -- docs/llvm-arc700-
-  // optimizations/19-flag-consuming-arithmetic-idioms.md (UNSIGNED subset
-  // only. Signed SADDSAT/SSUBSAT/SADDO/SSUBO and AVGFLOORU/cmp3 are deferred).
+  // Carry/overflow-consuming arithmetic idioms -- docs/llvm-arc700-
+  // optimizations/19-flag-consuming-arithmetic-idioms.md (cmp3 is separate/
+  // later; everything else in that dossier is wired below).
   //
   // UADDSAT/USUBSAT are ordinary 1-result nodes with generic PatFrags already
   // defined upstream (TargetSelectionDAG.td) -- mirror the CTLZ/CTTZ precedent
@@ -301,6 +301,38 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   // conditional-MOV consumer.
   setOperationAction(ISD::UADDSAT, MVT::i32, Legal);
   setOperationAction(ISD::USUBSAT, MVT::i32, Legal);
+  // SADDSAT/SSUBSAT are the signed counterparts: same Legal + bare-pattern-
+  // pseudo mechanism (upstream `saddsat`/`ssubsat` PatFrags), but the
+  // consumer tests STATUS32.V (signed overflow, condition VS) instead of C,
+  // and the clamp value is data-dependent (INT_MAX/INT_MIN keyed off the
+  // sign of the first operand) rather than a fixed constant -- see
+  // expandSADDSAT/expandSSUBSAT in ARCExpandPseudos.cpp.
+  setOperationAction(ISD::SADDSAT, MVT::i32, Legal);
+  setOperationAction(ISD::SSUBSAT, MVT::i32, Legal);
+  // AVGFLOORU: exact unsigned floor((a+b)/2) over the true 33-bit sum,
+  // correct across a 32-bit wrap. Same Legal + bare-pattern-pseudo shape
+  // (upstream `avgflooru` PatFrag); the pseudo expands to add.f + rrc,
+  // reusing the RRC infrastructure the carry-chain fusions below already
+  // established. Formed by DAGCombiner::foldAddToAvg from the
+  // `(a&b)+((a^b)>>1)` branchless-average idiom, NOT from a naive
+  // `(a+b)>>1` (which is not equivalent -- see ARCARCompactPatterns.td).
+  //
+  // UNLIKE SADDSAT/SSUBSAT/SADDO/SSUBO above (which expand using only
+  // baseline F32_DOP-format instructions with no ARCompact predicate),
+  // expandAVGFLOORU's consumer is ARC_RRC_b_c -- an ARCompact-only encoding
+  // (ARCompactInst32 base class hard-codes Predicates=[IsARCompact], see
+  // ARCARCompactInstrFormats.td). `Predicates` only gates the TableGen
+  // ISel matcher; it does NOT stop ARCExpandPseudos.cpp's manual BuildMI
+  // from constructing the opcode directly, so an unconditional Legal here
+  // would hard-crash a non-ARCompact subtarget at scheduling-info
+  // resolution the same way an unguarded SHL64_1_PSEUDO/BITREV_STEP_PSEUDO
+  // would (see the isARCompact() guard comment on
+  // performShl64By1Combine/performBitRevStepCombine below). Gate on
+  // Subtarget.isARCompact() so a non-ARCompact target keeps the default
+  // Expand action (TargetLoweringBase's generic TLI.expandAVG lowering,
+  // baseline ops only).
+  if (Subtarget.isARCompact())
+    setOperationAction(ISD::AVGFLOORU, MVT::i32, Legal);
   // UMIN/UMAX are left to the generic Expand (CMP + SELECT_CC -> ARCISD::CMOV).
   // A dedicated Legal CMP+MOV_cc pseudo was measured to REGRESS real firmware
   // .text: marking them Legal makes DAGCombiner canonicalize more
@@ -317,6 +349,15 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   // matches into the value-materializing pseudo.
   setOperationAction(ISD::UADDO, MVT::i32, Custom);
   setOperationAction(ISD::USUBO, MVT::i32, Custom);
+  // SADDO/SSUBO: same 2-result-node Custom-lowering shape as UADDO/USUBO
+  // (LowerSADDO/LowerSSUBO build ARCISD::SADDO/SSUBO), but deliberately NOT
+  // fed into performOverflowBrcondCombine/performOverflowSelectCombine -- see
+  // the comment above performOverflowBrcondCombine's declaration in
+  // ARCISelLowering.h for why the unsigned fusion does not generalize to
+  // signed overflow. A branch/select on SADDO/SSUBO's overflow bit always
+  // takes the value-materializing path (mov.vs boolean) below.
+  setOperationAction(ISD::SADDO, MVT::i32, Custom);
+  setOperationAction(ISD::SSUBO, MVT::i32, Custom);
 
   setOperationAction(ISD::READCYCLECOUNTER, MVT::i32, Legal);
   setOperationAction(ISD::READCYCLECOUNTER, MVT::i64,
@@ -666,6 +707,26 @@ SDValue ARCTargetLowering::LowerUSUBO(SDValue Op, SelectionDAG &DAG) const {
   SDValue A = Op.getOperand(0);
   SDValue B = Op.getOperand(1);
   return DAG.getNode(ARCISD::USUBO, dl, DAG.getVTList(MVT::i32, MVT::i32), A,
+                     B);
+}
+
+SDValue ARCTargetLowering::LowerSADDO(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc dl(Op);
+  assert(Op.getValueType() == MVT::i32 && "Only know how to lower i32 SADDO");
+  SDValue A = Op.getOperand(0);
+  SDValue B = Op.getOperand(1);
+  // 2-result target node; the legalizer pulls Res.getValue(1) out for the
+  // overflow result on its own, same as LowerUADDO above.
+  return DAG.getNode(ARCISD::SADDO, dl, DAG.getVTList(MVT::i32, MVT::i32), A,
+                     B);
+}
+
+SDValue ARCTargetLowering::LowerSSUBO(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc dl(Op);
+  assert(Op.getValueType() == MVT::i32 && "Only know how to lower i32 SSUBO");
+  SDValue A = Op.getOperand(0);
+  SDValue B = Op.getOperand(1);
+  return DAG.getNode(ARCISD::SSUBO, dl, DAG.getVTList(MVT::i32, MVT::i32), A,
                      B);
 }
 
@@ -2817,6 +2878,10 @@ SDValue ARCTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     return LowerUADDO(Op, DAG);
   case ISD::USUBO:
     return LowerUSUBO(Op, DAG);
+  case ISD::SADDO:
+    return LowerSADDO(Op, DAG);
+  case ISD::SSUBO:
+    return LowerSSUBO(Op, DAG);
   case ISD::VASTART:
     return LowerVASTART(Op, DAG);
   case ISD::READCYCLECOUNTER:
