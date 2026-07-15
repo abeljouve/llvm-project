@@ -102,6 +102,23 @@ private:
   bool decomposeMulByConstant(LLVMContext &Context, EVT VT,
                               SDValue C) const override;
 
+  // KnownBits-driven immediate re-selection for AND/OR/XOR (idea 2 of
+  // docs/llvm-arc700-optimizations/21-immediate-cost-and-rematerialization.md).
+  // Given that only DemandedBits of Op's result are ever consumed, look for
+  // a replacement immediate that agrees with the original constant on every
+  // demanded bit but is cheaper to materialize (fits u6/s12, or a
+  // BSET/BCLR/BMSK single-bit/mask shape) than the original, which may
+  // require an 8-byte LIMM form. Calls TLO.CombineTo and returns true when a
+  // strictly cheaper equivalent constant was found; also returns true
+  // (without a CombineTo) when the constant is already cheapest but has
+  // bits outside DemandedBits, to suppress TargetLowering::
+  // ShrinkDemandedConstant's own clear-only fallback -- which would
+  // otherwise strip those bits back to a non-free value and oscillate with
+  // this hook forever. See the implementation for the full argument.
+  bool targetShrinkDemandedConstant(SDValue Op, const APInt &DemandedBits,
+                                    const APInt &DemandedElts,
+                                    TargetLoweringOpt &TLO) const override;
+
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
                                bool isVarArg,
                                const SmallVectorImpl<ISD::InputArg> &Ins,

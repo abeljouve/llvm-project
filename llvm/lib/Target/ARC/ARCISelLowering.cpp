@@ -16,6 +16,7 @@
 #include "ARCSelectionDAGInfo.h"
 #include "ARCSubtarget.h"
 #include "ARCTargetMachine.h"
+#include "ARCTargetTransformInfo.h"
 #include "MCTargetDesc/ARCInfo.h"
 #include "llvm/CodeGen/CallingConvLower.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
@@ -898,6 +899,181 @@ bool ARCTargetLowering::decomposeMulByConstant(LLVMContext &Context, EVT VT,
   unsigned TZeros = MulC == 2 ? 0 : MulC.countr_zero();
   MulC.lshrInPlace(TZeros);
   return (MulC - 1).isPowerOf2() || (MulC + 1).isPowerOf2();
+}
+
+//===----------------------------------------------------------------------===//
+//  targetShrinkDemandedConstant -- AND/OR/XOR immediate narrowing (idea 2)
+//===----------------------------------------------------------------------===//
+
+// Maps an ISD AND/OR/XOR opcode to the corresponding llvm::Instruction
+// opcode that ARCTTIImpl::foldsViaBitOp (the single source of truth for
+// "does this immediate fold into a 4-byte host instruction with no LIMM")
+// expects. Kept local to this translation unit: nothing else needs it.
+static unsigned toIRBinOp(unsigned ISDOpc) {
+  switch (ISDOpc) {
+  case ISD::AND:
+    return Instruction::And;
+  case ISD::OR:
+    return Instruction::Or;
+  case ISD::XOR:
+    return Instruction::Xor;
+  default:
+    llvm_unreachable("toIRBinOp: not an AND/OR/XOR opcode");
+  }
+}
+
+// True when materializing this AND/OR/XOR immediate costs a single 4-byte
+// host instruction (fits s12, or matches one of the BSET/BCLR/BMSK
+// constant-bit-position shapes) -- i.e. it is already in the cheapest tier
+// and there is nothing left for targetShrinkDemandedConstant to win by
+// replacing it. Deliberately reuses ARCTTIImpl::foldsViaBitOp (the exact
+// predicate ARCTTIImpl::getIntImmCostInst's Instruction::And/Or/Xor case
+// already uses) instead of re-deriving the u6/s12/bit-op shapes a second
+// time, so the DAGCombine-time notion of "cheap" can never drift from the
+// ConstantHoisting-time notion of "cheap".
+static bool isFreeALUImm(unsigned ISDOpc, const APInt &V) {
+  return V.isSignedIntN(12) || ARCTTIImpl::foldsViaBitOp(toIRBinOp(ISDOpc), V);
+}
+
+// See docs/llvm-arc700-optimizations/21-immediate-cost-and-rematerialization.md
+// idea 2. SimplifyDemandedBits calls this hook for AND/OR/XOR nodes with a
+// constant RHS; we may substitute a different constant Cp for C as long as
+// Cp agrees with C on every DEMANDED bit -- i.e. the single non-negotiable
+// invariant enforced below is:
+//
+//     ((Cp xor C) & DemandedBits) == 0
+//
+// Only bits OUTSIDE DemandedBits may differ between C and Cp. This is
+// checked explicitly (the `agrees` lambda) on every candidate before it is
+// used, even where the construction also makes it provable algebraically,
+// so a bug in candidate *derivation* can only ever cost a missed
+// optimization, never a miscompile.
+bool ARCTargetLowering::targetShrinkDemandedConstant(
+    SDValue Op, const APInt &DemandedBits, const APInt &DemandedElts,
+    TargetLoweringOpt &TLO) const {
+  (void)DemandedElts; // ARC has no vector register class; always all-ones.
+
+  // Delay past type/op legalization, mirroring ARM/RISCV.
+  if (!TLO.LegalOps)
+    return false;
+
+  if (Op.getValueType() != MVT::i32)
+    return false;
+
+  unsigned Opcode = Op.getOpcode();
+  if (Opcode != ISD::AND && Opcode != ISD::OR && Opcode != ISD::XOR)
+    return false;
+
+  auto *CN = dyn_cast<ConstantSDNode>(Op.getOperand(1));
+  if (!CN || CN->isOpaque())
+    return false;
+  const APInt &C = CN->getAPIntValue();
+
+  // Redundant with the Step-1 free-tier precheck below for an all-ones XOR
+  // mask (it already fits s12), kept explicit so the invariant survives if
+  // the free-cost tiers are ever changed independently of this guard.
+  if (Opcode == ISD::XOR && C.isAllOnes())
+    return false;
+
+  // If C is already in the cheapest tier there is nothing strictly cheaper
+  // to find. How we report that matters for termination:
+  //
+  // TargetLowering::ShrinkDemandedConstant calls this hook FIRST and, if it
+  // returns false, immediately falls through to ITS OWN generic clear-only
+  // clamp: `if (!C.isSubsetOf(DemandedBits)) NewC = DemandedBits & C;`. That
+  // clamp is unconditional and mechanical -- it does not know a bit outside
+  // DemandedBits was set DELIBERATELY (by Tier A/B below, on an earlier
+  // visit of this same node) to reach a free encoding. If we returned false
+  // here whenever C is merely free -- regardless of whether C still has
+  // 1-bits outside the CURRENT DemandedBits -- the generic clamp would
+  // immediately strip those bits back to (C & DemandedBits) on the very
+  // next revisit, which is not guaranteed to still be free; this hook would
+  // then widen it right back on the revisit after that, forever. Reproduced
+  // concretely while developing this hook: and(zext_i16, 0xFFFF0) with
+  // DemandedBits=0xFFFF narrowed Tier A to C=0xFFFFFFF0 (-16, free), but the
+  // very next visit's generic clamp reduced it straight back to C=0xFFF0
+  // (not free), which this hook then widened back to -16 again -- llc hung.
+  //
+  // The fix: a free C with no 1-bits outside DemandedBits is one the
+  // generic clamp would leave untouched anyway (its own `!C.isSubsetOf(...)`
+  // guard is false), so deferring to it is provably a no-op -- safe to
+  // return false. A free C that DOES have 1-bits outside DemandedBits can
+  // only have gotten that way from this hook's own Tier A/B widening on a
+  // prior visit (a freshly-legalized constant is never pre-widened), so we
+  // must return true (a no-op "handled" report -- TLO.New is left unset,
+  // so no CombineTo happens) to suppress the generic clamp and stop the
+  // oscillation. Either branch is a correct "nothing cheaper" answer; the
+  // choice between them only controls whether the generic clamp is allowed
+  // to run afterward.
+  if (isFreeALUImm(Opcode, C))
+    return !C.isSubsetOf(DemandedBits);
+
+  auto agrees = [&](const APInt &Cand) -> bool {
+    return ((Cand ^ C) & DemandedBits).isZero();
+  };
+
+  auto tryUse = [&](const APInt &Cand) -> bool {
+    if (!agrees(Cand))
+      return false;
+    if (!isFreeALUImm(Opcode, Cand))
+      return false;
+    SDLoc DL(Op);
+    SDValue NewC = TLO.DAG.getConstant(Cand, DL, Op.getValueType());
+    SDNodeFlags Flags = Op->getFlags();
+    if (Opcode == ISD::OR)
+      // Cand may set bits beyond C at undemanded positions (that is the
+      // only way Tier A can differ from C here, since C was already proven
+      // not free above), so the rewritten OR can no longer be assumed
+      // bit-disjoint from its other operand even though it is still
+      // correct on every demanded bit. Drop a stale `or disjoint` flag
+      // rather than let it survive onto a node it no longer describes.
+      Flags.setDisjoint(false);
+    SDValue NewOp = TLO.DAG.getNode(Opcode, DL, Op.getValueType(),
+                                    Op.getOperand(0), NewC, Flags);
+    return TLO.CombineTo(Op, NewOp);
+  };
+
+  // Tier A (AND/OR/XOR): force every undemanded bit to 1. This is the
+  // extremal point that can SET bits the clear-only generic fallback
+  // (TargetLowering::ShrinkDemandedConstant's own ShrunkMask = C &
+  // DemandedBits, which runs unconditionally when this hook returns false)
+  // structurally cannot reach. Covers the s12 sign-extension win common to
+  // all three opcodes (the dossier's y & 0x00FFFFF0 example: ExpandedMask =
+  // 0x00FFFFF0 | 0xFF000000 = 0xFFFFFFF0 = -16, isSignedIntN(12)) and
+  // AND's BCLR shape specifically (a single DEMANDED 0-bit with every other
+  // bit -- demanded-1 or undemanded-forced-1 -- ending up 1, i.e. exactly
+  // ~(1<<k)). It does NOT reach OR/XOR's BSET/BXOR single-SET-bit shape --
+  // that needs the opposite polarity (undemanded bits forced to 0), which
+  // is exactly what TargetLowering::ShrinkDemandedConstant's own
+  // clear-only clamp (ShrunkMask = C & DemandedBits) already reproduces for
+  // free whenever C's demanded bits are already a lone bit -- so no
+  // separate tier for it is needed here.
+  APInt ExpandedMask = C | ~DemandedBits;
+  if (tryUse(ExpandedMask))
+    return true;
+
+  // Tier B (AND only): BMSK contiguous-low-mask shape (2^M - 1). Not
+  // reachable via ExpandedMask (which forces high undemanded bits to 1, the
+  // opposite of what BMSK's high region needs) nor via pure clearing (which
+  // forces LOW undemanded bits to 0, the opposite of what BMSK's low region
+  // needs) -- it needs its own targeted construction. This is a heuristic
+  // guess (sized to the highest demanded set bit of the clear-only
+  // baseline), not an algebraic guarantee like ExpandedMask; `agrees()`
+  // below is what keeps a wrong guess from ever reaching CombineTo.
+  if (Opcode == ISD::AND) {
+    APInt ShrunkMask = C & DemandedBits;
+    unsigned M = ShrunkMask.getActiveBits();
+    if (M > 0 && M < 32) {
+      APInt BmskCand = APInt::getLowBitsSet(32, M);
+      if (tryUse(BmskCand))
+        return true;
+    }
+  }
+
+  // No cheaper equivalent constant found on the checked candidates. Let the
+  // generic clear-only ShrinkDemandedConstant fallback run instead -- it
+  // may still narrow C for later combines even when no cost tier changes.
+  return false;
 }
 
 //===----------------------------------------------------------------------===//
