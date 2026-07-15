@@ -119,6 +119,38 @@ private:
   // subtarget has a hardware multiplier.
   SDValue performMULCombine(SDNode *N, DAGCombinerInfo &DCI) const;
 
+  // Constant-divisor unsigned div/rem synthesis (dossier 18, first cut,
+  // UNSIGNED only). Two DAGCombines, mirroring performMULCombine's
+  // architecture exactly (registered via setTargetDAGCombine in the
+  // constructor; NEITHER opcode is ever marked Custom via
+  // setOperationAction -- see the .cpp section header comment for why that
+  // matters: TargetLowering::expandREM's generic `X - (X/Y)*Y` fallback
+  // checks isOperationLegalOrCustom(ISD::UDIV), so marking UDIV Custom --
+  // even a Custom hook that DECLINES for the common case -- would silently
+  // change every OTHER, non-whitelisted UREM's expansion from a single
+  // __umodsi3 call to a UDIV+MUL+SUB sequence. A pure DAGCombine has no such
+  // side effect: it intercepts strictly before legalization ever consults
+  // operation-legality for sibling opcodes).
+  //
+  //   performUDivRemCombine -- path (a): shift-add reciprocal +
+  //     back-multiply remainder recovery, whitelist divisors {3, 5, 10}.
+  //     Handles BOTH ISD::UDIV and ISD::UREM nodes with that divisor,
+  //     picking the quotient or the remainder from the same synthesized
+  //     pipeline. Every q*C / r*K back-multiply reuses synthesizeConstMul /
+  //     emitRecipe from the constant-multiply synthesizer above -- NEVER a
+  //     MUL node.
+  //   performURemDigitFoldCombine -- path (b): digit-fold modulo for
+  //     ISD::UREM by a 2^k-1 whitelist divisor ({7, 15, 255} -- NOT 3, see
+  //     the .cpp comment on emitURemDigitFold's dispatch).
+  //
+  // Both decline (return SDValue()) for a non-constant divisor, a divisor
+  // outside their whitelist, or when the current function is
+  // MinSize/OptSize-attributed -- in every such case the node is left
+  // untouched and proceeds through the pre-existing Expand ->
+  // __udivsi3/__umodsi3 libcall path exactly as before this dossier.
+  SDValue performUDivRemCombine(SDNode *N, DAGCombinerInfo &DCI) const;
+  SDValue performURemDigitFoldCombine(SDNode *N, DAGCombinerInfo &DCI) const;
+
   // Overflow-to-branch/select rewrite -- docs/llvm-arc700-optimizations/
   // 19-flag-consuming-arithmetic-idioms.md. Recognizes ISD::BRCOND /
   // ISD::SELECT whose sole condition is the overflow result (#1) of a raw

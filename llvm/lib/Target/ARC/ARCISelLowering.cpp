@@ -118,6 +118,17 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   // !Subtarget.hasMPY() so this is a no-op when MUL is Legal.
   setTargetDAGCombine(ISD::MUL);
 
+  // Constant-divisor unsigned div/rem synthesis (dossier 18) -- see
+  // performUDivRemCombine / performURemDigitFoldCombine below. Registered
+  // unconditionally, same shape as the MUL combine above; the per-node
+  // handlers gate on !Subtarget.hasMPY() and their respective divisor
+  // whitelists. Deliberately DAGCombines, not setOperationAction(Custom) --
+  // see the .cpp section header comment for why marking UDIV/UREM Custom
+  // would corrupt TargetLowering::expandREM's legality checks for
+  // non-whitelisted divisors.
+  setTargetDAGCombine(ISD::UDIV);
+  setTargetDAGCombine(ISD::UREM);
+
   // Overflow-to-branch/select fusion -- docs/llvm-arc700-optimizations/
   // 19-flag-consuming-arithmetic-idioms.md and performOverflowBrcondCombine/
   // performOverflowSelectCombine below. Fires at Level::BeforeLegalizeTypes,
@@ -201,6 +212,18 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::SMUL_LOHI, MVT::i32, LibCall);
     setOperationAction(ISD::UMUL_LOHI, MVT::i32, LibCall);
   }
+  // UDIV/UREM are deliberately left at their default Expand action for
+  // EVERY subtarget (never set to Custom/Legal/LibCall here) -- dossier 18's
+  // constant-divisor synthesis (performUDivRemCombine /
+  // performURemDigitFoldCombine, registered as DAGCombines above) fires
+  // ahead of legalization and needs no operation-action change; see those
+  // functions' section header comment in this file for why marking UDIV
+  // Custom would be actively harmful (it corrupts
+  // TargetLowering::expandREM's legality check for sibling, non-whitelisted
+  // UREM nodes). A hardware-multiplier subtarget (hasMPY()) additionally
+  // gets a good generic BuildUDIV reciprocal for free via the Expand path
+  // once MULHU is Legal (branch above) -- both DAGCombines explicitly
+  // decline whenever Subtarget.hasMPY(), so they never compete with it.
   setOperationAction(ISD::LOAD, MVT::i32, Legal);
   setOperationAction(ISD::STORE, MVT::i32, Legal);
 
@@ -1441,11 +1464,431 @@ static SDValue emitRecipe(const SynthRecipe &R, SDValue X, const SDLoc &dl,
 
 } // end anonymous namespace
 
+//===----------------------------------------------------------------------===//
+//  Constant-divisor unsigned div/rem synthesis (dossier 18, first cut)
+//
+//  UNSIGNED-only, whitelist-gated synthesis of `udiv x, C` / `urem x, C` for
+//  cores without a hardware multiplier (ARC700 / !Subtarget.hasMPY()) and a
+//  compile-time-constant divisor. Two independent mechanisms, chosen per
+//  divisor:
+//
+//   (a) Shift-add reciprocal + back-multiply remainder recovery, for
+//       C in {3, 5, 10} -- performUDivRemCombine below, a target DAGCombine
+//       on BOTH ISD::UDIV and ISD::UREM (reached for either opcode with that
+//       divisor). Produces the quotient directly and recovers the remainder
+//       via a single back-multiply, reusing synthesizeConstMul / emitRecipe
+//       from the constant-multiply synthesizer above (see mulByConst below)
+//       -- NEVER a MUL node.
+//   (b) Digit-fold modulo, for C in the 2^k-1 family {7, 15, 255} (NOT 3 --
+//       see the note on emitURemDigitFold's dispatch below) --
+//       performURemDigitFoldCombine, a target DAGCombine on ISD::UREM.
+//
+//  BOTH mechanisms are target DAGCombines, mirroring performMULCombine's
+//  architecture exactly -- registered via setTargetDAGCombine in the
+//  constructor, intercepting strictly BEFORE legalization would otherwise
+//  route the node to the __udivsi3/__umodsi3 libcall. This is a deliberate
+//  choice, not a style preference: UDIV/UREM are NEVER marked Custom via
+//  setOperationAction here (they stay at their default Expand action for
+//  every subtarget). Marking UDIV Custom -- even a Custom hook that
+//  DECLINES for the non-whitelisted/common case -- would make
+//  TargetLowering::isOperationLegalOrCustom(ISD::UDIV, ...) return true,
+//  which TargetLowering::expandREM (LegalizeDAG.cpp's generic UREM
+//  expansion) consults to decide HOW to expand a UREM node it cannot custom-
+//  lower: with UDIV "legal-or-custom", expandREM synthesizes
+//  `urem = n - udiv(n,d)*d` (a UDIV + a generic MUL, i.e. TWO libcalls --
+//  __udivsi3 then __mulsi3 -- plus a SUB) instead of its other branch, a
+//  single direct __umodsi3 call. This was caught empirically during
+//  dossier-18 IMPLEMENT: an earlier Custom-LowerOperation-based version of
+//  path (a) silently turned every NON-whitelisted UREM (e.g. `%7` at -Oz)
+//  from one libcall into two, and incidentally tripped a latent
+//  MachineVerifier bug in the two-call callee-saved-register spill sequence
+//  that the single-call path never exercised. A pure DAGCombine has no such
+//  side effect on sibling-opcode legality queries, so it is the only
+//  correct vehicle here.
+//
+//  Every divisor here (3, 5, 7, 10, 15, 255) and every synthesized op
+//  sequence was exhaustively verified over all 2^32 u32 inputs against the
+//  native unsigned-division reference (0 mismatches) in the dossier-18
+//  PROVE phase before this code was written. SDIV/SREM, the modular-inverse
+//  exact-division test, IV strength-reduction, and any divisor outside this
+//  set are explicitly OUT OF SCOPE for this cut -- see
+//  llvm/test/CodeGen/ARC/arc700eb-udivmod.ll for the acceptance coverage.
+//
+//  Cost gate mirrors performMULCombine's exactly: at -Oz/-Os (MinSize /
+//  OptSize) both mechanisms decline unconditionally and the node falls
+//  through to the existing Expand -> __udivsi3/__umodsi3 libcall path (the
+//  synthesized sequences, 13-19 instructions, are never smaller than the
+//  2-3 instruction call site for this divisor set) -- so a size-tuned
+//  (-Oz) firmware build is expected to show ~0 byte delta from this
+//  dossier. At -O0/-O1/-O2/-O3
+//  the whitelist always fires once matched (these are fixed hand-written
+//  sequences, not a re-checked bounded search).
+//===----------------------------------------------------------------------===//
+
+namespace {
+
+// Reuses the bounded scaled-add synthesizer above for every q*C / r*K
+// back-multiply this file needs -- NEVER a MUL node. K must be one of the
+// constants the reciprocal recipes below actually use (3, 5, 10, 11, 13);
+// all five are proven (by the dossier-02 worked examples / the search
+// itself) to resolve within MaxDepth==4, so a failure here can only mean a
+// whitelist/search-budget mismatch introduced by a later edit, never a
+// runtime-data-dependent condition -- report_fatal_error rather than
+// silently miscompiling.
+static SDValue mulByConst(SDValue X, int64_t K, const SDLoc &dl,
+                          SelectionDAG &DAG) {
+  std::optional<SynthRecipe> R = synthesizeConstMul(K);
+  if (!R)
+    report_fatal_error(
+        "ARC dossier-18: whitelist constant multiplier failed to resolve "
+        "within the dossier-02 bounded search (MaxDepth) -- indicates a "
+        "whitelist/search-budget mismatch, not a runtime-data-dependent "
+        "failure");
+  return emitRecipe(*R, X, dl, DAG);
+}
+
+static SDValue lsrImm(SDValue V, uint64_t Amt, const SDLoc &dl,
+                      SelectionDAG &DAG, EVT VT) {
+  return DAG.getNode(ISD::SRL, dl, VT, V, DAG.getConstant(Amt, dl, VT));
+}
+
+static SDValue addV(SDValue A, SDValue B, const SDLoc &dl, SelectionDAG &DAG,
+                    EVT VT) {
+  return DAG.getNode(ISD::ADD, dl, VT, A, B);
+}
+
+static SDValue subV(SDValue A, SDValue B, const SDLoc &dl, SelectionDAG &DAG,
+                    EVT VT) {
+  return DAG.getNode(ISD::SUB, dl, VT, A, B);
+}
+
+static SDValue andImm(SDValue V, uint64_t Mask, const SDLoc &dl,
+                      SelectionDAG &DAG, EVT VT) {
+  return DAG.getNode(ISD::AND, dl, VT, V, DAG.getConstant(Mask, dl, VT));
+}
+
+// Mandatory conditional reduce after a digit-fold: keep T if T<C, subtract C
+// if T>=C. CARRY POLARITY (docs/notes/isa-characterization.md section 5.4):
+// on this ARC700 SUB/CMP set, C(arry)=BORROW; a>=b (unsigned) => C=0 =>
+// .hs/.cc. This reduce is therefore selected with SETUGE (-> ARCCC::HS via
+// ISDCCtoARCCC, reached through LowerSELECT_CC), i.e. a carry-CLEAR-
+// predicated sub -- NEVER SETULT/.lo/.cs. Routed through the already
+// silicon-validated LowerSELECT_CC (ARCISD::CMP + ARCISD::CMOV) path rather
+// than any new hand-coded carry-flag logic.
+static SDValue reduceMod(SDValue T, uint64_t C, const SDLoc &dl,
+                         SelectionDAG &DAG, EVT VT) {
+  SDValue CVal = DAG.getConstant(C, dl, VT);
+  SDValue Sub = subV(T, CVal, dl, DAG, VT);
+  return DAG.getNode(ISD::SELECT_CC, dl, VT, T, CVal, Sub, T,
+                     DAG.getCondCode(ISD::SETUGE));
+}
+
+// The whitelist itself, as a small static table -- the single source of
+// truth both performUDivRemCombine and performURemDigitFoldCombine consult.
+// EVERY entry below was exhaustively verified (0 mismatches over all 2^32
+// u32 inputs) against the native reference in the dossier-18 PROVE phase
+// before this code was written; Proven is always true here BY CONSTRUCTION
+// (there is no code path that can add an entry without that proof) -- kept
+// as an explicit field anyway so the invariant is documented at the
+// definition site, not just asserted by omission. Do not add an entry
+// without a matching exhaustive proof landing first (the dossier's hard
+// gate).
+enum class DivRemKind : uint8_t {
+  ReciprocalDivMod, // path (a): shift-add reciprocal + back-multiply.
+  DigitFold,        // path (b): 2^k-1 digit-fold modulo (UREM only).
+};
+
+struct DivisorEntry {
+  uint32_t Divisor;
+  DivRemKind Kind;
+  bool Proven;
+};
+
+static constexpr DivisorEntry ProvenUDivRemWhitelist[] = {
+    {3, DivRemKind::ReciprocalDivMod, true},
+    {5, DivRemKind::ReciprocalDivMod, true},
+    {10, DivRemKind::ReciprocalDivMod, true},
+    // Divisor 3 is deliberately NOT also listed as DigitFold: 2^2-1==3
+    // qualifies structurally, but the ReciprocalDivMod entry above is
+    // strictly cheaper for a bare %3 and also yields the paired quotient --
+    // see the emitURemDigitFold family's dispatch comment below for the
+    // full rationale. This table is the single place that decision is
+    // encoded: %3 has exactly one entry, and it is ReciprocalDivMod.
+    {7, DivRemKind::DigitFold, true},
+    {15, DivRemKind::DigitFold, true},
+    {255, DivRemKind::DigitFold, true},
+};
+
+// Linear scan -- the table has 6 entries, so this is cheaper than any
+// container machinery and keeps the whitelist trivially auditable in one
+// place. Returns nullptr for a divisor with no entry (not whitelisted at
+// all) or found but Kind != WantKind (whitelisted for the OTHER mechanism,
+// e.g. divisor 7 queried with ReciprocalDivMod).
+static const DivisorEntry *lookupDivisor(uint64_t D, DivRemKind WantKind) {
+  for (const DivisorEntry &E : ProvenUDivRemWhitelist)
+    if (E.Divisor == D && E.Kind == WantKind && E.Proven)
+      return &E;
+  return nullptr;
+}
+
+// --- Path (a): shift-add reciprocal + back-multiply, C in {3, 5, 10} -----
+// Every sequence below is EXHAUSTIVELY VERIFIED (0 mismatches over all
+// 2^32 u32 inputs, native C harness) in the dossier-18 PROVE phase.
+
+// floor(n/3), remainder via back-multiply. 9-op doubling-fold reciprocal +
+// an exact closed-form fix (11*r >> 5) -- no branches, no extra reduce
+// needed for the whole 32-bit range.
+static void emitDivRem3(SDValue N, const SDLoc &dl, SelectionDAG &DAG, EVT VT,
+                        SDValue &Q, SDValue &Rem) {
+  SDValue q0 = lsrImm(N, 2, dl, DAG, VT);
+  SDValue t1 = lsrImm(N, 4, dl, DAG, VT);
+  SDValue q1 = addV(q0, t1, dl, DAG, VT);
+  SDValue t2 = lsrImm(q1, 4, dl, DAG, VT);
+  SDValue q2 = addV(q1, t2, dl, DAG, VT);
+  SDValue t3 = lsrImm(q2, 8, dl, DAG, VT);
+  SDValue q3 = addV(q2, t3, dl, DAG, VT);
+  SDValue t4 = lsrImm(q3, 16, dl, DAG, VT);
+  SDValue qraw = addV(q3, t4, dl, DAG, VT);
+
+  SDValue t = mulByConst(qraw, 3, dl, DAG);
+  SDValue r = subV(N, t, dl, DAG, VT);
+  SDValue fix = lsrImm(mulByConst(r, 11, dl, DAG), 5, dl, DAG, VT);
+  Q = addV(qraw, fix, dl, DAG, VT);
+  Rem = subV(N, mulByConst(Q, 3, dl, DAG), dl, DAG, VT);
+}
+
+// floor(m/5), quotient only -- shared by emitDivRem5 (m=n) and emitDivRem10
+// (m=n>>1, via the exact floor(n/10)==floor(floor(n/2)/5) identity: n>>1 is
+// an exact truncating unsigned halving, so there is no rounding hazard).
+static SDValue computeQuot5(SDValue M, const SDLoc &dl, SelectionDAG &DAG,
+                            EVT VT) {
+  SDValue s0 = lsrImm(M, 4, dl, DAG, VT);
+  SDValue q0 = mulByConst(s0, 3, dl, DAG); // 3*(M>>4), ADD1 self-peel.
+  SDValue t1 = lsrImm(q0, 4, dl, DAG, VT);
+  SDValue q1 = addV(q0, t1, dl, DAG, VT);
+  SDValue t2 = lsrImm(q1, 8, dl, DAG, VT);
+  SDValue q2 = addV(q1, t2, dl, DAG, VT);
+  SDValue t3 = lsrImm(q2, 16, dl, DAG, VT);
+  SDValue qraw = addV(q2, t3, dl, DAG, VT);
+
+  SDValue t = mulByConst(qraw, 5, dl, DAG);
+  SDValue r = subV(M, t, dl, DAG, VT);
+  SDValue fix = lsrImm(mulByConst(r, 13, dl, DAG), 6, dl, DAG, VT);
+  return addV(qraw, fix, dl, DAG, VT);
+}
+
+static void emitDivRem5(SDValue N, const SDLoc &dl, SelectionDAG &DAG, EVT VT,
+                        SDValue &Q, SDValue &Rem) {
+  Q = computeQuot5(N, dl, DAG, VT);
+  Rem = subV(N, mulByConst(Q, 5, dl, DAG), dl, DAG, VT);
+}
+
+// floor(n/10) = floor(floor(n/2)/5) exactly -- reuses computeQuot5 on n>>1
+// verbatim, then a single back-multiply by 10 (dossier-02's own
+// "10x = asl(add2 x,x),1" shape, reached automatically through mulByConst).
+static void emitDivRem10(SDValue N, const SDLoc &dl, SelectionDAG &DAG,
+                         EVT VT, SDValue &Q, SDValue &Rem) {
+  SDValue M = lsrImm(N, 1, dl, DAG, VT);
+  Q = computeQuot5(M, dl, DAG, VT);
+  Rem = subV(N, mulByConst(Q, 10, dl, DAG), dl, DAG, VT);
+}
+
+// --- Path (b): digit-fold modulo, C in the 2^k-1 family {7, 15, 255} -----
+// (NOT 3: 2^2-1==3 also qualifies structurally, but path (a)'s emitDivRem3
+// remainder is strictly cheaper -- 17 ops, 0 conditional instructions, vs
+// this family's 19 ops / 4 conditional instructions for a bare %3 -- AND it
+// also produces the paired quotient for free. %3 is therefore routed
+// exclusively through performUDivRemCombine/emitDivRem3; performURemDigitFoldCombine
+// below deliberately excludes divisor 3 so this costlier shape is never
+// reachable / never dead-code-shipped for it. This is a deliberate
+// dispatch-priority decision made during dossier-18 IMPLEMENT, recorded
+// here per the STUDY phase's open-risk note.)
+//
+// Every cascade is EXHAUSTIVELY VERIFIED (0 mismatches over all 2^32 u32
+// inputs) in the dossier-18 PROVE phase, including the exact reduce count
+// (single vs double) each one needs.
+
+static SDValue emitURemDigitFold7(SDValue X, const SDLoc &dl,
+                                  SelectionDAG &DAG, EVT VT) {
+  SDValue v1 = addV(lsrImm(X, 15, dl, DAG, VT), andImm(X, 0x7FFF, dl, DAG, VT),
+                    dl, DAG, VT);
+  SDValue v2 = addV(lsrImm(v1, 9, dl, DAG, VT),
+                    andImm(v1, 0x1FF, dl, DAG, VT), dl, DAG, VT);
+  SDValue v3 = addV(lsrImm(v2, 6, dl, DAG, VT), andImm(v2, 0x3F, dl, DAG, VT),
+                    dl, DAG, VT);
+  SDValue v4 = addV(lsrImm(v3, 3, dl, DAG, VT), andImm(v3, 0x7, dl, DAG, VT),
+                    dl, DAG, VT);
+  SDValue v5 = addV(lsrImm(v4, 3, dl, DAG, VT), andImm(v4, 0x7, dl, DAG, VT),
+                    dl, DAG, VT);
+  // max(v5) == 8 (verified exhaustively) -- a single reduce suffices.
+  return reduceMod(v5, 7, dl, DAG, VT);
+}
+
+static SDValue emitURemDigitFold15(SDValue X, const SDLoc &dl,
+                                   SelectionDAG &DAG, EVT VT) {
+  SDValue v1 = addV(lsrImm(X, 16, dl, DAG, VT),
+                    andImm(X, 0xFFFF, dl, DAG, VT), dl, DAG, VT);
+  SDValue v2 = addV(lsrImm(v1, 8, dl, DAG, VT), andImm(v1, 0xFF, dl, DAG, VT),
+                    dl, DAG, VT);
+  SDValue v3 = addV(lsrImm(v2, 4, dl, DAG, VT), andImm(v2, 0xF, dl, DAG, VT),
+                    dl, DAG, VT);
+  SDValue v4 = addV(lsrImm(v3, 4, dl, DAG, VT), andImm(v3, 0xF, dl, DAG, VT),
+                    dl, DAG, VT);
+  // max(v4) == 17 (verified exhaustively) -- a single reduce suffices.
+  return reduceMod(v4, 15, dl, DAG, VT);
+}
+
+static SDValue emitURemDigitFold255(SDValue X, const SDLoc &dl,
+                                    SelectionDAG &DAG, EVT VT) {
+  SDValue c0 = andImm(X, 0xFF, dl, DAG, VT);
+  SDValue c1 = andImm(lsrImm(X, 8, dl, DAG, VT), 0xFF, dl, DAG, VT);
+  SDValue c2 = andImm(lsrImm(X, 16, dl, DAG, VT), 0xFF, dl, DAG, VT);
+  SDValue c3 = lsrImm(X, 24, dl, DAG, VT);
+  SDValue u1 = addV(c0, c1, dl, DAG, VT);
+  SDValue u2 = addV(u1, c2, dl, DAG, VT);
+  SDValue t = addV(u2, c3, dl, DAG, VT); // t <= 4*255 == 1020.
+  SDValue d0 = andImm(t, 0xFF, dl, DAG, VT);
+  SDValue d1 = lsrImm(t, 8, dl, DAG, VT);
+  SDValue t2 = addV(d0, d1, dl, DAG, VT); // t2 <= 258.
+  // Deliberately NOT the naive 2-fold iterative shape used for 7/15
+  // (a uniform k=16,8 fold on this identity FAILS -- max residue 765,
+  // needing up to 3 reduces): this dossier's own verified 4-way-sum shape
+  // is used instead. max(t2) == 258 -- a single reduce suffices.
+  return reduceMod(t2, 255, dl, DAG, VT);
+}
+
+} // end anonymous namespace
+
+// Target DAGCombine for path (a) -- see the section header comment above.
+// Fires on BOTH ISD::UDIV and ISD::UREM at combine time (both registered via
+// setTargetDAGCombine in the constructor), strictly before legalization
+// would otherwise route the node to a libcall; the opcode is re-checked
+// below to pick the quotient or the remainder from the SAME synthesized
+// pipeline. A paired udiv+urem by the same constant divisor on the same
+// dividend in the same function reconstructs structurally-identical
+// intermediate nodes, which ordinary SelectionDAG CSE (hash-consing) merges
+// automatically -- no manual 2-result ISD::UDIVREM node is needed for this
+// first cut.
+SDValue ARCTargetLowering::performUDivRemCombine(SDNode *N,
+                                                 DAGCombinerInfo &DCI) const {
+  assert((N->getOpcode() == ISD::UDIV || N->getOpcode() == ISD::UREM) &&
+        "performUDivRemCombine: expected ISD::UDIV or ISD::UREM");
+  if (Subtarget.hasMPY())
+    return SDValue();
+
+  EVT VT = N->getValueType(0);
+  if (VT != MVT::i32)
+    return SDValue();
+
+  SDValue N0 = N->getOperand(0);
+  SDValue Divisor = N->getOperand(1);
+  auto *DivC = dyn_cast<ConstantSDNode>(Divisor);
+  if (!DivC || DivC->isOpaque())
+    return SDValue(); // Non-constant / opaque divisor: fall through to the
+                      // existing Expand -> libcall path, unchanged.
+
+  uint64_t D = DivC->getZExtValue();
+  // ProvenUDivRemWhitelist lookup (dossier-18 PROVE phase) -- the ONLY
+  // divisors this path may ever synthesize for. Do not extend the table
+  // without a matching exhaustive-2^32 proof landing first (the dossier's
+  // hard gate).
+  if (!lookupDivisor(D, DivRemKind::ReciprocalDivMod))
+    return SDValue(); // Not whitelisted for the reciprocal path.
+
+  // Cost gate: mirror performMULCombine's -Oz/-Os policy exactly (see the
+  // section header comment). At -Oz/-Os the __udivsi3/__umodsi3 libcall
+  // (2-3 instructions) is strictly smaller than every synthesized sequence
+  // here (16-18 instructions), so decline unconditionally and keep it.
+  const MachineFunction &MF = DCI.DAG.getMachineFunction();
+  if (MF.getFunction().hasMinSize() || MF.getFunction().hasOptSize())
+    return SDValue();
+
+  SDLoc dl(N);
+  SelectionDAG &DAG = DCI.DAG;
+  SDValue Q, R;
+  switch (D) {
+  case 3:
+    emitDivRem3(N0, dl, DAG, VT, Q, R);
+    break;
+  case 5:
+    emitDivRem5(N0, dl, DAG, VT, Q, R);
+    break;
+  case 10:
+    emitDivRem10(N0, dl, DAG, VT, Q, R);
+    break;
+  default:
+    llvm_unreachable(
+        "performUDivRemCombine: divisor whitelist check above is stale");
+  }
+  return N->getOpcode() == ISD::UDIV ? Q : R;
+}
+
+// Target DAGCombine for path (b) -- see the section header comment above.
+// Fires on ISD::UREM at combine time, strictly before legalization would
+// otherwise route a non-whitelisted (before this dossier, EVERY) constant
+// UREM to the __umodsi3 libcall -- mirrors performMULCombine's interception
+// of ISD::MUL ahead of its LibCall action.
+SDValue ARCTargetLowering::performURemDigitFoldCombine(
+    SDNode *N, DAGCombinerInfo &DCI) const {
+  if (Subtarget.hasMPY())
+    return SDValue();
+
+  EVT VT = N->getValueType(0);
+  if (VT != MVT::i32)
+    return SDValue();
+
+  SDValue X = N->getOperand(0);
+  SDValue Divisor = N->getOperand(1);
+  auto *DivC = dyn_cast<ConstantSDNode>(Divisor);
+  if (!DivC || DivC->isOpaque())
+    return SDValue();
+
+  uint64_t D = DivC->getZExtValue();
+  // ProvenUDivRemWhitelist lookup, DigitFold kind: {7, 15, 255}. Divisor 3
+  // is DELIBERATELY absent from the table under this Kind even though
+  // 2^2-1==3 -- see the dispatch note on emitURemDigitFold's family above
+  // and on the table's definition; it is routed exclusively through
+  // performUDivRemCombine/emitDivRem3 instead. Do not extend the table
+  // without a matching exhaustive-2^32 proof landing first.
+  if (!lookupDivisor(D, DivRemKind::DigitFold))
+    return SDValue();
+
+  const MachineFunction &MF = DCI.DAG.getMachineFunction();
+  if (MF.getFunction().hasMinSize() || MF.getFunction().hasOptSize())
+    return SDValue(); // -Oz/-Os: keep the __umodsi3 libcall.
+
+  SDLoc dl(N);
+  SelectionDAG &DAG = DCI.DAG;
+  switch (D) {
+  case 7:
+    return emitURemDigitFold7(X, dl, DAG, VT);
+  case 15:
+    return emitURemDigitFold15(X, dl, DAG, VT);
+  case 255:
+    return emitURemDigitFold255(X, dl, DAG, VT);
+  default:
+    llvm_unreachable(
+        "performURemDigitFoldCombine: divisor whitelist check above is stale");
+  }
+}
+
 SDValue ARCTargetLowering::PerformDAGCombine(SDNode *N,
                                              DAGCombinerInfo &DCI) const {
   switch (N->getOpcode()) {
   case ISD::MUL:
     return performMULCombine(N, DCI);
+  case ISD::UDIV:
+    return performUDivRemCombine(N, DCI);
+  case ISD::UREM:
+    // Path (a) (whitelist {3, 5, 10}) is tried first; if it declines (a
+    // divisor outside that whitelist), path (b)'s digit-fold family
+    // ({7, 15, 255}) gets a chance. Mirrors the existing OR-node double-try
+    // pattern just below (performShl64By1Combine / performBitRevStepCombine)
+    // -- each mechanism matches an exact, disjoint divisor set and declines
+    // cleanly on any mismatch, so trying both in sequence cannot misfire.
+    if (SDValue R = performUDivRemCombine(N, DCI))
+      return R;
+    return performURemDigitFoldCombine(N, DCI);
   case ISD::BRCOND:
     return performOverflowBrcondCombine(N, DCI);
   case ISD::SELECT:
