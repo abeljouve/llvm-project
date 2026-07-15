@@ -5947,6 +5947,36 @@ def ARC_BMSK_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{11-6} = uimm6_20;
 }
 
+// bmsk.f 0,b,u6 00100bbb01010011FBBBuuuuuu111110, F=1 (dossier 21 idea 3).
+//
+// Hand-added sibling of ARC_BMSK_z_b_u6 above, same shape as dossier 24's
+// ARC_LSR_b_c_f: ARC_BMSK_z_b_u6 hardcodes F=0 (a true no-op -- discards the
+// masked result AND never touches flags), so it has no real user. This
+// sibling sets bit 15 to encode the real `bmsk.f 0,b,u6`: masks the low
+// (u6+1) bits of $rb, discards the result, and sets STATUS32.Z from the
+// masked value (Z=1 iff those low bits are all zero). Used by the
+// flag-recycling low-mask zero test in ARCISelLowering.cpp
+// (LowerSELECT_CC's BMSKTEST fold) to replace `(x & (2^k-1)) == 0` with a
+// single 4-byte flags-only instruction instead of an 8-byte LIMM mask +
+// separate compare.
+def ARC_BMSK_z_b_u6_f : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
+    (outs ), (ins GPR32:$rb, u6imm:$uimm6_20),
+    "bmsk.f\t$rb, $uimm6_20", []> {
+  // Opcode: 0x205B003E, Mask: 0xF8FF803F
+  // Operands: ZA, RB, UIMM6_20
+  // Flags: C_F (F fixed to 1)
+  let Inst{31-27} = 0b00100;
+  let Inst{23-16} = 0b01010011;
+  let Inst{15} = 1;
+  let Inst{5-0} = 0b111110;
+  let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+}
+
 // bmsk<.f><.cc> b,b,u6 00100bbb11010011FBBBuuuuuu1QQQQQ.
 def ARC_BMSK_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
     (outs GPR32:$rb), (ins u6imm:$uimm6_20),
@@ -8407,6 +8437,34 @@ def ARC_LSR_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   // Flags: C_F
   let Inst{31-27} = 0b00101;
   let Inst{23-16} = 0b01000001;
+  let Inst{5-0} = 0b111110;
+  let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
+  bits<6> uimm6_20;
+  let Inst{11-6} = uimm6_20;
+}
+
+// lsr.f 0,b,u6 00101bbb01000001FBBBuuuuuu111110, F=1 (dossier 21 idea 3).
+//
+// Hand-added sibling of ARC_LSR_z_b_u6 above, same shape as dossier 24's
+// ARC_LSR_b_c_f: ARC_LSR_z_b_u6 hardcodes F=0 (a true no-op), so this
+// sibling sets bit 15 to encode the real `lsr.f 0,b,u6`: shifts $rb right by
+// (u6) bits, discards the result, and sets STATUS32.Z from the shifted
+// value (Z=1 iff ($rb >> u6) == 0, i.e. $rb <u (1<<u6)). Used by the
+// flag-recycling unsigned-range test in ARCISelLowering.cpp
+// (LowerSELECT_CC's LSRTEST fold) to replace `x <u 2^k` with a single
+// 4-byte flags-only instruction instead of an 8-byte LIMM compare.
+def ARC_LSR_z_b_u6_f : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
+    (outs ), (ins GPR32:$rb, u6imm:$uimm6_20),
+    "lsr.f\t$rb, $uimm6_20", []> {
+  // Opcode: 0x2849003E, Mask: 0xF8FF803F
+  // Operands: ZA, RB, UIMM6_20
+  // Flags: C_F (F fixed to 1)
+  let Inst{31-27} = 0b00101;
+  let Inst{23-16} = 0b01000001;
+  let Inst{15} = 1;
   let Inst{5-0} = 0b111110;
   let Defs = [STATUS32];
   bits<6> rb;

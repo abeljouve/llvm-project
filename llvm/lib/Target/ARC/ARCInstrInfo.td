@@ -63,6 +63,27 @@ def ARCcmp : SDNode<"ARCISD::CMP", SDT_ARCcmptst, [SDNPOutGlue]>;
 // can pattern-match it directly, mirroring BSET/BCLR/BXOR/BMSK.
 def ARCbtst : SDNode<"ARCISD::BTST", SDT_ARCcmptst, [SDNPOutGlue]>;
 
+// Flag-recycling compares (dossier 21 idea 3). Both are flags-only,
+// glue-producing, and emitted by ARCTargetLowering::LowerSELECT_CC in place
+// of ARCcmp -- same shape/discipline as ARCbtst above, and coordinated with
+// it (see ARCARCompactPatterns.td): the LIMM-sized shapes these two nodes
+// recognize are structurally disjoint from ARCbtst's single-set-bit shape,
+// so there is no double-match risk.
+//
+// ARClsrtest B, K : select when `x <u 2^K` (K = log2 of the compared
+// power-of-2, RHS didn't fit an immediate compare form). Lowers to the
+// null-destination `lsr.f 0, B, K`, which sets Z = ((B >> K) == 0), i.e.
+// exactly the ult predicate. NEVER used for a signed predicate -- see the
+// LowerSELECT_CC comment at the call site.
+def ARClsrtest : SDNode<"ARCISD::LSRTEST", SDT_ARCcmptst, [SDNPOutGlue]>;
+
+// ARCbmsktest B, K : select when `(x & ((1<<(K+1))-1)) == 0`, i.e. the low
+// (K+1) bits of B are all zero (RHS is a contiguous low-bit mask too wide
+// for an immediate `and`+`cmp`). Lowers to the null-destination
+// `bmsk.f 0, B, K`, which sets Z = ((B & mask) == 0). Valid for both EQ and
+// NE against zero (the branch/select consumer picks the CC).
+def ARCbmsktest : SDNode<"ARCISD::BMSKTEST", SDT_ARCcmptst, [SDNPOutGlue]>;
+
 // Conditional mov
 def ARCcmov : SDNode<"ARCISD::CMOV", SDT_ARCcmov, [SDNPInGlue]>;
 

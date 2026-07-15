@@ -444,6 +444,63 @@ let Predicates = [IsARCompact] in {
             (ARC_BTST_b_c GPR32:$b, GPR32:$n)>;
 }
 
+//===----------------------------------------------------------------------===//
+// Flag-recycling compares (dossier 21 idea 3): LSRTEST / BMSKTEST selection.
+//
+// ARCTargetLowering::LowerSELECT_CC emits ARCISD::LSRTEST / ARCISD::BMSKTEST
+// (in place of ARCcmp) for `x <u 2^K` and `(x & (2^(K+1)-1)) == 0`
+// respectively, ONLY when the compared constant is LIMM-sized (see
+// isRangeTestPow2 / isMaskZeroTest in ARCISelLowering.cpp -- both mirror the
+// bit_pos_hi / bmsk_mask_hi thresholds below). K is already the final
+// shift-amount / bit-position value by the time the node is built (unlike
+// bit_pos_hi/bmsk_mask_hi above, which take the raw mask and compute log2
+// via an SDNodeXForm at Pat-match time) -- so these Pats need only a
+// range-check-and-passthrough for the immediate operand, not a further
+// transform.
+//
+// Coordination:
+//   - vs. BTST (dossier 24, above): BTST matches a single set bit
+//     (isPowerOf2_64, any magnitude, no LIMM gate); BMSKTEST matches a
+//     CONTIGUOUS multi-bit run-from-LSB (isMask_32) that is LIMM-gated. The
+//     only overlap point (mask=1, both a single bit and a 1-bit run) is
+//     excluded by BMSKTEST's own >2047 gate, so BTST always claims it
+//     uncontested -- no AddedComplexity/ordering needed.
+//   - vs. dossier-16's value-producing BMSK Pat (ARC_BMSK_a_b_u6 above,
+//     same bmsk_mask_hi ImmLeaf): that Pat matches `(and X,mask)` in a
+//     VALUE-CONSUMING context (`(set GPR32:$dst, (and ...))`); BMSKTEST
+//     matches the same shape but only inside LowerSELECT_CC's
+//     SETCC-vs-0 recognition (a COMPARE-consuming context, decided in C++
+//     before generic Pat matching ever sees that AND use). Non-competing:
+//     if the AND also feeds a real value use elsewhere, dossier-16's Pat
+//     still selects that use normally.
+//   - vs. BR_CC: branches never reach LSRTEST/BMSKTEST at all --
+//     LowerBR_CC keeps emitting the generic ARCISD::BRcc node unchanged.
+//     The branch-side flag-recycling fold is a POST-ISEL peephole in
+//     ARCBranchFinalize.cpp instead (mirrors why bbit0/bbit1 fusion above
+//     is a peephole and not a Pat: a dedicated glue-consuming branch node
+//     built straight out of ISel would be unanalyzable by analyzeBranch and
+//     break MachineBlockPlacement/BranchFolding, which only recognize
+//     BRcc_rr_p/BRcc_ru6_p as analyzable conditional-branch terminators).
+//===----------------------------------------------------------------------===//
+
+// K is already range-checked and computed (Log2_32 of the pow2 RHS, or the
+// bmsk bit-position) by the C++ side before the node is built -- this
+// ImmLeaf only re-confirms the u6 range and the Xform is a pure passthrough
+// (no further math), unlike log2_bit_pos_hi/log2_bmsk_mask_hi above.
+def u6_passthrough : ImmLeaf<i32, [{
+  return isUInt<6>((uint32_t)Imm);
+}]>;
+def u6_identity : SDNodeXForm<imm, [{
+  return CurDAG->getTargetConstant(N->getZExtValue(), SDLoc(N), MVT::i32);
+}]>;
+
+let Predicates = [IsARCompact] in {
+  def : Pat<(ARClsrtest GPR32:$b, u6_passthrough:$k),
+            (ARC_LSR_z_b_u6_f GPR32:$b, (u6_identity u6_passthrough:$k))>;
+  def : Pat<(ARCbmsktest GPR32:$b, u6_passthrough:$k),
+            (ARC_BMSK_z_b_u6_f GPR32:$b, (u6_identity u6_passthrough:$k))>;
+}
+
 // Bit-test-and-branch (bbit0/bbit1) is NOT selected via an ISel pattern. A
 // dedicated node/pseudo would be unanalyzable by analyzeBranch and break
 // MachineBlockPlacement (a conditional branch to a fall-through block would

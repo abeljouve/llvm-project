@@ -385,6 +385,62 @@ static bool isRecognizedBitTestMask(SDValue Mask) {
   return false;
 }
 
+// Flag-recycling compare recognition (dossier 21 idea 3). Both helpers gate
+// on the SAME LIMM-sized threshold that ARCARCompactPatterns.td's
+// bit_pos_hi/bmsk_mask_hi ImmLeafs use (constant > 2047, i.e. it does not
+// fit the 12-bit signed compare/mov forms and would otherwise cost an
+// 8-byte LIMM). Duplicated here rather than shared across the .cpp/.td
+// boundary -- no existing precedent for that in this backend;
+// isRecognizedBitTestMask above duplicates ISA shape logic the same way.
+// Keep the two boundaries in sync if either threshold ever changes.
+
+// `x <u 2^K` (K in [11,31]): true only when the compared power-of-2 needs a
+// LIMM. All arithmetic is on uint32_t (never a host signed shift).
+static bool isRangeTestPow2(SDValue RHS, unsigned &K) {
+  ConstantSDNode *RHSC = dyn_cast<ConstantSDNode>(RHS);
+  if (!RHSC || !isUInt<32>(RHSC->getZExtValue()))
+    return false;
+  uint32_t V = static_cast<uint32_t>(RHSC->getZExtValue());
+  if (!isPowerOf2_32(V) || V <= 2047)
+    return false;
+  K = Log2_32(V);
+  return true;
+}
+
+// `(x & (2^(K+1)-1)) == 0`: true only when the low-bit mask needs a LIMM.
+// Mirrors bmsk_mask_hi's guard exactly (excludes the extb/extw widths and
+// the all-ones no-op -- see ARCARCompactPatterns.td) so the two dossiers
+// (16 and 21-idea-3) never disagree about which masks are LIMM-sized.
+static bool isMaskZeroTest(SDValue Mask, unsigned &K) {
+  ConstantSDNode *MaskC = dyn_cast<ConstantSDNode>(Mask);
+  if (!MaskC || !isUInt<32>(MaskC->getZExtValue()))
+    return false;
+  uint32_t M = static_cast<uint32_t>(MaskC->getZExtValue());
+  if (M <= 2047 || M == 0xFFFFu || M == 0xFFFFFFFFu || !isMask_32(M))
+    return false;
+  K = Log2_32(M + 1) - 1;
+  return true;
+}
+
+// Shift-amount operand of an already-canonicalized `(x >> K) == 0` shape
+// (see the range-test comment at the LowerSELECT_CC call site below for why
+// this shape, not the raw `x <u 2^K` SETULT/SETUGE one, is what is actually
+// reached in practice): true only when K is a valid in-range shift amount
+// (< 32, so the shift itself is defined) AND 2^K needs a LIMM (K >= 11,
+// i.e. 2^11 = 2048 is the first power of two that doesn't fit a 12-bit
+// signed compare/mov immediate). Comparing K directly against 11 avoids
+// ever materializing 1u32<<K on the host.
+static bool isRangeTestShift(SDValue ShAmt, unsigned &K) {
+  ConstantSDNode *C = dyn_cast<ConstantSDNode>(ShAmt);
+  if (!C)
+    return false;
+  uint64_t KV = C->getZExtValue();
+  if (KV >= 32)
+    return false;
+  K = static_cast<unsigned>(KV);
+  return K >= 11;
+}
+
 // `X & (1<<N)` is canonicalized by the generic (target-independent)
 // SelectionDAG combiner into `(X >> N) & 1` well before LowerSELECT_CC runs
 // -- confirmed empirically: even hand-written IR with the literal
@@ -464,6 +520,77 @@ SDValue ARCTargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const {
           return DAG.getNode(ARCISD::CMOV, dl, TVal.getValueType(), TVal,
                              FVal, DAG.getConstant(ArcCC, dl, MVT::i32),
                              Btst);
+        }
+      }
+    }
+  }
+
+  // Unsigned range test (dossier 21 idea 3), raw shape: `x <u 2^K ? T : F`
+  // directly as SETULT/SETUGE against a power-of-two RHS. In PRACTICE the
+  // generic (target-independent) SelectionDAG combiner canonicalizes this
+  // into `(x>>K) == 0 ? T : F` (SETEQ/SETNE against a shifted value) well
+  // before this lowering runs -- confirmed empirically, even at -O0 --
+  // exactly the same kind of canonicalization documented for the BTST fold
+  // above, so the block below (inside the SETEQ/SETNE section) is the one
+  // that actually fires for ordinary IR. This raw-shape block is kept as a
+  // defensive fallback in case some other path (e.g. extra uses blocking
+  // the combine, mirroring how the BTST fold's raw-AND shape stays
+  // reachable via @bit_test_reg_pos in arc700eb-btst.ll) reaches Custom
+  // lowering without going through that combine. Predicate-exact for
+  // SETULT/SETUGE ONLY -- (x>>K)==0 is equivalent to `x <u 2^K` for the
+  // UNSIGNED predicate alone; a signed compare against the same power-of-two
+  // constant falls through to the materialized-operand CMP path below,
+  // untouched.
+  if (Subtarget.isARCompact() && (CC == ISD::SETULT || CC == ISD::SETUGE)) {
+    unsigned K;
+    if (isRangeTestPow2(RHS, K)) {
+      SDValue Test = DAG.getNode(ARCISD::LSRTEST, dl, MVT::Glue, LHS,
+                                 DAG.getConstant(K, dl, MVT::i32));
+      // (x>>K)==0 is the ult predicate directly (Z=1 -> EQ); SETUGE is its
+      // negation (Z=0 -> NE). Do NOT reuse ISDCCtoARCCC/ArcCC here -- LO/HS
+      // are meaningless against a Z-only glue produced by a shift, not a
+      // subtract-based compare.
+      ARCCC::CondCode FlagCC = (CC == ISD::SETULT) ? ARCCC::EQ : ARCCC::NE;
+      return DAG.getNode(ARCISD::CMOV, dl, TVal.getValueType(), TVal, FVal,
+                         DAG.getConstant(FlagCC, dl, MVT::i32), Test);
+    }
+  }
+
+  // Low-mask zero test AND canonicalized range test (dossier 21 idea 3):
+  // both `(x & (2^(K+1)-1)) == 0 ? T : F` and the ALREADY-CANONICALIZED
+  // `(x>>K) == 0 ? T : F` (see the raw-shape comment above -- this is the
+  // shape ordinary `icmp ult`/`icmp uge` IR actually reaches here as)
+  // select to a single null-destination flag op (`bmsk.f` / `lsr.f`)
+  // instead of an 8-byte LIMM mask/compare. EQ/NE only, same restriction as
+  // the BTST fold above (and for the same reason: only Z is proven
+  // equivalent to the SUB-based CMP-vs-0 this replaces). The flag polarity
+  // is unchanged from the source predicate in EITHER sub-case, so ArcCC
+  // (already an EQ/NE-mapped code) is reused as-is -- mirrors the BTST
+  // fold's CC reuse.
+  if (Subtarget.isARCompact() && (CC == ISD::SETEQ || CC == ISD::SETNE) &&
+      LHS.hasOneUse()) {
+    if (ConstantSDNode *RHSC = dyn_cast<ConstantSDNode>(RHS)) {
+      if (RHSC->isZero()) {
+        if (LHS.getOpcode() == ISD::AND) {
+          unsigned K;
+          if (isMaskZeroTest(LHS.getOperand(1), K)) {
+            SDValue Test = DAG.getNode(ARCISD::BMSKTEST, dl, MVT::Glue,
+                                       LHS.getOperand(0),
+                                       DAG.getConstant(K, dl, MVT::i32));
+            return DAG.getNode(ARCISD::CMOV, dl, TVal.getValueType(), TVal,
+                               FVal, DAG.getConstant(ArcCC, dl, MVT::i32),
+                               Test);
+          }
+        } else if (LHS.getOpcode() == ISD::SRL) {
+          unsigned K;
+          if (isRangeTestShift(LHS.getOperand(1), K)) {
+            SDValue Test = DAG.getNode(ARCISD::LSRTEST, dl, MVT::Glue,
+                                       LHS.getOperand(0),
+                                       DAG.getConstant(K, dl, MVT::i32));
+            return DAG.getNode(ARCISD::CMOV, dl, TVal.getValueType(), TVal,
+                               FVal, DAG.getConstant(ArcCC, dl, MVT::i32),
+                               Test);
+          }
         }
       }
     }
