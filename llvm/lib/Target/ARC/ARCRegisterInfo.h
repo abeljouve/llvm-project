@@ -35,6 +35,13 @@ public:
 
   BitVector getReservedRegs(const MachineFunction &MF) const override;
 
+  /// Returns true if PhysReg cannot be written to in inline asm statements.
+  /// Guards ARC's HW-dedicated registers (SP, FP, GP) that this backend
+  /// gives no generic save/restore treatment around an arbitrary inline-asm
+  /// clobber/input-copy -- see ARCRegisterInfo.cpp for the full rationale.
+  bool isInlineAsmReadOnlyReg(const MachineFunction &MF,
+                              MCRegister PhysReg) const override;
+
   bool requiresRegisterScavenging(const MachineFunction &MF) const override;
 
   bool useFPForScavengingIndex(const MachineFunction &MF) const override;

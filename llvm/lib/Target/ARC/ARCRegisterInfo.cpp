@@ -162,7 +162,42 @@ bool ARCRegisterInfo::needsFrameMoves(const MachineFunction &MF) {
 
 const MCPhysReg *
 ARCRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
-  return CSR_ARC_SaveList;
+  // NOTE: deliberately NOT `return CSR_ARC_SaveList;`. CSR_ARC_SaveList
+  // (tablegen-generated from CSR_ARC in ARCCallingConv.td) is
+  // { R13..R25, GP, FP }. That combined list is correct as the *source* for
+  // CSR_ARC_RegMask / getCallPreservedMask() below (a call really does
+  // preserve FP and GP per the ABI), but it is the WRONG list to hand to the
+  // generic CSI/funclet spill machinery that consumes getCalleeSavedRegs():
+  // ARCFrameLowering's determineLastCalleeSave/assignCalleeSavedSpillSlots/
+  // spillCalleeSavedRegisters/restoreCalleeSavedRegisters hard-code the
+  // invariant that every CalleeSavedInfo entry lies in R13..R25 (the
+  // __st_r13_to_rN / __ld_r13_to_rN funclet range) -- see the
+  // `assert(Reg.getReg() >= ARC::R13 && Reg.getReg() <= ARC::R25)` in
+  // determineLastCalleeSave. FP already has its own dedicated,
+  // hasFP(MF)-gated save/restore in ARCFrameLowering::emitPrologue/
+  // emitEpilogue via ST_AW_rs9/LD_AB_rs9, entirely independent of CSI; GP has
+  // no save/restore code anywhere in this backend. Ordinarily neither FP nor
+  // GP is ever "modified" from codegen's point of view (both are Reserved in
+  // getReservedRegs(), so the register allocator never assigns them to a
+  // vreg), so TargetFrameLowering::determineCalleeSaves() never sets their
+  // bit and they never reach CSI -- the FP/GP tail of CSR_ARC_SaveList is
+  // normally inert dead weight. But an inline-asm explicit-register operand
+  // (`register int x asm("fp"); asm("..." : "=r"(x));`) is lowered to a
+  // genuine MachineOperand def of the physical register, which DOES set the
+  // "modified" bit for FP/GP and lets them leak into CSI -- tripping the
+  // R13..R25 assert. Returning a separate, narrower list here (R13..R25
+  // only, matching the funclet range and excluding GP/FP/BLINK -- BLINK is
+  // handled entirely outside the CSI mechanism via PUSH_S_BLINK/
+  // POP_S_BLINK, gated on MFI.hasCalls(), not on CSR membership) makes it
+  // structurally impossible for FP or GP to ever enter CSI, independent of
+  // whatever inline asm does to their "modified" bit. This is behavior-
+  // neutral for ordinary code: for every function that never explicitly
+  // binds "fp"/"gp" as an asm operand, FP/GP were never going to be in CSI
+  // either way, so removing them from the *candidate* list changes nothing.
+  static const MCPhysReg CSR_ARC_SpillList[] = {
+      ARC::R13, ARC::R14, ARC::R15, ARC::R16, ARC::R17, ARC::R18, ARC::R19,
+      ARC::R20, ARC::R21, ARC::R22, ARC::R23, ARC::R24, ARC::R25, 0};
+  return CSR_ARC_SpillList;
 }
 
 BitVector ARCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
@@ -176,6 +211,53 @@ BitVector ARCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   Reserved.set(ARC::FP);
 
   return Reserved;
+}
+
+bool ARCRegisterInfo::isInlineAsmReadOnlyReg(const MachineFunction &MF,
+                                             MCRegister PhysReg) const {
+  // A C/Rust `register T x asm("regname")` local variable bound to one of
+  // ARC's hardware-dedicated registers, then used as ANY inline-asm operand
+  // (including a plain "r" input -- the explicit-register binding on the
+  // *variable* overrides the "r" constraint text, forcing a `{regname}`
+  // operand at the LLVM IR level), makes SelectionDAGBuilder materialize a
+  // CopyToReg into that literal physical register before the asm executes
+  // (see SelectionDAGBuilder::visitInlineAsm's isOutput and isInput
+  // C_Register/C_RegisterClass paths, both of which query
+  // TargetRegisterInfo::isInlineAsmReadOnlyReg before doing so). Verified
+  // empirically (clang -O0, arceb-unknown-elf) that binding "sp", "fp", or
+  // "gp" this way emits `ld <garbage>,[frame slot]` followed by
+  // `mov %sp,<garbage>` / `mov %fp,<garbage>` / `mov %gp,<garbage>` --
+  // i.e. an arbitrary-value write straight into the live hardware register
+  // mid-function, BEFORE any use-site logic runs. That is unconditionally
+  // unsafe here:
+  //  - SP: this is an interrupt-driven target; if an
+  //    interrupt fires between the corrupting write and wherever the
+  //    epilogue happens to reconstruct SP from FP, the interrupt entry
+  //    sequence (which itself pushes context via SP) writes through a bogus
+  //    address.
+  //  - FP: every frame-relative load/store and the epilogue's
+  //    `sub %sp,%fp,StackSize` depend on FP holding the value this
+  //    function's own prologue set it to; overwriting it mid-body breaks
+  //    every subsequent local/spill access and the stack-pointer restore
+  //    on the way out.
+  //  - GP: Reserved (see getReservedRegs below) with no generic
+  //    save/restore path in this backend at all; nothing here defends
+  //    against an arbitrary clobber the way FP's dedicated prologue/epilogue
+  //    code at least partially does for FP itself.
+  // None of SP/FP/GP have any backend mechanism that tolerates an
+  // arbitrary external write appearing mid-function (unlike an ordinary
+  // GPR32 member, which is exactly what local register-asm variables are
+  // for on this target). Rejecting the write here routes into Clang's
+  // existing, already-verified "write to reserved register '<name>'"
+  // diagnostic (SelectionDAGBuilder::emitInlineAsmError) -- a clean,
+  // compile-time error instead of a silent runtime corruption.
+  //
+  // BLINK and ILINK are deliberately NOT included here: BLINK in particular
+  // is a plausible target for legitimate hand-written return-address /
+  // backtrace manipulation in low-level firmware code, which this file's
+  // scope has no visibility into (out-of-tree, not part of this LLVM fork).
+  // Revisit if that turns out to need the same protection.
+  return PhysReg == ARC::SP || PhysReg == ARC::FP || PhysReg == ARC::GP;
 }
 
 bool ARCRegisterInfo::requiresRegisterScavenging(

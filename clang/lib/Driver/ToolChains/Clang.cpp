@@ -1586,6 +1586,11 @@ void Clang::RenderTargetOptions(const llvm::Triple &EffectiveTriple,
     AddLanaiTargetArgs(Args, CmdArgs);
     break;
 
+  case llvm::Triple::arc:
+  case llvm::Triple::arceb:
+    AddARCTargetArgs(Args, CmdArgs);
+    break;
+
   case llvm::Triple::hexagon:
     AddHexagonTargetArgs(Args, CmdArgs);
     break;
@@ -2258,6 +2263,16 @@ void Clang::AddLanaiTargetArgs(const ArgList &Args,
             << A->getSpelling() << Value;
       }
     }
+  }
+}
+
+void Clang::AddARCTargetArgs(const ArgList &Args,
+                             ArgStringList &CmdArgs) const {
+  if (Arg *A = Args.getLastArg(options::OPT_mcpu_EQ)) {
+    StringRef CPUName = A->getValue();
+
+    CmdArgs.push_back("-target-cpu");
+    CmdArgs.push_back(Args.MakeArgString(CPUName));
   }
 }
 
