@@ -12,6 +12,7 @@
 
 #include "ARCInstrInfo.h"
 #include "ARC.h"
+#include "ARCConstantMaterialization.h"
 #include "ARCMachineFunctionInfo.h"
 #include "ARCSubtarget.h"
 #include "MCTargetDesc/ARCInfo.h"
@@ -408,6 +409,51 @@ unsigned ARCInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
     return getInlineAsmLength(AsmStr, *MF->getTarget().getMCAsmInfo());
   }
   return MI.getDesc().getSize();
+}
+
+// CONST32 recipe expansion (dossier 21 idea 4). Runs POST-register-
+// allocation via the target-independent ExpandPostRAPseudos pass, which is
+// what lets isReMaterializable actually do something: CONST32 has no
+// register operands, so as long as it survives to the register allocator
+// as a single pseudo, the allocator can choose to recompute a spilled
+// value via this recipe instead of emitting a reload. Expanding any
+// earlier (e.g. in the pre-RA ARCExpandPseudos pass) would turn it into
+// ordinary instructions before that decision is ever made.
+//
+// synthesizeConst32() is a pure, memoized function of the raw immediate
+// operand, so re-calling it here reproduces EXACTLY the recipe ISel found
+// when it decided to emit CONST32 instead of MOV_rlimm -- the two call
+// sites cannot disagree.
+//
+// By this point $dst is already a concrete physical register, and
+// CONST32's TableGen def constrains it to the compact GPR_S class (R0-R3,
+// R12-R15), so the seed instruction (`mov_s`, which can only address that
+// 8-register subset) can target $dst directly. The chain is therefore
+// self-contained -- no scratch register is created or needed.
+bool ARCInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
+  if (MI.getOpcode() != ARC::CONST32)
+    return false;
+
+  MachineBasicBlock &MBB = *MI.getParent();
+  const MachineOperand &Dst = MI.getOperand(0);
+  Register DstReg = Dst.getReg();
+  uint32_t Imm = static_cast<uint32_t>(MI.getOperand(1).getImm());
+
+  std::optional<Const32Recipe> R = synthesizeConst32(Imm);
+  assert(R && "ARCInstrInfo::expandPostRAPseudo: CONST32 selected for a "
+              "constant with no synthesizable recipe -- ISel/expand "
+              "disagreement");
+
+  // %DstReg<def>            = ARC_MOV_S_b_u8 Recipe.Seed
+  // %DstReg<def> (redefine) = ASL_rru6 %DstReg, Recipe.Shift
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(ARC::ARC_MOV_S_b_u8), DstReg)
+      .addImm(R->Seed);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(ARC::ASL_rru6))
+      .add(Dst)
+      .addReg(DstReg)
+      .addImm(R->Shift);
+  MI.eraseFromParent();
+  return true;
 }
 
 bool ARCInstrInfo::isPostIncrement(const MachineInstr &MI) const {

@@ -58,7 +58,17 @@ private:
   // with nothing else built between the two BuildMI calls.
   void expandSHL64_1(MachineFunction &, MachineBasicBlock::iterator);
   void expandBitRevStep(MachineFunction &, MachineBasicBlock::iterator);
-
+  // NOTE: CONST32 (dossier 21 idea 4, docs/llvm-arc700-optimizations/21-*.md)
+  // is deliberately NOT expanded here. This pass runs pre-register-
+  // allocation (see ARCTargetMachine.cpp's addPreRegAlloc), so expanding
+  // CONST32 here would turn it into ordinary instructions before the
+  // register allocator ever sees it as a single register-free-input
+  // pseudo, which silently defeats isReMaterializable (a spilled constant
+  // gets a load-use reload instead of being recomputed). CONST32 is
+  // expanded POST-register-allocation instead, by
+  // ARCInstrInfo::expandPostRAPseudo (ARCInstrInfo.cpp), which runs after
+  // isReMaterializable-driven rematerialization decisions have already
+  // been made.
   const ARCInstrInfo *TII;
 };
 

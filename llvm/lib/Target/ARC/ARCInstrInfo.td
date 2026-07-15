@@ -584,6 +584,39 @@ def MOV_rs12 : F32_DOP_RS12<0b00100, 0b001010, 0,
                  [(set GPR32:$B, immS<12>:$S12)]>;
 }
 
+// CONST32: materialize a 32-bit INTEGER constant that does not fit MOV_rs12
+// via a cheap seed+shift chain instead of the 8-byte MOV_rlimm (4-byte host
+// + 4-byte LIMM word). Selected only when ARCConstantMaterialization.h's
+// synthesizeConst32() finds a recipe strictly cheaper than 8 bytes -- see
+// ARCISelDAGToDAG.cpp's ISD::Constant case. Expanded POST-register-
+// allocation, by ARCInstrInfo::expandPostRAPseudo (ARCInstrInfo.cpp) --
+// deliberately NOT by the pre-RA ARCExpandPseudos pass -- so the pseudo is
+// still alive, as a single register-free-input instruction, when the
+// register allocator decides whether to rematerialize or spill it.
+// (Expanding earlier turns it into ordinary instructions before that
+// decision is ever made, silently defeating isReMaterializable.)
+//
+// dst is constrained to the compact GPR_S class (R0-R3, R12-R15), NOT the
+// full GPR32 -- this is what makes the post-RA expansion self-contained:
+// by the time expandPostRAPseudo runs, $dst already names a concrete
+// physical register that is guaranteed to be a legal `mov_s` destination,
+// so the seed instruction can target $dst directly with no scratch
+// register. (The register-pressure cost of constraining the whole live
+// range to 8 registers is the accepted tradeoff for genuine
+// rematerializability -- see dossier 21 idea 4's open risks.)
+//
+// No `Defs = [STATUS32]`: every recipe step is a non-`.f` form, so this
+// pseudo is flag-dead by construction -- it must never clobber STATUS32
+// the surrounding code may depend on. isReMaterializable/isAsCheapAsAMove/
+// isMoveImm mirror MOV_rs12/MOV_rlimm above; because CONST32's only input
+// is the immediate (no register operands at all), the register allocator
+// can freely re-derive a spilled CONST32 value via the recipe instead of
+// a load-use reload.
+let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1,
+    hasSideEffects = 0 in
+def CONST32 : PseudoInstARC<(outs GPR_S:$dst), (ins i32imm:$imm),
+                             "# CONST32 $dst, $imm", []>;
+
 def MOV_rr : F32_DOP_RR<0b00100, 0b001010, 0,
                 (outs GPR32:$B), (ins GPR32:$C),
                 "mov\t$B, $C", []>

@@ -85,6 +85,18 @@ public:
 
   bool isPostIncrement(const MachineInstr &MI) const override;
 
+  // Expands CONST32 (dossier 21 idea 4 -- CONST32 recipe rematerialization,
+  // docs/llvm-arc700-optimizations/21-*.md) into its seed<<shift chain.
+  // Deliberately implemented here, in the target-independent post-RA
+  // pseudo-expansion hook, rather than in the pre-RA ARCExpandPseudos
+  // pass: CONST32 must still exist -- as a single pseudo with no register
+  // operands -- when the register allocator makes its rematerialize-vs-
+  // spill decision, or isReMaterializable has nothing to act on. By the
+  // time this hook runs, $dst already names a concrete physical register
+  // (constrained to GPR_S by CONST32's TableGen def), so the expansion is
+  // self-contained: no scratch register is needed.
+  bool expandPostRAPseudo(MachineInstr &MI) const override;
+
   // ARC-specific
   bool isPreIncrement(const MachineInstr &MI) const;
 
