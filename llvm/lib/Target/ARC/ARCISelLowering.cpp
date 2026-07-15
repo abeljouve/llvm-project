@@ -25,10 +25,13 @@
 #include "llvm/CodeGen/MachineJumpTableInfo.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/ValueTypes.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/IR/CallingConv.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/MathExtras.h"
 #include <algorithm>
+#include <optional>
 
 #define DEBUG_TYPE "arc-lower"
 
@@ -107,6 +110,13 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   setStackPointerRegisterToSaveRestore(ARC::SP);
 
   setSchedulingPreference(Sched::Source);
+
+  // Bounded scaled-add synthesis for `mul x, C` on cores without a hardware
+  // multiplier -- see performMULCombine / synthesizeConstMul below and
+  // docs/llvm-arc700-optimizations/02-constant-multiplication.md. Registered
+  // unconditionally; the per-node handler itself gates on
+  // !Subtarget.hasMPY() so this is a no-op when MUL is Legal.
+  setTargetDAGCombine(ISD::MUL);
 
   // Use i32 for setcc operations results (slt, sgt, ...).
   setBooleanContents(ZeroOrOneBooleanContent);
@@ -865,40 +875,529 @@ ARCTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
 // Target Optimization Hooks
 //===----------------------------------------------------------------------===//
 
-SDValue ARCTargetLowering::PerformDAGCombine(SDNode *N,
-                                             DAGCombinerInfo &DCI) const {
-  return {};
+//===----------------------------------------------------------------------===//
+//  Bounded constant-multiply synthesizer (no HW multiplier)
+//
+//  See docs/llvm-arc700-optimizations/02-constant-multiplication.md and
+//  docs/notes/isa-characterization.md section 4.1 for the primitive set.
+//
+//  Synthesizes `mul x, C` (ARC700 / !Subtarget.hasMPY()) into a bounded
+//  chain of the seven silicon-characterized 1-instruction ARCompact
+//  primitives -- ADD, SUB, NEG, immediate ASL, and ADD1/2/3 & SUB1/2/3
+//  scaled-adds -- instead of a `bl __mulsi3` libcall. Every primitive is
+//  LINEAR in its x-derived operand(s) over Z/2^32Z and the seed `x` is the
+//  only free variable ever injected, so any recipe built purely from these
+//  primitives computes exactly `K*x mod 2^32` for a fixed K determined by
+//  the op sequence -- checking `interpret(recipe, 1) == C` is therefore
+//  mathematically sufficient to prove correctness for every x (see the
+//  NDEBUG-gated asserts in synthesizeConstMul).
+//===----------------------------------------------------------------------===//
+
+namespace {
+
+// One step of a synthesized recipe. Operand references are indices into the
+// SAME SynthRecipe::Steps vector: 0 means "the seed x", N>0 means
+// "the result of Steps[N-1]". This is an ABSTRACT recipe -- never an
+// SDValue/SDNode pointer -- so it is safe to memoize across unrelated
+// SelectionDAGs (different functions / a persistent cache).
+enum class StepOp : uint8_t { Shl, Add, Sub, AddSh, SubSh, Neg };
+
+struct Step {
+  StepOp Op;
+  uint8_t Imm = 0;  // shift amount, for Shl/AddSh/SubSh only.
+  int32_t Lhs = 0;  // operand ref (0 = seed x).
+  int32_t Rhs = 0;  // operand ref (0 = seed x); unused by Shl/Neg.
+};
+
+// A self-contained recipe: Steps.back() (or the seed x, if Steps is empty)
+// is the result. Cost == Steps.size() == instruction count, since every
+// Step above is exactly one 4-byte ARCompact instruction and none of them
+// ever carries a runtime-materialized immediate (shift amounts are
+// compile-time-fixed opcode operands, not DAG leaves), so no LIMM is ever
+// needed by a synthesized sequence.
+struct SynthRecipe {
+  bool Found = false;
+  SmallVector<Step, 8> Steps;
+
+  // ref to this recipe's own result, for use as an operand of the NEXT step
+  // a caller appends.
+  int32_t root() const { return static_cast<int32_t>(Steps.size()); }
+
+  static SynthRecipe seed() {
+    SynthRecipe R;
+    R.Found = true; // Steps empty -> root() == 0 == the seed x itself.
+    return R;
+  }
+
+  // Append `Op(Operand.root() [, Imm])`, i.e. a unary/Shl/Neg step.
+  static SynthRecipe unary(StepOp Op, uint8_t Imm, const SynthRecipe &Operand) {
+    SynthRecipe R;
+    if (!Operand.Found)
+      return R;
+    R.Steps = Operand.Steps;
+    R.Steps.push_back(Step{Op, Imm, Operand.root(), 0});
+    R.Found = true;
+    return R;
+  }
+
+  // Append `Op(Operand.root(), Operand.root() [, Imm])` -- self-peel: BOTH
+  // operands reference the SAME earlier step, giving free CSE by
+  // construction (e.g. ADD1(t,t) for a *3 self-peel), never a duplicated
+  // subexpression.
+  static SynthRecipe binarySelf(StepOp Op, uint8_t Imm,
+                                const SynthRecipe &Operand) {
+    SynthRecipe R;
+    if (!Operand.Found)
+      return R;
+    R.Steps = Operand.Steps;
+    int32_t Root = Operand.root();
+    R.Steps.push_back(Step{Op, Imm, Root, Root});
+    R.Found = true;
+    return R;
+  }
+
+  // Append `Op(Operand.root(), x [, Imm])` -- the "adjacent bump" shape,
+  // combining a recursed sub-recipe with the free seed.
+  static SynthRecipe withSeedRhs(StepOp Op, uint8_t Imm,
+                                 const SynthRecipe &Operand) {
+    SynthRecipe R;
+    if (!Operand.Found)
+      return R;
+    R.Steps = Operand.Steps;
+    R.Steps.push_back(Step{Op, Imm, Operand.root(), 0});
+    R.Found = true;
+    return R;
+  }
+};
+
+// Three independent, all-enforced compile-time bounds (per the dossier's
+// "hard node/depth budget for deterministic compile time" requirement):
+//   MaxDepth    -- recursion-depth ceiling; also an upper bound on the final
+//                  instruction count of any accepted recipe, since every
+//                  recursive branch below adds exactly one Step per level.
+//   MaxExplored -- total recursive-call ceiling for one top-level query,
+//                  independent of MaxDepth (defense-in-depth: bounds compile
+//                  time even if a future edit widens the branch set without
+//                  updating MaxDepth).
+//   CacheCap    -- steady-state memory ceiling on the persistent cache below
+//                  (a pure perf tradeoff: queries beyond the cap still
+//                  compute correctly, just uncached).
+constexpr unsigned MaxDepth = 4;
+constexpr unsigned MaxExplored = 4096;
+constexpr size_t CacheCap = 16384;
+
+// Reduce an arbitrary intermediate back to the canonical signed-32-bit
+// representative. Well-defined two's-complement truncation -- matches every
+// other place in this codebase that assumes wraparound i32 arithmetic.
+// Deliberately int64_t throughout the search (never raw int32_t negation) so
+// negating INT32_MIN is always well-defined (int64_t has headroom), sidestepping
+// the APInt::abs()-on-INT_MIN footgun the old decomposeMulByConstant had to
+// special-case.
+static int64_t canon32(int64_t V) {
+  return static_cast<int64_t>(static_cast<int32_t>(static_cast<uint32_t>(V)));
 }
 
-// ARC700 has no hardware multiplier, so `mul x, C` would otherwise lower to a
-// __mulsi3 libcall (push blink / mov C / bl / pop blink). For constants of the
-// form 2^N±1 / 2^N±2^M the generic DAGCombiner.visitMUL decomposition (gated on
-// this hook) rewrites the multiply into shl + add/sub, which select to the
-// already-emitted asl/add/sub (and add1/add2/add3 scaled-adds for x*3/5/9) —
-// 1-3 single-cycle ALU ops instead of a call. Constants that don't match the
-// two-term shapes keep the libcall path automatically.
+struct SearchCtx {
+  // Per-top-level-query memo, keyed by (canon32'd C, remaining depth). Safe
+  // to key on the exact remaining depth (rather than trying to reuse across
+  // different depths): a search at depth d can never find a result cheaper
+  // than one found at depth d' < d, so this has no cross-depth correctness
+  // subtlety -- it is a plain memoized recursion, not an attempt at a
+  // depth-independent global optimum.
+  DenseMap<std::pair<int64_t, unsigned>, SynthRecipe> Memo;
+  unsigned Explored = 0;
+};
+
+static SynthRecipe searchC(int64_t C, unsigned Depth, SearchCtx &Ctx);
+
+// The uncached body of searchC: fast paths first (never consuming search
+// budget beyond their own 1-2 steps), then the five recursive branches from
+// docs/llvm-arc700-optimizations/02-constant-multiplication.md, trying ALL
+// of them and keeping the minimum-cost result (branch-and-bound would only
+// prune a sub-call whose cost already exceeds the current best; we skip
+// that refinement since MaxDepth/MaxExplored already bound the work).
+static SynthRecipe searchCUncached(int64_t Cc, unsigned Depth, SearchCtx &Ctx) {
+  // --- Fast paths: 0, 1, -1, +-2^k (including INT_MIN), never touch the
+  //     general branches below. Reachability note: because these are always
+  //     checked (at every recursive entry, not just the top level) BEFORE
+  //     the general branches run, a caller can never recurse into branch
+  //     4/5's "C-+1"/"C-+2^k" adjacent-bump shapes starting from a C that
+  //     itself was 0/+-1/+-2^k -- so Cc==0 is unreachable in practice here
+  //     (defensively handled by declining rather than asserting, so a
+  //     reachability mistake can only cost a missed optimization, never a
+  //     miscompile).
+  if (Cc == 0)
+    return SynthRecipe();
+  if (Cc == 1)
+    return SynthRecipe::seed(); // cost 0, already-live register.
+  if (Cc == -1) {
+    if (Depth < 1)
+      return SynthRecipe();
+    return SynthRecipe::unary(StepOp::Neg, 0, SynthRecipe::seed()); // cost 1.
+  }
+  SynthRecipe FastBest;
+  {
+    uint32_t U = static_cast<uint32_t>(Cc);
+    if (isPowerOf2_32(U)) {
+      unsigned Sh = Log2_32(U);
+      if (Sh >= 1 && Sh <= 31 && Depth >= 1)
+        FastBest = SynthRecipe::unary(StepOp::Shl, Sh, SynthRecipe::seed());
+    }
+  }
+  {
+    uint32_t UNeg = static_cast<uint32_t>(-Cc);
+    if (isPowerOf2_32(UNeg)) {
+      unsigned Sh = Log2_32(UNeg);
+      if (Sh >= 1 && Sh <= 31 && Depth >= 2) {
+        SynthRecipe Shl =
+            SynthRecipe::unary(StepOp::Shl, Sh, SynthRecipe::seed());
+        SynthRecipe NegShl = SynthRecipe::unary(StepOp::Neg, 0, Shl);
+        if (!FastBest.Found ||
+            NegShl.Steps.size() < FastBest.Steps.size())
+          FastBest = NegShl;
+      }
+    }
+  }
+  if (FastBest.Found)
+    return FastBest; // power-of-two shapes never consume the general budget.
+
+  if (Depth == 0)
+    return SynthRecipe(); // no budget left for the general branches below.
+
+  SynthRecipe Best;
+  auto consider = [&](SynthRecipe &&Cand) {
+    if (Cand.Found && (!Best.Found || Cand.Steps.size() < Best.Steps.size()))
+      Best = std::move(Cand);
+  };
+
+  // Branch 1: strip an ARBITRARY run of trailing zero bits in one Shl.
+  // Generalizes the old decomposeMulByConstant's TZeros-stripping idea to
+  // recurse instead of requiring the residue to immediately be 2^N+-1.
+  {
+    uint32_t Bits = static_cast<uint32_t>(Cc);
+    unsigned Tz = countr_zero(Bits);
+    if (Tz >= 1 && Tz <= 31) {
+      int64_t Residue = Cc >> Tz; // exact: Cc is divisible by 2^Tz.
+      consider(SynthRecipe::unary(
+          StepOp::Shl, Tz, searchC(Residue, Depth - 1, Ctx)));
+    }
+  }
+
+  // Branch 2: self-scaled ADD-peel. ADDk(t,t) = t*(1+2^k) for k in {1,2,3}
+  // (divisors 3, 5, 9) -- this is exactly how x*3/5/9 arise (A=1, the
+  // trivial seed base case) and how x*11/13's inner ADD1/ADD2 arise.
+  for (unsigned K : {1u, 2u, 3u}) {
+    int64_t Divisor = (int64_t{1} << K) + 1;
+    if (Cc % Divisor == 0) {
+      int64_t A = Cc / Divisor;
+      consider(SynthRecipe::binarySelf(
+          StepOp::AddSh, static_cast<uint8_t>(K), searchC(A, Depth - 1, Ctx)));
+    }
+  }
+
+  // Branch 3: self-scaled SUB-peel. SUBk(t,t) = t*(1-2^k) = -t*(2^k-1) for
+  // k in {2,3} (divisors 3, 7); k=1 would give divisor 1 (degenerate,
+  // already covered by the NEG fast path) so it is skipped.
+  for (unsigned K : {2u, 3u}) {
+    int64_t Divisor = (int64_t{1} << K) - 1;
+    if (Cc % Divisor == 0) {
+      int64_t A = -(Cc / Divisor);
+      consider(SynthRecipe::binarySelf(
+          StepOp::SubSh, static_cast<uint8_t>(K), searchC(A, Depth - 1, Ctx)));
+    }
+  }
+
+  // Branch 4: adjacent +-1 bump -- generalizes the 2^N+-1 shape to allow an
+  // arbitrary PRECEDING chain instead of requiring a bare Shl in front.
+  consider(SynthRecipe::withSeedRhs(StepOp::Add, 0,
+                                    searchC(Cc - 1, Depth - 1, Ctx)));
+  consider(SynthRecipe::withSeedRhs(StepOp::Sub, 0,
+                                    searchC(Cc + 1, Depth - 1, Ctx)));
+
+  // Branch 5: adjacent scaled +-2^k bump, k in {1,2,3}. This is the branch
+  // that finds x*11 = ADD3(ADD1(x,x),x) [11-8=3 -> branch2 k=1 cost1 -> wrap
+  // ADD3 cost2] and x*13 = ADD3(ADD2(x,x),x) [13-8=5 -> branch2 k=2 cost1 ->
+  // wrap ADD3 cost2].
+  for (unsigned K : {1u, 2u, 3u}) {
+    int64_t Bump = int64_t{1} << K;
+    consider(SynthRecipe::withSeedRhs(
+        StepOp::AddSh, static_cast<uint8_t>(K),
+        searchC(Cc - Bump, Depth - 1, Ctx)));
+    consider(SynthRecipe::withSeedRhs(
+        StepOp::SubSh, static_cast<uint8_t>(K),
+        searchC(Cc + Bump, Depth - 1, Ctx)));
+  }
+
+  return Best;
+}
+
+static SynthRecipe searchC(int64_t C, unsigned Depth, SearchCtx &Ctx) {
+  int64_t Cc = canon32(C);
+  if (++Ctx.Explored > MaxExplored)
+    return SynthRecipe(); // compile-time guardrail: stop exploring.
+
+  auto Key = std::make_pair(Cc, Depth);
+  if (auto It = Ctx.Memo.find(Key); It != Ctx.Memo.end())
+    return It->second;
+
+  SynthRecipe R = searchCUncached(Cc, Depth, Ctx);
+  Ctx.Memo.try_emplace(Key, R);
+  return R;
+}
+
+// Host-side interpreter over the SAME 7-primitive enum, used only for the
+// NDEBUG-gated correctness assertions in synthesizeConstMul. uint32_t
+// arithmetic gives the mod-2^32 wraparound for free.
+static uint32_t interpretRecipe(const SynthRecipe &R, uint32_t X) {
+  SmallVector<uint32_t, 8> Vals;
+  auto Val = [&](int32_t Ref) -> uint32_t {
+    return Ref == 0 ? X : Vals[Ref - 1];
+  };
+  for (const Step &S : R.Steps) {
+    uint32_t V;
+    switch (S.Op) {
+    case StepOp::Shl:
+      V = Val(S.Lhs) << S.Imm;
+      break;
+    case StepOp::Add:
+      V = Val(S.Lhs) + Val(S.Rhs);
+      break;
+    case StepOp::Sub:
+      V = Val(S.Lhs) - Val(S.Rhs);
+      break;
+    case StepOp::AddSh:
+      V = Val(S.Lhs) + (Val(S.Rhs) << S.Imm);
+      break;
+    case StepOp::SubSh:
+      V = Val(S.Lhs) - (Val(S.Rhs) << S.Imm);
+      break;
+    case StepOp::Neg:
+      V = 0u - Val(S.Lhs);
+      break;
+    }
+    Vals.push_back(V);
+  }
+  return R.Steps.empty() ? X : Vals.back();
+}
+
+// Top-level entry: search(C, MaxDepth), memoized persistently by canon32'd C
+// alone. Safe to key on C alone (ignoring context) because every top-level
+// query always searches with the SAME fixed MaxDepth budget -- there is no
+// "partial budget" top-level query this cache could serve incorrectly.
+// thread_local sidesteps any data race if this toolchain's codegen pipeline
+// ever parallelizes per-function combines (e.g. ThinLTO codegen
+// partitioning); costs nothing extra if it never does.
+static std::optional<SynthRecipe> synthesizeConstMul(int64_t C) {
+  int64_t Cc = canon32(C);
+
+  static thread_local DenseMap<int64_t, std::optional<SynthRecipe>> Cache;
+  if (auto It = Cache.find(Cc); It != Cache.end())
+    return It->second;
+
+  SearchCtx Ctx;
+  SynthRecipe R = searchC(Cc, MaxDepth, Ctx);
+
+  std::optional<SynthRecipe> Result;
+  if (R.Found) {
+#ifndef NDEBUG
+    // Linearity proof (see file header comment): DAG(x) = K*x mod 2^32 for
+    // every primitive here, so DAG(1) == C is mathematically sufficient.
+    // Also exercised at a handful of concrete x as defense-in-depth against
+    // a bug in the interpreter/lemma itself (e.g. a stray non-linear
+    // primitive slipping in) -- redundant with the proof, not a substitute
+    // for it.
+    assert(interpretRecipe(R, 1) == static_cast<uint32_t>(Cc) &&
+           "ARC constant-mul synthesizer: recipe fails linearity check at "
+           "x=1 -- DAG(1) must equal C for the search to be sound");
+    for (uint32_t X :
+        {0u, 1u, 0xFFFFFFFFu, 0x80000000u, 0xDEADBEEFu, 0x12345678u}) {
+      uint32_t Want = static_cast<uint32_t>(
+          static_cast<uint64_t>(static_cast<uint32_t>(Cc)) *
+          static_cast<uint64_t>(X));
+      assert(interpretRecipe(R, X) == Want &&
+             "ARC constant-mul synthesizer: recipe failed randomized-x "
+             "check -- a non-linear primitive must have slipped in");
+    }
+#endif
+    Result = R;
+  }
+
+  if (Cache.size() < CacheCap)
+    Cache.try_emplace(Cc, Result);
+  return Result;
+}
+
+// Materialize a SynthRecipe as ordinary ISD::ADD/SUB/SHL DAG nodes (there is
+// no such thing as an "ADD1 SDNode" -- ADD1/2/3/SUB1/2/3 are ISel Pats in
+// ARCARCompactPatterns.td matching the shape `(add $b,(shl $c,N))` /
+// `(sub $b,(shl $c,N))`, which fire automatically once the DAG has this
+// shape; no new TableGen pattern is needed). SUB/SubSh are not commutative,
+// so the true minuend is always placed as the Lhs operand -- this falls out
+// naturally from which side each branch above tracked as "sub" vs
+// "x"/"SHL(x,k)". No nsw/nuw flags are propagated (default SDNodeFlags()):
+// intermediate synthesized steps are not provably no-wrap even when the
+// overall `mul` had such a flag.
+static SDValue emitRecipe(const SynthRecipe &R, SDValue X, const SDLoc &dl,
+                          SelectionDAG &DAG) {
+  EVT VT = X.getValueType();
+  SmallVector<SDValue, 8> Vals;
+  auto Val = [&](int32_t Ref) -> SDValue {
+    return Ref == 0 ? X : Vals[Ref - 1];
+  };
+  for (const Step &S : R.Steps) {
+    SDValue V;
+    switch (S.Op) {
+    case StepOp::Shl:
+      V = DAG.getNode(ISD::SHL, dl, VT, Val(S.Lhs),
+                      DAG.getConstant(S.Imm, dl, VT));
+      break;
+    case StepOp::Add:
+      V = DAG.getNode(ISD::ADD, dl, VT, Val(S.Lhs), Val(S.Rhs));
+      break;
+    case StepOp::Sub:
+      V = DAG.getNode(ISD::SUB, dl, VT, Val(S.Lhs), Val(S.Rhs));
+      break;
+    case StepOp::AddSh: {
+      SDValue Sh = DAG.getNode(ISD::SHL, dl, VT, Val(S.Rhs),
+                               DAG.getConstant(S.Imm, dl, VT));
+      V = DAG.getNode(ISD::ADD, dl, VT, Val(S.Lhs), Sh);
+      break;
+    }
+    case StepOp::SubSh: {
+      SDValue Sh = DAG.getNode(ISD::SHL, dl, VT, Val(S.Rhs),
+                               DAG.getConstant(S.Imm, dl, VT));
+      V = DAG.getNode(ISD::SUB, dl, VT, Val(S.Lhs), Sh);
+      break;
+    }
+    case StepOp::Neg:
+      V = DAG.getNode(ISD::SUB, dl, VT, DAG.getConstant(0, dl, VT),
+                      Val(S.Lhs));
+      break;
+    }
+    Vals.push_back(V);
+  }
+  return R.Steps.empty() ? X : Vals.back();
+}
+
+} // end anonymous namespace
+
+SDValue ARCTargetLowering::PerformDAGCombine(SDNode *N,
+                                             DAGCombinerInfo &DCI) const {
+  switch (N->getOpcode()) {
+  case ISD::MUL:
+    return performMULCombine(N, DCI);
+  default:
+    return {};
+  }
+}
+
+// Rewrite `mul x, C` into a bounded chain of add/sub/shl/neg DAG nodes (see
+// the synthesizer above) when that is cheaper than the __mulsi3 libcall
+// ARC700 would otherwise emit (no hardware multiplier). This DAGCombine
+// fires at Level::BeforeLegalizeTypes -- strictly before SelectionDAGLegalize
+// would ever turn the LibCall-marked MUL into a call node -- because
+// DAGCombiner::combine() only calls TLI.PerformDAGCombine() after the
+// generic visit(N) (here, DAGCombiner::visitMUL) has run to completion and
+// found nothing to do; with decomposeMulByConstant unconditionally disabled
+// (see its definition), visitMUL's own 2-term shape rewrite never fires on
+// this target, so every non-trivial constant MUL reaches this hook.
+SDValue ARCTargetLowering::performMULCombine(SDNode *N,
+                                             DAGCombinerInfo &DCI) const {
+  // Never touch MUL when a hardware multiplier is present -- MUL is Legal
+  // there and must reach ISel as-is, never rewritten into a scaled-add
+  // chain. (Guarding here, independently of the setTargetDAGCombine
+  // registration above, is the belt to that call site's suspenders.)
+  if (Subtarget.hasMPY())
+    return {};
+
+  // Explicit VT guard (mirrors the old decomposeMulByConstant) rather than
+  // relying on "i32 is currently ARC's only legal scalar type" -- protects
+  // against a future subtarget variant or vector extension silently routing
+  // through this combine incorrectly.
+  EVT VT = N->getValueType(0);
+  if (VT != MVT::i32)
+    return {};
+
+  SDValue N0 = N->getOperand(0);
+  SDValue N1 = N->getOperand(1);
+
+  SDValue X;
+  ConstantSDNode *CN = dyn_cast<ConstantSDNode>(N1);
+  if (CN) {
+    X = N0;
+  } else if ((CN = dyn_cast<ConstantSDNode>(N0))) {
+    X = N1;
+  } else {
+    return {}; // No constant operand -- variable*variable stays a libcall.
+  }
+  if (CN->isOpaque())
+    return {}; // Opaque constants must not be inspected/rewritten.
+
+  int64_t C = CN->getSExtValue();
+
+  std::optional<SynthRecipe> Recipe = synthesizeConstMul(C);
+  if (!Recipe)
+    return {}; // Nothing found within budget -- fall through to __mulsi3.
+
+  unsigned SynthInstrs = Recipe->Steps.size();
+
+  // Cost threshold: compare against the ACTUAL call-site cost, not an
+  // abstract instruction count, and never assume anything about whether
+  // __mulsi3's body is "already linked elsewhere" (whole-program information
+  // unavailable here, and ignoring it is always conservative-safe -- a
+  // synth that is no larger than the local call site can never make THIS
+  // call site's bytes larger than the call it replaces).
+  //   CallSiteInstrs = 1 (`bl __mulsi3`) +
+  //                    1 (MOV_rs12, C fits s12) or 2 (MOV_rlimm, else).
+  // Reuses the exact same s12 fold window ARCTTIImpl::materializeCost32 /
+  // isLegalAddImmediate already use, so this DAGCombine-time cost model can
+  // never drift from the ConstantHoisting-time one.
+  unsigned CallSiteInstrs = 1 + (isInt<12>(C) ? 1 : 2);
+
+  const MachineFunction &MF = DCI.DAG.getMachineFunction();
+  bool Accept;
+  if (MF.getFunction().hasMinSize() || MF.getFunction().hasOptSize()) {
+    // -Oz/-Os: bytes are the objective. Ties are resolved in favor of synth
+    // -- it strictly dominates the call on every axis bytes don't capture
+    // (no blink clobber / possible caller-side spill, no caller-saved
+    // register clobber, no call/return latency).
+    Accept = SynthInstrs <= CallSiteInstrs;
+  } else {
+    // -O0/-O1/-O2/-O3: speed-tuned. Accept anything the bounded search
+    // found (SynthInstrs <= MaxDepth is trivially true here, since every
+    // branch above only ever appends within its remaining depth budget).
+    // isa-characterization.md section 8 measures one ALU instruction per
+    // clock on this in-order core, so even a full MaxDepth-deep dependent
+    // chain (~MaxDepth cycles) is far cheaper than a call's
+    // mov+bl+callee-prologue+shift-add-loop+ret.
+    Accept = SynthInstrs <= MaxDepth;
+  }
+  if (!Accept)
+    return {};
+
+  SDLoc dl(N);
+  return emitRecipe(*Recipe, X, dl, DCI.DAG);
+}
+
+// Subsumed by performMULCombine above. Always declining here means
+// DAGCombiner::visitMUL's own 2-term (2^N+-1 / 2^N+-2^M) decomposition never
+// fires for this target, so every non-trivial constant MUL falls through
+// uniformly to performMULCombine's bounded search instead of being stolen
+// piecemeal by the generic combine with no way for the target hook to
+// improve an already-replaced node. Verified (grep) that DAGCombiner.cpp's
+// visitMUL is the ONLY caller of this hook in-tree, so disabling it has no
+// other observable effect. Every constant the OLD predicate used to accept
+// (2^N+-1 / 2^N+-2^M, after stripping trailing zeros) is proven to reach an
+// equal-or-better instruction count under the new search --  see
+// docs/llvm-arc700-optimizations/02-constant-multiplication.md's
+// acceptance criteria and the FileCheck coverage in
+// llvm/test/CodeGen/ARC/arc700eb-scaled-sub.ll.
 bool ARCTargetLowering::decomposeMulByConstant(LLVMContext &Context, EVT VT,
                                                SDValue C) const {
-  // With a hardware multiplier MUL is Legal and decomposition is undesirable.
-  if (Subtarget.hasMPY())
-    return false;
-  if (VT != MVT::i32)
-    return false;
-  auto *CN = dyn_cast<ConstantSDNode>(C);
-  if (!CN)
-    return false;
-  // Mirror EXACTLY the predicate under which DAGCombiner::visitMUL sets its
-  // MathOp (see DAGCombiner.cpp, "multiply-by-(power-of-2 +/- power-of-2)"):
-  // take the magnitude, strip the trailing-zero 2^M factor, then require the
-  // residue to be 2^N±1. This covers BOTH the single-term 2^N±1 shapes
-  // (3,5,9,15,17,33,…) and the two-term 2^N±2^M shapes (6,12,20,24,40,48,…) —
-  // every constant the generic combine can turn into <=2 shifts + 1 add/sub.
-  // The previous predicate omitted the trailing-zero strip, so e.g. C=12 (=
-  // 0b1100 = (x<<3)+(x<<2)) fell through to a __mulsi3 libcall in a hot loop.
-  APInt MulC = CN->getAPIntValue().abs();
-  unsigned TZeros = MulC == 2 ? 0 : MulC.countr_zero();
-  MulC.lshrInPlace(TZeros);
-  return (MulC - 1).isPowerOf2() || (MulC + 1).isPowerOf2();
+  (void)Context;
+  (void)VT;
+  (void)C;
+  return false;
 }
 
 //===----------------------------------------------------------------------===//

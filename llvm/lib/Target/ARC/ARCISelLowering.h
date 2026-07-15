@@ -97,8 +97,26 @@ private:
   SDValue LowerBSWAP(SDValue Op, SelectionDAG &DAG) const;
   SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
 
-  // Decompose `mul x, C` for 2^N±1 constants into shl+add/sub instead of a
-  // __mulsi3 libcall (ARC700 has no hardware multiplier).
+  // Bounded scaled-add/shift/sub/neg synthesizer for `mul x, C` on cores
+  // without a hardware multiplier (ARC700 / !Subtarget.hasMPY()). Runs as a
+  // target DAG combine on ISD::MUL (registered via setTargetDAGCombine in
+  // the constructor), strictly BEFORE DAGCombiner::visitMUL's own generic
+  // 2-term power-of-two decomposition would ever see the node (see
+  // decomposeMulByConstant below, which is unconditionally disabled so it
+  // never competes with this). Emits only plain ISD::ADD/SUB/SHL nodes built
+  // from a bounded depth/node-budgeted search (see
+  // docs/llvm-arc700-optimizations/02-constant-multiplication.md); ISel then
+  // selects the existing ADD1-3/SUB1-3 scaled-add patterns in
+  // ARCARCompactPatterns.td and the plain add/sub/asl patterns for the rest.
+  // Returns SDValue() (no combine) when no synthesized sequence is cheaper
+  // than a __mulsi3 call under the current opt-size profile, or when the
+  // subtarget has a hardware multiplier.
+  SDValue performMULCombine(SDNode *N, DAGCombinerInfo &DCI) const;
+
+  // Subsumed by performMULCombine above (see its comment) -- always returns
+  // false so DAGCombiner::visitMUL's own decomposition never fires and every
+  // non-trivial constant multiply on a !hasMPY() target reaches the target
+  // combine uniformly. See docs/bugs/ if this predicate is ever revived.
   bool decomposeMulByConstant(LLVMContext &Context, EVT VT,
                               SDValue C) const override;
 
