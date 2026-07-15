@@ -51,6 +51,13 @@ private:
   void expandUSUBSAT(MachineFunction &, MachineBasicBlock::iterator);
   void expandUADDO(MachineFunction &, MachineBasicBlock::iterator);
   void expandUSUBO(MachineFunction &, MachineBasicBlock::iterator);
+  // Carry-chain fusions (dossier 24, docs/llvm-arc700-optimizations/24-
+  // carry-chain-and-bit-serial-idioms.md): i64<<1 and one bit-reverse step.
+  // Same atomicity requirement as the carry-consuming idioms above -- the
+  // `.f`-form ASL/LSR producer and its RLC consumer must land MBB-adjacent
+  // with nothing else built between the two BuildMI calls.
+  void expandSHL64_1(MachineFunction &, MachineBasicBlock::iterator);
+  void expandBitRevStep(MachineFunction &, MachineBasicBlock::iterator);
 
   const ARCInstrInfo *TII;
 };
@@ -305,6 +312,57 @@ void ARCExpandPseudos::expandUSUBO(MachineFunction &MF,
   MI.eraseFromParent();
 }
 
+// i64 `shl x, 1` fused into a 2-instruction carry chain (dossier 24). C is
+// the raw ejected bit from asl.f -- NOT a compare/borrow flag, so none of
+// the SUB/CMP carry-polarity discussion above expandUADDSAT applies here;
+// rlc simply reads whatever asl.f just placed in STATUS32.C.
+void ARCExpandPseudos::expandSHL64_1(MachineFunction &MF,
+                                     MachineBasicBlock::iterator MII) {
+  // Expand:
+  //   %Lo<def>, %Hi<def> = SHL64_1_PSEUDO %InLo, %InHi, %STATUS<imp-def>
+  // To:
+  //   %Lo<def> = ARC_ASL_b_c_f %InLo, %STATUS<imp-def>  ; Lo=InLo<<1, C=MSB
+  //   %Hi<def> = ARC_RLC_b_c %InHi, %STATUS<imp-use>    ; Hi=(InHi<<1)|C
+  MachineInstr &MI = *MII;
+  const MachineOperand &LoDst = MI.getOperand(0);
+  const MachineOperand &HiDst = MI.getOperand(1);
+  const MachineOperand &InLo = MI.getOperand(2);
+  const MachineOperand &InHi = MI.getOperand(3);
+
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ARC_ASL_b_c_f))
+      .add(LoDst)
+      .add(InLo);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ARC_RLC_b_c))
+      .add(HiDst)
+      .add(InHi);
+  MI.eraseFromParent();
+}
+
+// One bit-reverse step fused into a 2-instruction carry chain (dossier 24).
+// lsr.f ejects the LOW bit of XIn into C (the exact bit `(x&1)` the naive
+// sequence would compute), and rlc folds it into the low bit of YOut.
+void ARCExpandPseudos::expandBitRevStep(MachineFunction &MF,
+                                        MachineBasicBlock::iterator MII) {
+  // Expand:
+  //   %XOut<def>, %YOut<def> = BITREV_STEP_PSEUDO %XIn, %YIn, %STATUS<imp-def>
+  // To:
+  //   %XOut<def> = ARC_LSR_b_c_f %XIn, %STATUS<imp-def>  ; XOut=XIn>>1, C=LSB
+  //   %YOut<def> = ARC_RLC_b_c %YIn, %STATUS<imp-use>    ; YOut=(YIn<<1)|C
+  MachineInstr &MI = *MII;
+  const MachineOperand &XOutDst = MI.getOperand(0);
+  const MachineOperand &YOutDst = MI.getOperand(1);
+  const MachineOperand &XIn = MI.getOperand(2);
+  const MachineOperand &YIn = MI.getOperand(3);
+
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ARC_LSR_b_c_f))
+      .add(XOutDst)
+      .add(XIn);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ARC_RLC_b_c))
+      .add(YOutDst)
+      .add(YIn);
+  MI.eraseFromParent();
+}
+
 void ARCExpandPseudos::expandLR(MachineFunction &MF,
                                 MachineBasicBlock::iterator MII) {
   // Expand: %dst = ARC_LR_PSEUDO %aux_addr
@@ -410,6 +468,14 @@ bool ARCExpandPseudos::runOnMachineFunction(MachineFunction &MF) {
         break;
       case ARC::USUBO_PSEUDO:
         expandUSUBO(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::SHL64_1_PSEUDO:
+        expandSHL64_1(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::BITREV_STEP_PSEUDO:
+        expandBitRevStep(MF, MBBI);
         Expanded = true;
         break;
       case ARC::ARC_LR_PSEUDO:

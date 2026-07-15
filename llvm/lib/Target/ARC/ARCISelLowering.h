@@ -152,6 +152,43 @@ private:
   SDValue performOverflowBrcondCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performOverflowSelectCombine(SDNode *N, DAGCombinerInfo &DCI) const;
 
+  // Carry-chain fusions -- docs/llvm-arc700-optimizations/24-carry-chain-
+  // and-bit-serial-idioms.md. Both guard on Subtarget.isARCompact() first
+  // (ARC_ASL_b_c_f/ARC_LSR_b_c_f/ARC_RLC_b_c are ARCompact-only encodings
+  // with no Predicates gate at the instruction-def level -- an unconditional
+  // BuildMI from these MI-level pseudo expansions would otherwise hard-crash
+  // a non-ARCompact subtarget at scheduling-info resolution; confirmed
+  // empirically with `llc -march=arc -mcpu=generic`). Both run as target DAG
+  // combines on ISD::OR
+  // (registered via setTargetDAGCombine in the constructor), dispatched from
+  // the same PerformDAGCombine case in sequence: each matches an EXACT node
+  // shape (constant shift/mask amounts only) and bails cleanly to SDValue()
+  // on any mismatch, so trying both in a row cannot misfire on unrelated OR
+  // nodes or interfere with each other.
+  //
+  // performShl64By1Combine matches the OR(SHL(InHi,1), SRL(InLo,31)) shape
+  // that DAGTypeLegalizer::ExpandShiftByConstant unconditionally emits for
+  // `i64 shl x, 1` (the compile-time-constant-shift path is taken before
+  // TLI.getOperationAction(SHL_PARTS,...) is ever consulted, so a Custom
+  // SHL_PARTS hook cannot intercept this shape -- this DAGCombine is the
+  // only viable interception point). On match it locates the sibling Lo
+  // node -- SelectionDAG hash-consing (CSE) guarantees at most one `(shl
+  // InLo, 1)` SDNode value exists -- and fuses both into one
+  // ARCISD::SHL64_1 2-result node (matched by SHL64_1_PSEUDO in
+  // ARCInstrInfo.td), re-sharing the Lo result the same way
+  // buildOverflowCompare above re-shares UADDO/USUBO's result #0.
+  //
+  // performBitRevStepCombine matches OR(SHL(YIn,1), AND(XIn,1)) -- one
+  // unrolled iteration of `y = (y<<1)|(x&1); x >>= 1;` -- and fuses it with
+  // the sibling SRL(XIn,1) into ARCISD::BITREV_STEP (matched by
+  // BITREV_STEP_PSEUDO). Unlike the i64<<1 shape (mechanically fixed by the
+  // type legalizer for every target), this exact AND/OR canonical form is
+  // NOT guaranteed stable across DAGCombiner passes/compiler versions for
+  // ordinary front-end-emitted code -- declining (returning SDValue()) is
+  // always safe and falls through to the generic and/or/shift lowering.
+  SDValue performShl64By1Combine(SDNode *N, DAGCombinerInfo &DCI) const;
+  SDValue performBitRevStepCombine(SDNode *N, DAGCombinerInfo &DCI) const;
+
   // Subsumed by performMULCombine above (see its comment) -- always returns
   // false so DAGCombiner::visitMUL's own decomposition never fires and every
   // non-trivial constant multiply on a !hasMPY() target reaches the target

@@ -79,6 +79,30 @@ def SDT_ARCUAddSubO : SDTypeProfile<2, 2, [SDTCisVT<0, i32>, SDTCisVT<1, i32>,
 def ARCuaddo : SDNode<"ARCISD::UADDO", SDT_ARCUAddSubO, []>;
 def ARCusubo : SDNode<"ARCISD::USUBO", SDT_ARCUAddSubO, []>;
 
+// Carry-chain fusions: i64 `shl x, 1` and one bit-reverse step (dossier 24,
+// docs/llvm-arc700-optimizations/24-carry-chain-and-bit-serial-idioms.md).
+// 2-result target nodes, same shape as SDT_ARCUAddSubO above -- everything
+// is folded into ONE opaque MI (SHL64_1_PSEUDO / BITREV_STEP_PSEUDO below)
+// until ARCExpandPseudos.cpp splits it into an asl.f/lsr.f producer + rlc
+// consumer, so no SelectionDAG glue is needed (glue would have to survive
+// DAGCombine/legalize/schedule across a 2-node span, which this backend has
+// no working STATUS32 precedent for -- see ARCARCompactPatterns.td's RLC
+// comment). Constructed ONLY by ARCISelLowering.cpp's
+// performShl64By1Combine / performBitRevStepCombine, which pin the shift
+// amount to a literal 1 -- never synthesize this from a multi-bit/variable
+// shift (isa-characterization.md 5.1: multi-bit barrel .f is not
+// flag-identical to the single-bit form).
+def SDT_ARCShl64C1 : SDTypeProfile<2, 2, [SDTCisVT<0, i32>, SDTCisVT<1, i32>,
+                                           SDTCisSameAs<0, 2>,
+                                           SDTCisSameAs<1, 3>]>;
+// (Lo, Hi) = ARCshl64c1(InLo, InHi): Lo = InLo<<1, Hi = (InHi<<1)|carry.
+def ARCshl64c1 : SDNode<"ARCISD::SHL64_1", SDT_ARCShl64C1, []>;
+// (XOut, YOut) = ARCbitrevstep(XIn, YIn): XOut = XIn>>1 (carry = old LSB of
+// XIn), YOut = (YIn<<1)|carry. Same profile shape as SDT_ARCShl64C1 (2
+// i32 outs, 2 i32 ins); kept as a distinct SDNode name/opcode since it is a
+// semantically different fusion (shift-right producer, not shift-left).
+def ARCbitrevstep : SDNode<"ARCISD::BITREV_STEP", SDT_ARCShl64C1, []>;
+
 // Conditional Branch
 def ARCbrcc : SDNode<"ARCISD::BRcc", SDT_ARCbrcc, [SDNPHasChain]>;
 
@@ -231,6 +255,36 @@ let Defs = [STATUS32] in {
                            "# USUBO_PSEUDO $Diff, $Ovf, $A, $B",
                            [(set GPR32:$Diff, GPR32:$Ovf,
                                  (ARCusubo i32:$A, i32:$B))]>;
+}
+
+// Carry-chain fusions for i64<<1 and the bit-reverse step (dossier 24,
+// docs/llvm-arc700-optimizations/24-carry-chain-and-bit-serial-idioms.md).
+// Exact same atomic-pseudo mechanism as UADDO_PSEUDO/USUBO_PSEUDO above:
+// bundle a `.f`-form ASL/LSR carry producer with its RLC consumer as ONE
+// pre-RA pseudo so the pre-RA scheduler (which runs before
+// ARCExpandPseudos, see ARCTargetMachine.cpp's addPreRegAlloc) can only
+// move the whole pseudo, never insert something between the two real
+// instructions it expands to. ARCExpandPseudos.cpp's expandSHL64_1 /
+// expandBitRevStep emit the two real instructions back-to-back with
+// nothing else built between them, so they land MBB-adjacent at creation
+// time and stay that way (no later pass reorders within a basic block).
+// PINNED to a literal 1-bit shift: these pseudos are constructed ONLY by
+// ARCISelLowering.cpp's performShl64By1Combine / performBitRevStepCombine,
+// which match an exact SHL-by-1 (and, for the bit-reverse step, AND-by-1 /
+// SRL-by-1) shape -- never a multi-bit or variable shift
+// (isa-characterization.md 5.1).
+let Defs = [STATUS32] in {
+  def SHL64_1_PSEUDO : PseudoInstARC<(outs GPR32:$Lo, GPR32:$Hi),
+                           (ins GPR32:$InLo, GPR32:$InHi),
+                           "# SHL64_1_PSEUDO $Lo, $Hi, $InLo, $InHi",
+                           [(set GPR32:$Lo, GPR32:$Hi,
+                                 (ARCshl64c1 i32:$InLo, i32:$InHi))]>;
+
+  def BITREV_STEP_PSEUDO : PseudoInstARC<(outs GPR32:$XOut, GPR32:$YOut),
+                           (ins GPR32:$XIn, GPR32:$YIn),
+                           "# BITREV_STEP_PSEUDO $XOut, $YOut, $XIn, $YIn",
+                           [(set GPR32:$XOut, GPR32:$YOut,
+                                 (ARCbitrevstep i32:$XIn, i32:$YIn))]>;
 }
 
 //===----------------------------------------------------------------------===//

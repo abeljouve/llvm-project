@@ -278,8 +278,35 @@ let Predicates = [IsARCompact] in {
 //===----------------------------------------------------------------------===//
 // RLC: rotate left through carry (b = (c << 1) | carry)
 // RRC: rotate right through carry (b = (c >> 1) | (carry << 31))
-// These require STATUS32 carry flag -- no simple DAG pattern.
-// Left without patterns for now; used via inline asm or builtins.
+//
+// Fixed (dossier 24): these were previously left without any ISel pattern
+// because RLC/RRC's carry operand is not a plain DAG value -- it is the
+// STATUS32.C bit ejected by an ADJACENT `.f`-form producer, and nothing may
+// be scheduled between the two (isa-characterization.md 5.1: multi-bit
+// barrel `.f` is NOT flag-identical to the single-bit SOP form, so this is
+// PINNED to a literal 1-bit shift). Rather than a SelectionDAG glue node
+// (no working STATUS32-glue precedent exists in this backend -- ADDC/ADDE/
+// SUBC/SUBE are marked Legal in ARCISelLowering.cpp but have no Pat
+// anywhere and are dead), RLC is selected only via two atomic MI pseudos
+// that bundle a `.f` producer with its RLC consumer as ONE pre-RA
+// instruction (mirroring the UADDSAT_PSEUDO/UADDO_PSEUDO mechanism in
+// ARCInstrInfo.td):
+//   - SHL64_1_PSEUDO: i64 `shl x, 1` -> asl.f (lo) + rlc (hi).
+//   - BITREV_STEP_PSEUDO: one bit-reverse step -> lsr.f (x) + rlc (y).
+// Both pseudos are recognized from ordinary i32/i64 DAG shapes by a
+// DAGCombine on ISD::OR (performShl64By1Combine / performBitRevStepCombine
+// in ARCISelLowering.cpp) and expanded post-scheduling in
+// ARCExpandPseudos.cpp (expandSHL64_1 / expandBitRevStep), so no other
+// STATUS32-writing instruction can land between the producer and the RLC
+// consumer. ARC_RLC_b_c / ARC_RRC_b_c carry a corrected Uses=[STATUS32]
+// (not Defs -- F=0 on both, they don't write the flag, only read it) so
+// LiveIntervals models the real dependency. RRC has no consumer here yet
+// (no right-shift carry-chain idiom in scope for this dossier); it keeps
+// the same Uses=[STATUS32] fix for the same liveness-accuracy reason.
+// Neither RLC nor RRC has a direct ISel Pat of its own -- they are ONLY
+// ever constructed inside the two expand functions above, so there is no
+// path by which a shift/rotate outside the pinned 1-bit carry-chain shapes
+// could ever reach an RLC/RRC opcode.
 //===----------------------------------------------------------------------===//
 
 //===----------------------------------------------------------------------===//

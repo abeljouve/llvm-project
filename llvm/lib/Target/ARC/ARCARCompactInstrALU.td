@@ -3548,6 +3548,34 @@ def ARC_ASL_b_c : ARCompactInst32_2op<0b00100, 0b000000, "asl",
   let Inst{11-6} = rc;
 }
 
+// asl.f b,c 00100bbb00101111FBBBCCCCCC000000, F=1 (dossier 24).
+//
+// ARC_ASL_b_c above hardcodes F=0 (bit 15) -- despite its `Defs=[STATUS32]`
+// annotation it is actually the NON-flag-setting "asl b,c" and does not
+// touch the carry flag. This sibling def sets bit 15 explicitly so it is
+// the real `asl.f b,c` (STATUS32.C = ejected MSB of $rc). It is the carry
+// PRODUCER half of the i64<<1 / bit-reverse-step carry chain: only ever
+// constructed by ARCExpandPseudos::expandSHL64_1 (never matched by any
+// ISel Pat), so it cannot leak outside that atomic two-instruction pseudo
+// expansion. See ARCARCompactPatterns.td's RLC/RRC comment block.
+def ARC_ASL_b_c_f : ARCompactInst32_2op<0b00100, 0b000000, "asl",
+    (outs GPR32:$rb), (ins GPR32:$rc),
+    "asl.f\t$rb, $rc", []> {
+  // Opcode: 0x202F8000, Mask: 0xF8FF803F
+  // Operands: RB, RC
+  // Flags: C_F (F fixed to 1)
+  let Inst{31-27} = 0b00100;
+  let Inst{23-16} = 0b00101111;
+  let Inst{15} = 1;
+  let Inst{5-0} = 0b000000;
+  let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+}
+
 // asl<.f> 0,c 0010011000101111F111CCCCCC000000.
 def ARC_ASL_z_c : ARCompactInst32_2op<0b00100, 0b000000, "asl",
     (outs ), (ins GPR32:$rc),
@@ -8222,6 +8250,30 @@ def ARC_LSR_b_c : ARCompactInst32_2op<0b00100, 0b000010, "lsr",
   let Inst{11-6} = rc;
 }
 
+// lsr.f b,c 00100bbb00101111FBBBCCCCCC000010, F=1 (dossier 24).
+//
+// Mirror of ARC_ASL_b_c_f above: ARC_LSR_b_c hardcodes F=0, so this sibling
+// sets bit 15 to encode the real `lsr.f b,c` (STATUS32.C = ejected LSB of
+// $rc). Carry PRODUCER half of the bit-reverse-step carry chain: only ever
+// constructed by ARCExpandPseudos::expandBitRevStep.
+def ARC_LSR_b_c_f : ARCompactInst32_2op<0b00100, 0b000010, "lsr",
+    (outs GPR32:$rb), (ins GPR32:$rc),
+    "lsr.f\t$rb, $rc", []> {
+  // Opcode: 0x202F8002, Mask: 0xF8FF803F
+  // Operands: RB, RC
+  // Flags: C_F (F fixed to 1)
+  let Inst{31-27} = 0b00100;
+  let Inst{23-16} = 0b00101111;
+  let Inst{15} = 1;
+  let Inst{5-0} = 0b000010;
+  let Defs = [STATUS32];
+  bits<6> rb;
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
+  bits<6> rc;
+  let Inst{11-6} = rc;
+}
+
 // lsr<.f> 0,c 0010011000101111F111CCCCCC000010.
 def ARC_LSR_z_c : ARCompactInst32_2op<0b00100, 0b000010, "lsr",
     (outs ), (ins GPR32:$rc),
@@ -10739,6 +10791,17 @@ def ARC_RCMP_limm_cc : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
 }
 
 // rlc<.f> b,c 00100bbb00101111FBBBCCCCCC001011.
+//
+// F=0 here (bit 15 unset, TableGen default) -- this is the plain `rlc b,c`,
+// NOT `rlc.f`, so it does not itself write STATUS32; correcting the
+// previous (false) Defs=[STATUS32] to Uses=[STATUS32], which is the real
+// dependency: rlc ALWAYS reads the incoming carry bit regardless of F
+// (dossier 24). This is the carry CONSUMER half of the i64<<1 /
+// bit-reverse-step chain (ARCExpandPseudos::expandSHL64_1 /
+// expandBitRevStep) -- an accurate Uses/Defs pair lets LiveIntervals compute
+// a tight STATUS32 live range spanning exactly the producer/consumer
+// window, so any future pass that respects liveness will correctly refuse
+// to insert a flag-clobber between them. See ARCARCompactPatterns.td.
 def ARC_RLC_b_c : ARCompactInst32_2op<0b00100, 0b001011, "rlc",
     (outs GPR32:$rb), (ins GPR32:$rc),
     "rlc\t$rb, $rc", []> {
@@ -10748,7 +10811,7 @@ def ARC_RLC_b_c : ARCompactInst32_2op<0b00100, 0b001011, "rlc",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b001011;
-  let Defs = [STATUS32];
+  let Uses = [STATUS32];
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
@@ -11351,6 +11414,14 @@ def ARC_ROR_z_limm_cc : ARCompactInst32_3op<0b00101, 0b000011, "ror",
 }
 
 // rrc<.f> b,c 00100bbb00101111FBBBCCCCCC000100.
+//
+// Same fix as ARC_RLC_b_c above (dossier 24): F=0 here, so the previous
+// Defs=[STATUS32] was false; the real dependency is Uses=[STATUS32] (rrc
+// always reads the incoming carry into bit 31 regardless of F). Not
+// currently constructed by any expansion (only RLC is used by the two
+// carry-chain pseudos in this dossier), but corrected for the same
+// liveness-accuracy reason and left available for a future rrc-consuming
+// idiom (e.g. multiword right-shift).
 def ARC_RRC_b_c : ARCompactInst32_2op<0b00100, 0b000100, "rrc",
     (outs GPR32:$rb), (ins GPR32:$rc),
     "rrc\t$rb, $rc", []> {
@@ -11360,7 +11431,7 @@ def ARC_RRC_b_c : ARCompactInst32_2op<0b00100, 0b000100, "rrc",
   let Inst{31-27} = 0b00100;
   let Inst{23-16} = 0b00101111;
   let Inst{5-0} = 0b000100;
-  let Defs = [STATUS32];
+  let Uses = [STATUS32];
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};

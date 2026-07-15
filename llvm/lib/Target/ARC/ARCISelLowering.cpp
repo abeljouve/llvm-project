@@ -128,6 +128,14 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   setTargetDAGCombine(ISD::BRCOND);
   setTargetDAGCombine(ISD::SELECT);
 
+  // Carry-chain fusions (i64<<1, bit-reverse step) -- docs/llvm-arc700-
+  // optimizations/24-carry-chain-and-bit-serial-idioms.md. Both shapes
+  // surface as an ISD::OR after (for i64<<1) type legalization splits the
+  // 64-bit shift, or (for the bit-reverse step) ordinary i32 front-end
+  // codegen; performShl64By1Combine / performBitRevStepCombine below try
+  // each exact shape in turn and decline cleanly on any mismatch.
+  setTargetDAGCombine(ISD::OR);
+
   // Use i32 for setcc operations results (slt, sgt, ...).
   setBooleanContents(ZeroOrOneBooleanContent);
   setBooleanVectorContents(ZeroOrOneBooleanContent);
@@ -1442,6 +1450,10 @@ SDValue ARCTargetLowering::PerformDAGCombine(SDNode *N,
     return performOverflowBrcondCombine(N, DCI);
   case ISD::SELECT:
     return performOverflowSelectCombine(N, DCI);
+  case ISD::OR:
+    if (SDValue R = performShl64By1Combine(N, DCI))
+      return R;
+    return performBitRevStepCombine(N, DCI);
   default:
     return {};
   }
@@ -1666,6 +1678,160 @@ SDValue ARCTargetLowering::performOverflowSelectCombine(
   SDValue F = Invert ? TVal : FVal;
   return DAG.getNode(ISD::SELECT_CC, dl, N->getValueType(0), CmpLHS, CmpRHS, T,
                      F, DAG.getCondCode(CC));
+}
+
+//===----------------------------------------------------------------------===//
+//  Carry-chain fusions (i64<<1, bit-reverse step) -- dossier 24
+//
+//  docs/llvm-arc700-optimizations/24-carry-chain-and-bit-serial-idioms.md.
+//  See the declarations in ARCISelLowering.h for the full rationale; this
+//  block only carries the shape-matching detail.
+//===----------------------------------------------------------------------===//
+
+namespace {
+
+// If V is exactly `(Opc V2, Amt)` with Amt an exact-match constant, return
+// V2; otherwise SDValue(). Used for the SHL-by-1 / SRL-by-31 / SRL-by-1
+// shapes below -- every match is an EXACT constant comparison, never a
+// range or KnownBits guess, so a mismatch always declines rather than
+// misfires.
+static SDValue matchShiftByImm(SDValue V, unsigned Opc, uint64_t Amt) {
+  if (V.getOpcode() != Opc)
+    return SDValue();
+  auto *C = dyn_cast<ConstantSDNode>(V.getOperand(1));
+  if (!C || C->getZExtValue() != Amt)
+    return SDValue();
+  return V.getOperand(0);
+}
+
+// If V is exactly `(and V2, Mask)`, return V2; otherwise SDValue().
+static SDValue matchAndImm(SDValue V, uint64_t Mask) {
+  if (V.getOpcode() != ISD::AND)
+    return SDValue();
+  auto *C = dyn_cast<ConstantSDNode>(V.getOperand(1));
+  if (!C || C->getZExtValue() != Mask)
+    return SDValue();
+  return V.getOperand(0);
+}
+
+// Find the (at most one, by SelectionDAG CSE) sibling node
+// `(Opc Val, Amt)` among Val's uses and return it, or nullptr. Used to
+// locate the "other half" of a carry-chain pair -- e.g. given InLo (the
+// SRL(InLo,31) operand from a matched Hi node), find the `(shl InLo, 1)`
+// node that is the corresponding Lo result.
+static SDNode *findSiblingUse(SDValue Val, unsigned Opc, uint64_t Amt,
+                              unsigned OperandNo) {
+  for (const SDUse &U : Val.getNode()->uses()) {
+    if (U != Val)
+      continue; // a different result number of the same multi-result node
+    SDNode *User = const_cast<SDNode *>(U.getUser());
+    if (User->getOpcode() != Opc || U.getOperandNo() != OperandNo)
+      continue;
+    auto *C = dyn_cast<ConstantSDNode>(User->getOperand(1 - OperandNo));
+    if (C && C->getZExtValue() == Amt)
+      return User;
+  }
+  return nullptr;
+}
+
+} // end anonymous namespace
+
+// i64 `shl x, 1` -> asl.f (lo) + rlc (hi), 2 instructions instead of the 4
+// generic ExpandShiftByConstant emits. DAGTypeLegalizer::ExpandIntRes_Shift
+// takes the ExpandShiftByConstant branch UNCONDITIONALLY for a
+// compile-time-constant shift amount, before ever consulting
+// TLI.getOperationAction(ISD::SHL_PARTS, ...) -- so a Custom SHL_PARTS hook
+// would never fire for this idiom; this DAGCombine on the resulting
+// OR(SHL(InHi,1), SRL(InLo,31)) Hi-half shape is the only interception
+// point. A variable (non-constant) shift amount never reaches this shape at
+// all (ExpandIntRes_Shift takes a different, compare-and-select path for
+// that case), so there is nothing for this combine to accidentally
+// mis-match on a runtime shift count.
+SDValue ARCTargetLowering::performShl64By1Combine(SDNode *N,
+                                                   DAGCombinerInfo &DCI) const {
+  // ARC_ASL_b_c_f / ARC_RLC_b_c are ARCompact-only encodings (no
+  // Predicates=[IsARCompact] gate exists at the raw instruction-def level in
+  // ARCARCompactInstrALU.td -- only Pats are normally gated that way -- so
+  // an unconditional BuildMI from this MI-level pseudo-expansion would
+  // otherwise emit them even for a non-ARCompact subtarget and hard-crash
+  // at scheduling-info resolution ("Feature_IsARCompact predicate(s) are
+  // not met"), confirmed empirically with `llc -march=arc -mcpu=generic`.
+  // RLC/RRC/ASL/LSR are baseline-present on every ARCompact profile this
+  // fork targets (isa-characterization.md), so no finer-grained predicate
+  // is needed -- just gate on ARCompact-ness itself, mirroring the existing
+  // `Subtarget.isARCompact()` guard in LowerSELECT_CC's BTST fold above.
+  if (!Subtarget.isARCompact())
+    return SDValue();
+  if (N->getValueType(0) != MVT::i32)
+    return SDValue();
+  SDValue Op0 = N->getOperand(0);
+  SDValue Op1 = N->getOperand(1);
+
+  SDValue InHi, InLo;
+  if ((InHi = matchShiftByImm(Op0, ISD::SHL, 1)))
+    InLo = matchShiftByImm(Op1, ISD::SRL, 31);
+  else if ((InHi = matchShiftByImm(Op1, ISD::SHL, 1)))
+    InLo = matchShiftByImm(Op0, ISD::SRL, 31);
+  if (!InHi || !InLo)
+    return SDValue();
+  if (InHi.getValueType() != MVT::i32 || InLo.getValueType() != MVT::i32)
+    return SDValue();
+
+  // Sibling Lo node: `(shl InLo, 1)`. CSE guarantees at most one such SDNode
+  // value exists, so this is a structural lookup, not a heuristic scan.
+  SDNode *LoNode = findSiblingUse(InLo, ISD::SHL, 1, /*OperandNo=*/0);
+  if (!LoNode)
+    return SDValue();
+
+  SelectionDAG &DAG = DCI.DAG;
+  SDLoc dl(N);
+  SDValue Fused = DAG.getNode(ARCISD::SHL64_1, dl,
+                              DAG.getVTList(MVT::i32, MVT::i32), InLo, InHi);
+  DAG.ReplaceAllUsesOfValueWith(SDValue(LoNode, 0), Fused.getValue(0));
+  return Fused.getValue(1); // replaces N (the Hi/OR node)
+}
+
+// One bit-reverse step (`y = (y<<1)|(x&1); x >>= 1;`, unrolled) -> lsr.f
+// (x) + rlc (y), 2 instructions instead of the ~4 a naive lsr+and+or+asl
+// sequence needs. UNLIKE the i64<<1 shape above (mechanically fixed by the
+// type legalizer for every target), this exact AND/OR canonical form is not
+// guaranteed stable across DAGCombiner passes or compiler versions for
+// ordinary front-end-emitted code; declining is always safe here and falls
+// through to the generic lowering.
+SDValue
+ARCTargetLowering::performBitRevStepCombine(SDNode *N,
+                                            DAGCombinerInfo &DCI) const {
+  // Same ARCompact-only guard as performShl64By1Combine above -- see its
+  // comment. ARC_LSR_b_c_f / ARC_RLC_b_c must never be emitted for a
+  // non-ARCompact subtarget.
+  if (!Subtarget.isARCompact())
+    return SDValue();
+  if (N->getValueType(0) != MVT::i32)
+    return SDValue();
+  SDValue Op0 = N->getOperand(0);
+  SDValue Op1 = N->getOperand(1);
+
+  SDValue YIn, XIn;
+  if ((YIn = matchShiftByImm(Op0, ISD::SHL, 1)))
+    XIn = matchAndImm(Op1, 1);
+  else if ((YIn = matchShiftByImm(Op1, ISD::SHL, 1)))
+    XIn = matchAndImm(Op0, 1);
+  if (!YIn || !XIn)
+    return SDValue();
+  if (YIn.getValueType() != MVT::i32 || XIn.getValueType() != MVT::i32)
+    return SDValue();
+
+  // Sibling node: `(srl XIn, 1)`. Same CSE-uniqueness argument as above.
+  SDNode *XOutNode = findSiblingUse(XIn, ISD::SRL, 1, /*OperandNo=*/0);
+  if (!XOutNode)
+    return SDValue();
+
+  SelectionDAG &DAG = DCI.DAG;
+  SDLoc dl(N);
+  SDValue Fused = DAG.getNode(ARCISD::BITREV_STEP, dl,
+                              DAG.getVTList(MVT::i32, MVT::i32), XIn, YIn);
+  DAG.ReplaceAllUsesOfValueWith(SDValue(XOutNode, 0), Fused.getValue(0));
+  return Fused.getValue(1); // replaces N (the YOut/OR node)
 }
 
 // Rewrite `mul x, C` into a bounded chain of add/sub/shl/neg DAG nodes (see
