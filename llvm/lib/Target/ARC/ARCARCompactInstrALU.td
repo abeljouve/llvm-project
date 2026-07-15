@@ -6480,12 +6480,22 @@ def ARC_BSET_z_limm_cc : ARCompactInst32_3op<0b00100, 0b001111, "bset",
 }
 
 // btst b,c 00100bbb000100011BBBCCCCCC000000.
+//
+// BTST is compare-like: B AND (1<<C) is computed but only STATUS32 is
+// written (implicit F=1, per docs/isa/07-alu-32bit.md#BTST -- "The
+// destination is always ignored and the instruction result is always
+// discarded"). The auto-generator modeled $rb as a GPR32 def (bogus --
+// binutils' operand table doesn't distinguish def/use), which made the
+// instruction unselectable/unverifiable. Moved $rb into (ins); this is
+// byte-identical at the encoding level (`bits<6> rb` binds by name
+// regardless of outs/ins list membership) and only changes
+// SelectionDAG/MachineInstr def/use bookkeeping. See dossier 24.
 def ARC_BTST_b_c : ARCompactInst32_3op<0b00100, 0b010001, "btst",
-    (outs GPR32:$rb), (ins GPR32:$rc),
+    (outs), (ins GPR32:$rb, GPR32:$rc),
     "btst\t$rb, $rc", []> {
   // Opcode: 0x20118000, Mask: 0xF8FF803F
   // Operands: RB, RC
-  // Flags: none
+  // Flags: none (no optional .f toggle bit -- always writes flags, see above)
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b000100011;
   let Inst{5-0} = 0b000000;
@@ -6494,11 +6504,13 @@ def ARC_BTST_b_c : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // btst<.cc> b,c 00100bbb110100011BBBCCCCCC0QQQQQ.
 def ARC_BTST_b_c_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
-    (outs GPR32:$rb), (ins GPR32:$rc),
+    (outs), (ins GPR32:$rb, GPR32:$rc),
     "btst\t$rb, $rc", []> {
   // Opcode: 0x20D18000, Mask: 0xF8FF8020
   // Operands: RB, RC
@@ -6512,11 +6524,13 @@ def ARC_BTST_b_c_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{14-12} = rb{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // btst b,u6 00100bbb010100011BBBuuuuuu000000.
 def ARC_BTST_b_u6 : ARCompactInst32_3op<0b00100, 0b010001, "btst",
-    (outs GPR32:$rb), (ins u6imm:$uimm6_20),
+    (outs), (ins GPR32:$rb, u6imm:$uimm6_20),
     "btst\t$rb, $uimm6_20", []> {
   // Opcode: 0x20518000, Mask: 0xF8FF803F
   // Operands: RB, UIMM6_20
@@ -6529,11 +6543,13 @@ def ARC_BTST_b_u6 : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // btst<.cc> b,u6 00100bbb110100011BBBuuuuuu1QQQQQ.
 def ARC_BTST_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
-    (outs GPR32:$rb), (ins u6imm:$uimm6_20),
+    (outs), (ins GPR32:$rb, u6imm:$uimm6_20),
     "btst\t$rb, $uimm6_20", []> {
   // Opcode: 0x20D18020, Mask: 0xF8FF8020
   // Operands: RB, UIMM6_20
@@ -6547,11 +6563,13 @@ def ARC_BTST_b_u6_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{14-12} = rb{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // btst b,s12 00100bbb100100011BBBssssssSSSSSS.
 def ARC_BTST_b_s12 : ARCompactInst32_3op<0b00100, 0b010001, "btst",
-    (outs GPR32:$rb), (ins s12imm:$simm12_20),
+    (outs), (ins GPR32:$rb, s12imm:$simm12_20),
     "btst\t$rb, $simm12_20", []> {
   // Opcode: 0x20918000, Mask: 0xF8FF8000
   // Operands: RB, SIMM12_20
@@ -6564,6 +6582,8 @@ def ARC_BTST_b_s12 : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
   let Inst{5-0} = simm12_20{5-0};
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // btst limm,c 00100110000100011111CCCCCC000000.
@@ -6577,11 +6597,13 @@ def ARC_BTST_limm_c : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{5-0} = 0b000000;
   // Operand(s) limm need custom disassembler.
   let isCodeGenOnly = 1;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // btst b,limm 00100bbb000100011BBB111110000000.
 def ARC_BTST_b_limm : ARCompactInst32_3op<0b00100, 0b010001, "btst",
-    (outs GPR32:$rb), (ins i32imm:$limm),
+    (outs), (ins GPR32:$rb, i32imm:$limm),
     "btst\t$rb, $limm", []> {
   // Opcode: 0x20118F80, Mask: 0xF8FF8FFF
   // Operands: RB, LIMM
@@ -6591,11 +6613,13 @@ def ARC_BTST_b_limm : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{11-0} = 0b111110000000;
   // Operand(s) limm need custom disassembler.
   let isCodeGenOnly = 1;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // btst<.cc> b,limm 00100bbb110100011BBB1111100QQQQQ.
 def ARC_BTST_b_limm_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
-    (outs GPR32:$rb), (ins i32imm:$limm),
+    (outs), (ins GPR32:$rb, i32imm:$limm),
     "btst\t$rb, $limm", []> {
   // Opcode: 0x20D18F80, Mask: 0xF8FF8FE0
   // Operands: RB, LIMM
@@ -6606,6 +6630,8 @@ def ARC_BTST_b_limm_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let isPredicable = 1;
   // Operand(s) limm need custom disassembler.
   let isCodeGenOnly = 1;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // btst<.cc> limm,c 00100110110100011111CCCCCC0QQQQQ.
@@ -6620,6 +6646,8 @@ def ARC_BTST_limm_c_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let isPredicable = 1;
   // Operand(s) limm need custom disassembler.
   let isCodeGenOnly = 1;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // btst limm,u6 00100110010100011111uuuuuu000000.
@@ -6633,6 +6661,8 @@ def ARC_BTST_limm_u6 : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{5-0} = 0b000000;
   // Operand(s) limm need custom disassembler.
   let isCodeGenOnly = 1;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // btst<.cc> limm,u6 00100110110100011111uuuuuu1QQQQQ.
@@ -6647,6 +6677,8 @@ def ARC_BTST_limm_u6_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let isPredicable = 1;
   // Operand(s) limm need custom disassembler.
   let isCodeGenOnly = 1;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // btst limm,s12 00100110100100011111ssssssSSSSSS.
@@ -6659,6 +6691,8 @@ def ARC_BTST_limm_s12 : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{31-12} = 0b00100110100100011111;
   // Operand(s) limm need custom disassembler.
   let isCodeGenOnly = 1;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // btst limm,limm 00100110000100011111111110000000.
@@ -6671,6 +6705,8 @@ def ARC_BTST_limm : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{31-0} = 0b00100110000100011111111110000000;
   // Operand(s) limm need custom disassembler.
   let isCodeGenOnly = 1;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // btst<.cc> limm,limm 001001101101000111111111100QQQQQ.
@@ -6684,6 +6720,8 @@ def ARC_BTST_limm_cc : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let isPredicable = 1;
   // Operand(s) limm need custom disassembler.
   let isCodeGenOnly = 1;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // bxor<.f> a,b,c 00100bbb00010010FBBBCCCCCCAAAAAA.

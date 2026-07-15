@@ -55,6 +55,14 @@ def ARCnorm : SDNode<"ARCISD::NORM", SDT_ARCmov, []>;
 // Comparison
 def ARCcmp : SDNode<"ARCISD::CMP", SDT_ARCcmptst, [SDNPOutGlue]>;
 
+// Bit test: B AND (1<<C), flags-only (compare-like, dossier 24). Emitted by
+// ARCTargetLowering::LowerSELECT_CC in place of ARCcmp when the compared
+// value is `(and X, mask)` against 0 under SETEQ/SETNE -- see
+// ARCARCompactPatterns.td for the Pats that fold this into btst. RHS carries
+// the full mask sub-DAG (constant power-of-2, or `(shl 1, reg)`) so the Pat
+// can pattern-match it directly, mirroring BSET/BCLR/BXOR/BMSK.
+def ARCbtst : SDNode<"ARCISD::BTST", SDT_ARCcmptst, [SDNPOutGlue]>;
+
 // Conditional mov
 def ARCcmov : SDNode<"ARCISD::CMOV", SDT_ARCcmov, [SDNPInGlue]>;
 
@@ -887,6 +895,11 @@ def SUB_S_ru5 : F16_SH_SUB_BIT_DST<0b011,"sub_s">;
 def BSET_S_ru5 : F16_SH_SUB_BIT_DST<0b100,"bset_s">;
 def BCLR_S_ru5 : F16_SH_SUB_BIT_DST<0b101,"bclr_s">;
 def BMSK_S_ru5 : F16_SH_SUB_BIT_DST<0b110,"bmsk_s">;
+// BTST is compare-like: the F16_SH_SUB_BIT base class already has (outs),
+// (ins GPR32:$b, immU<5>:$u5) (unlike its _DST siblings above) -- verified
+// correct. It was only missing Defs=[STATUS32] (dossier 24); btst_s always
+// writes flags (implicit F=1, no toggle bit in the encoding).
+let isCompare = 1, Defs = [STATUS32] in
 def BTST_S_ru5 : F16_SH_SUB_BIT<0b111, "btst_s\t$b, $u5">;
 
 //----------------------------------------------------------------------------

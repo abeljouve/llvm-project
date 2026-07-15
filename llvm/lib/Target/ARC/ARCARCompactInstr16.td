@@ -586,8 +586,12 @@ def ARC_BSET_S_b_u5 : ARCompactInst16_ALU<0b10111, "bset_s",
 }
 
 // btst_s b,u5 10111bbb111uuuuu.
+//
+// Same compare-like fix as the 32-bit BTST family (dossier 24): $rb_s is a
+// source, not a destination, and the instruction only writes STATUS32.
+// Moved into (ins); byte-identical encoding (bits<3> rb_s binds by name).
 def ARC_BTST_S_b_u5 : ARCompactInst16_ALU<0b10111, "btst_s",
-    (outs GPR_S:$rb_s), (ins u5imm:$uimm5_11_s),
+    (outs), (ins GPR_S:$rb_s, u5imm:$uimm5_11_s),
     "btst_s\t$rb_s, $uimm5_11_s", []> {
   // Opcode: 0x0000B8E0, Mask: 0x0000F8E0
   // Operands: RB_S, UIMM5_11_S
@@ -598,6 +602,8 @@ def ARC_BTST_S_b_u5 : ARCompactInst16_ALU<0b10111, "btst_s",
   let Inst{10-8} = rb_s;
   bits<5> uimm5_11_s;
   let Inst{4-0} = uimm5_11_s;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // b_s s10 1111000sssssssss.

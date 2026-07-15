@@ -336,6 +336,72 @@ ARCTargetLowering::getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
   return TargetLowering::getRegForInlineAsmConstraint(TRI, Constraint, VT);
 }
 
+// Recognize a mask operand of `(and X, mask)` that BTST can test directly:
+// either a compile-time power-of-2 (bit position = log2(mask), fits the u6
+// immediate form since bit positions are always 0-31) or `(shl 1, reg)` (bit
+// position held in a register, the ARC_BTST_b_c form). Mirrors the shapes
+// already matched by the BSET/BCLR/BXOR/BMSK Pats in
+// ARCARCompactPatterns.td -- see pow2_mask there.
+static bool isRecognizedBitTestMask(SDValue Mask) {
+  if (ConstantSDNode *C = dyn_cast<ConstantSDNode>(Mask)) {
+    uint64_t Imm = C->getZExtValue();
+    return Imm > 0 && isPowerOf2_64(Imm) && isUInt<32>(Imm);
+  }
+  if (Mask.getOpcode() == ISD::SHL) {
+    ConstantSDNode *One = dyn_cast<ConstantSDNode>(Mask.getOperand(0));
+    return One && One->getZExtValue() == 1;
+  }
+  return false;
+}
+
+// `X & (1<<N)` is canonicalized by the generic (target-independent)
+// SelectionDAG combiner into `(X >> N) & 1` well before LowerSELECT_CC runs
+// -- confirmed empirically: even hand-written IR with the literal
+// `and(x, shl(1,n))` shape reaches this lowering as `and(srl(x,n), 1)`.
+// Left alone, that means the `(shl 1, GPR32:$n)` register-form BTST Pat
+// above is unreachable from ordinary C, and the constant-N case pays for an
+// extra `lsr` that a direct `btst X, N` doesn't need. Peel through the SRL
+// here so the value tested and the bit position both refer back to the
+// pre-shift X:
+//   - N constant (< 32): rewrite to (X, 1<<N) -- compile-time pow2 mask on
+//     the ORIGINAL value, selects the single-instruction u6 form.
+//   - N variable: rewrite to (X, (shl 1, N)) -- hits the existing
+//     register-form Pat, selecting `btst X, N` with no shift at all.
+// Doesn't require the SRL to be single-use: if `(X>>N)` is also needed for
+// something else it is still emitted for that other use: we simply stop
+// depending on it for the compare, which is a strict win either way.
+// N>=32 is not specially handled: `lshr i32 %x, %n` is poison for
+// %n>=32 per LLVM IR semantics (the existing `(shl 1, GPR32:$n)` Pat above
+// already relies on the identical poison-for-out-of-range-shift contract),
+// so the compiler is free to pick any behavior there; ARC's hardware BTST
+// register form masks C to 5 bits internally (`a & (1u32 << (b & 31))`,
+// confirmed against the emulator ALU model), same masking LSR itself uses
+// for in-range shifts.
+static void getBitTestOperands(SDValue LHS, SDValue &TestVal, SDValue &Mask,
+                                SelectionDAG &DAG, const SDLoc &dl) {
+  TestVal = LHS.getOperand(0);
+  Mask = LHS.getOperand(1);
+  if (TestVal.getOpcode() != ISD::SRL)
+    return;
+  ConstantSDNode *MaskC = dyn_cast<ConstantSDNode>(Mask);
+  if (!MaskC || MaskC->getZExtValue() != 1)
+    return;
+  SDValue N = TestVal.getOperand(1);
+  SDValue X = TestVal.getOperand(0);
+  if (ConstantSDNode *NC = dyn_cast<ConstantSDNode>(N)) {
+    if (NC->getZExtValue() < 32) {
+      TestVal = X;
+      Mask = DAG.getConstant(1u << NC->getZExtValue(), dl, MVT::i32);
+    }
+    return;
+  }
+  if (N.getValueType() != MVT::i32)
+    return;
+  TestVal = X;
+  Mask = DAG.getNode(ISD::SHL, dl, MVT::i32, DAG.getConstant(1, dl, MVT::i32),
+                     N);
+}
+
 SDValue ARCTargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue LHS = Op.getOperand(0);
   SDValue RHS = Op.getOperand(1);
@@ -345,6 +411,33 @@ SDValue ARCTargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const {
   SDLoc dl(Op);
   ARCCC::CondCode ArcCC = ISDCCtoARCCC(CC);
   assert(LHS.getValueType() == MVT::i32 && "Only know how to SELECT_CC i32");
+
+  // Bit-test fold (dossier 24): `(x & mask) ==/!= 0 ? T : F` selects to a
+  // single `btst` instead of `mov`-mask + `and` + `cmp`. Restricted to
+  // SETEQ/SETNE against a zero RHS -- BTST's N/C/V beyond Z are unproven
+  // equivalent to a SUB-based CMP-vs-0 (see isa-characterization.md 5.4 and
+  // dossier 24), so this must never generalize to other condition codes.
+  // Only ARCompact subtargets encode BTST at all; emitting ARCISD::BTST
+  // without a matching Predicates=[IsARCompact] Pat is a hard "cannot
+  // select" ISel crash, not a soft fallback -- gate on isARCompact()
+  // explicitly rather than relying on the Pat predicate alone.
+  if (Subtarget.isARCompact() && (CC == ISD::SETEQ || CC == ISD::SETNE) &&
+      LHS.getOpcode() == ISD::AND && LHS.hasOneUse()) {
+    if (ConstantSDNode *RHSC = dyn_cast<ConstantSDNode>(RHS)) {
+      if (RHSC->isZero()) {
+        SDValue TestVal, Mask;
+        getBitTestOperands(LHS, TestVal, Mask, DAG, dl);
+        if (isRecognizedBitTestMask(Mask)) {
+          SDValue Btst =
+              DAG.getNode(ARCISD::BTST, dl, MVT::Glue, TestVal, Mask);
+          return DAG.getNode(ARCISD::CMOV, dl, TVal.getValueType(), TVal,
+                             FVal, DAG.getConstant(ArcCC, dl, MVT::i32),
+                             Btst);
+        }
+      }
+    }
+  }
+
   SDValue Cmp = DAG.getNode(ARCISD::CMP, dl, MVT::Glue, LHS, RHS);
   return DAG.getNode(ARCISD::CMOV, dl, TVal.getValueType(), TVal, FVal,
                      DAG.getConstant(ArcCC, dl, MVT::i32), Cmp);

@@ -136,6 +136,56 @@ static bool matchSingleBitAnd(const MachineInstr &MI, Register &Dst,
   return true;
 }
 
+// Shared guard for both the in-range bbit0/1 fusion (tryFuseBBIT) and the
+// out-of-range BTST+Bcc fallback (replaceWithCmpBcc, dossier 24): recognize
+// an immediately-preceding single-bit `and` feeding an immediate
+// compare-against-zero branch (EQ/NE), and confirm the AND's destination is
+// dead after the branch so both the `and` and the branch can be replaced.
+// Factored out so the liveness/shape logic can't drift between the two call
+// sites. On success, AndMI/Src/Bit describe the fusable `and` and MI's own
+// CC (EQ/NE) operand is left untouched for the caller to read.
+static bool matchBitTestBRcc(MachineInstr *MI, const TargetRegisterInfo *TRI,
+                             MachineInstr *&AndMI, Register &Src,
+                             unsigned &Bit) {
+  // Only the immediate compare-and-branch, comparing against 0 with EQ / NE.
+  if (MI->getOpcode() != ARC::BRcc_ru6_p)
+    return false;
+  if (!MI->getOperand(2).isImm() || MI->getOperand(2).getImm() != 0)
+    return false;
+  int64_t CC = MI->getOperand(3).getImm();
+  if (CC != ARCCC::EQ && CC != ARCCC::NE)
+    return false;
+  Register B = MI->getOperand(1).getReg();
+
+  MachineBasicBlock *MBB = MI->getParent();
+  MachineInstr *Prev = MI->getPrevNode();
+  while (Prev && Prev->isDebugInstr())
+    Prev = Prev->getPrevNode();
+  if (!Prev)
+    return false;
+
+  Register AndDst;
+  if (!matchSingleBitAnd(*Prev, AndDst, Src, Bit) || AndDst != B)
+    return false;
+
+  // B must not be needed after the branch: its only use is this compare, so
+  // removing the `and` (its sole def) and the branch is safe iff B is dead on
+  // every out-edge. LivePhysRegs is conservative -- if liveness is unknown it
+  // keeps B live and we simply do not fuse.
+  const MachineRegisterInfo &MRI = MBB->getParent()->getRegInfo();
+  LivePhysRegs LiveOut(*TRI);
+  LiveOut.addLiveOuts(*MBB);
+  if (!LiveOut.available(MRI, B))
+    return false;
+  // Src is read by the `and` immediately before MI (nothing in between), so it
+  // is live at the branch and remains correct for the bbit/btst that replaces
+  // it. (When the `and` is in place -- Src == B -- removing it leaves B
+  // holding its incoming value, which is exactly what the bit test needs.)
+
+  AndMI = Prev;
+  return true;
+}
+
 // Try to fuse an immediately-preceding single-bit `and` feeding this
 // compare-against-zero branch into a `bbit0`/`bbit1`. Called only for a branch
 // already selected as the in-range BRcc form, so the s9 `bbit` (same range) is
@@ -162,49 +212,21 @@ bool ARCBranchFinalize::tryFuseBBIT(MachineInstr *MI) const {
   // strictly additive and changes no existing ARCompact codegen output.
   if (!ST || !ST->isARCompact())
     return false;
-  // Only the immediate compare-and-branch, comparing against 0 with EQ / NE.
-  if (MI->getOpcode() != ARC::BRcc_ru6_p)
-    return false;
-  if (!MI->getOperand(2).isImm() || MI->getOperand(2).getImm() != 0)
-    return false;
-  int64_t CC = MI->getOperand(3).getImm();
-  if (CC != ARCCC::EQ && CC != ARCCC::NE)
-    return false;
-  Register B = MI->getOperand(1).getReg();
 
-  MachineBasicBlock *MBB = MI->getParent();
-  MachineInstr *Prev = MI->getPrevNode();
-  while (Prev && Prev->isDebugInstr())
-    Prev = Prev->getPrevNode();
-  if (!Prev)
-    return false;
-
-  Register AndDst, Src;
+  MachineInstr *AndMI;
+  Register Src;
   unsigned Bit;
-  if (!matchSingleBitAnd(*Prev, AndDst, Src, Bit) || AndDst != B)
+  if (!matchBitTestBRcc(MI, TRI, AndMI, Src, Bit))
     return false;
 
-  // B must not be needed after the branch: its only use is this compare, so
-  // removing the `and` (its sole def) and the branch is safe iff B is dead on
-  // every out-edge. LivePhysRegs is conservative -- if liveness is unknown it
-  // keeps B live and we simply do not fuse.
-  const MachineRegisterInfo &MRI = MBB->getParent()->getRegInfo();
-  LivePhysRegs LiveOut(*TRI);
-  LiveOut.addLiveOuts(*MBB);
-  if (!LiveOut.available(MRI, B))
-    return false;
-  // Src is read by the `and` immediately before MI (nothing in between), so it
-  // is live at the branch and remains correct for the bbit that replaces it.
-  // (When the `and` is in place -- Src == B -- removing it leaves B holding its
-  // incoming value, which is exactly what the bit test needs.)
-
+  int64_t CC = MI->getOperand(3).getImm();
   unsigned Opc = (CC == ARCCC::NE) ? ARC::ARC_BBIT1_b_u6_s9_d
                                    : ARC::ARC_BBIT0_b_u6_s9_d;
-  BuildMI(*MBB, MI, MI->getDebugLoc(), TII->get(Opc))
+  BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(Opc))
       .addReg(Src)
       .addImm(Bit)
       .addMBB(MI->getOperand(0).getMBB());
-  Prev->eraseFromParent();
+  AndMI->eraseFromParent();
   MI->eraseFromParent();
   return true;
 }
@@ -231,6 +253,40 @@ void ARCBranchFinalize::replaceWithBRcc(MachineInstr *MI) const {
 
 void ARCBranchFinalize::replaceWithCmpBcc(MachineInstr *MI) const {
   LLVM_DEBUG(dbgs() << "Branch: " << *MI << "\n");
+
+  // Out-of-bbit-range constant-bit-position test (dossier 24): `btst` + Bcc
+  // (2 insns) replaces the generic `and` + `cmp` + Bcc (3 insns) fallback
+  // when this branch is simply a bit test whose target didn't fit bbit's s9
+  // range. Z-flag equivalence between BTST (AND-derived) and CMP-vs-0
+  // (SUB-derived) is proven identical (see docs/notes/isa-characterization.md
+  // 5.4 and dossier 24's zPolarity note); the branch keeps the SAME CC
+  // (EQ/NE) it already had for CMP+Bcc. Restricted to ARCompact subtargets
+  // -- BTST is an ARCompact-only encoding, same restriction as tryFuseBBIT
+  // above (and for the identical SchedClass-resolution reason).
+  if (ST && ST->isARCompact()) {
+    MachineInstr *AndMI;
+    Register Src;
+    unsigned Bit;
+    if (matchBitTestBRcc(MI, TRI, AndMI, Src, Bit)) {
+      LLVM_DEBUG(dbgs() << "Replacing pseudo branch with BTST + Bcc "
+                           "(out of bbit range)\n");
+      int64_t CC = MI->getOperand(3).getImm();
+      // Bit comes from matchSingleBitAnd's Log2_32 of a 32-bit power-of-2
+      // immediate, so it is always in [0,31] -- always fits BTST's u6
+      // immediate field.
+      BuildMI(*MI->getParent(), MI, MI->getDebugLoc(),
+              TII->get(ARC::ARC_BTST_b_u6))
+          .addReg(Src)
+          .addImm(Bit);
+      BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(ARC::Bcc))
+          .addMBB(MI->getOperand(0).getMBB())
+          .addImm(CC);
+      AndMI->eraseFromParent();
+      MI->eraseFromParent();
+      return;
+    }
+  }
+
   LLVM_DEBUG(dbgs() << "Replacing pseudo branch with Cmp + Bcc\n");
   BuildMI(*MI->getParent(), MI, MI->getDebugLoc(),
           TII->get(getCmpForPseudo(MI)))

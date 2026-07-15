@@ -305,10 +305,15 @@ let Predicates = [IsARCompact] in {
 
 //===----------------------------------------------------------------------===//
 // BTST: bit test (sets Z flag if bit at position is 0)
-// The auto-generated BTST has incorrect (outs GPR32:$rb) modeling.
-// BTST should be a compare-like instruction with no output, only flag output.
-// Cannot safely add ISel pattern until instruction is re-modeled.
-// TODO: Fix BTST instruction definition to have (outs) and Defs=[STATUS32].
+//
+// Fixed (dossier 24): the auto-generated BTST defs had a bogus
+// (outs GPR32:$rb) and no Defs=[STATUS32] -- corrected in
+// ARCARCompactInstrALU.td / ARCARCompactInstr16.td / ARCInstrInfo.td to
+// (outs)/Defs=[STATUS32]/isCompare=1. The register-position and
+// immediate-position selection Pats are below, after the pow2_mask /
+// log2_pow2 defs they reuse (~line 370). ARCTargetLowering::LowerSELECT_CC
+// emits the ARCbtst target node (in place of ARCcmp) when it recognizes
+// `(x & mask) ==/!= 0` under SETEQ/SETNE -- see ARCISelLowering.cpp.
 //===----------------------------------------------------------------------===//
 
 //===----------------------------------------------------------------------===//
@@ -358,8 +363,20 @@ def immU5 : ImmLeaf<i32, [{
 }]>;
 
 // ImmLeaf matching a power of 2 in [1, 1<<31].
+//
+// Bug fixed (dossier 24): `Imm` is ImmLeaf's sign-extended int64_t view of
+// the immediate, so bit 31 (0x80000000) sign-extends to a NEGATIVE int64_t
+// and `Imm > 0` incorrectly rejected it -- e.g. `(x & 0x80000000) == 0`
+// would then fall through the ARCbtst Pat unmatched, leaving an unselectable
+// ARCISD::BTST node (an ISel crash, not a soft fallback: LowerSELECT_CC
+// already committed to emitting BTST once isRecognizedBitTestMask accepts
+// the mask). Cast to uint32_t first, matching the established idiom already
+// used by bit_pos_hi/bclr_mask_hi/bmsk_mask_hi above in this same file. This
+// predicate was unreferenced before this dossier (bbit0/bbit1 fusion is an
+// MI-level peephole, not a Pat -- see the comment below), so the bug was
+// latent; the BTST Pats using it (below) are the first real consumer.
 def pow2_mask : ImmLeaf<i32, [{
-  return Imm > 0 && isPowerOf2_32(Imm);
+  return isPowerOf2_32((uint32_t)Imm);
 }]>;
 
 // SDNodeXForm to extract log2 of a power-of-2 immediate.
@@ -367,6 +384,38 @@ def log2_pow2 : SDNodeXForm<imm, [{
   return CurDAG->getTargetConstant(Log2_32(N->getZExtValue()),
                                    SDLoc(N), MVT::i32);
 }]>;
+
+//===----------------------------------------------------------------------===//
+// BTST selection from the ARCbtst target node (dossier 24).
+//
+// LowerSELECT_CC (ARCISelLowering.cpp) emits ARCbtst B, mask -- where mask
+// is either a compile-time power-of-2 or `(shl 1, reg)` -- only for
+// SETEQ/SETNE-against-zero selects, so the CC-restriction is already
+// enforced before these Pats ever see the node; they only need to pick the
+// right BTST encoding for the mask shape:
+//   - constant power-of-2 mask -> bit position is known at compile time,
+//     always 0-31, always fits the u6 immediate form (ARC_BTST_b_u6).
+//   - `(shl 1, reg)` mask -> bit position lives in a register
+//     (ARC_BTST_b_c), mirroring the existing BSET/BCLR/BXOR/BMSK register
+//     Pats above.
+// No s12/limm Pat is needed: bit positions are always in [0,31], which
+// always fits u6.
+//
+// De-confliction with bbit0/bbit1 (ARCBranchFinalize.cpp, dossier 07):
+// branches never lower through ARCcmp/ARCbtst at all -- LowerBR_CC builds
+// ARCISD::BRcc directly from the raw `(and X, mask)` LHS, which selects
+// independently as AND_rrr/rru6/rrlimm and is fused into bbit0/bbit1 (or,
+// out of s9 range, BTST + Bcc -- see replaceWithCmpBcc below) by the
+// MI-level peephole. This Pat only fires on the SELECT_CC (non-branch)
+// side, so btst and bbit can never double-match the same node.
+//===----------------------------------------------------------------------===//
+
+let Predicates = [IsARCompact] in {
+  def : Pat<(ARCbtst GPR32:$b, pow2_mask:$m),
+            (ARC_BTST_b_u6 GPR32:$b, (log2_pow2 pow2_mask:$m))>;
+  def : Pat<(ARCbtst GPR32:$b, (shl 1, GPR32:$n)),
+            (ARC_BTST_b_c GPR32:$b, GPR32:$n)>;
+}
 
 // Bit-test-and-branch (bbit0/bbit1) is NOT selected via an ISel pattern. A
 // dedicated node/pseudo would be unanalyzable by analyzeBranch and break
