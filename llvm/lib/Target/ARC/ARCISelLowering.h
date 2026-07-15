@@ -52,6 +52,28 @@ public:
       MachineMemOperand::Flags Flags = MachineMemOperand::MONone,
       unsigned *Fast = nullptr) const override;
 
+  /// Return true if folding Imm directly as the immediate of an `add` is
+  /// legal -- i.e. it fits ADD_rrs12/ADD_rru6's -2048..2047 window (the
+  /// same silicon fact ARCTargetTransformInfo.h's materializeCost32 uses).
+  /// The TargetLoweringBase default is `return true` unconditionally for
+  /// EVERY int64_t, which made ConstantHoistingPass::findBaseConstants
+  /// (the linear scan gated on `TTI->isLegalAddImmediate(Diff)`,
+  /// ConstantHoisting.cpp) merge ANY same-type constants in a function
+  /// into one rebase group regardless of how far apart their values are --
+  /// the group is never split, so an outlier gets rebased through a
+  /// same-cost-tier-chosen base via an ADD that itself needs a LIMM,
+  /// replacing one folded ALU-immediate instruction with three. See
+  /// ARCTargetTransformInfo.h's getIntImmCodeSizeCost comment for the
+  /// measured -Oz firmware regression this caused before both were added.
+  bool isLegalAddImmediate(int64_t Imm) const override {
+    return isInt<12>(Imm);
+  }
+
+  /// Same s12 window as isLegalAddImmediate, for CMP_rs12/CMP_ru6.
+  bool isLegalICmpImmediate(int64_t Imm) const override {
+    return isInt<12>(Imm);
+  }
+
 private:
   const ARCSubtarget &Subtarget;
 
