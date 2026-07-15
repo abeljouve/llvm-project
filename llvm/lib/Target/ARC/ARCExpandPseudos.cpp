@@ -42,6 +42,15 @@ private:
   void expandLRImm(MachineFunction &, MachineBasicBlock::iterator);
   void expandSR(MachineFunction &, MachineBasicBlock::iterator);
   void expandSRImm(MachineFunction &, MachineBasicBlock::iterator);
+  // Unsigned carry-consuming arithmetic idioms -- docs/llvm-arc700-
+  // optimizations/19-flag-consuming-arithmetic-idioms.md. Each expansion
+  // keeps the `.f`-form STATUS32 producer immediately adjacent to its
+  // conditional-mov consumer (nothing else is inserted between the two
+  // BuildMI calls), the same atomicity CTLZ/CTTZ above rely on.
+  void expandUADDSAT(MachineFunction &, MachineBasicBlock::iterator);
+  void expandUSUBSAT(MachineFunction &, MachineBasicBlock::iterator);
+  void expandUADDO(MachineFunction &, MachineBasicBlock::iterator);
+  void expandUSUBO(MachineFunction &, MachineBasicBlock::iterator);
 
   const ARCInstrInfo *TII;
 };
@@ -129,6 +138,170 @@ void ARCExpandPseudos::expandCTTZ(MachineFunction &MF,
       .addImm(ARCCC::EQ)
       .addReg(R);
 
+  MI.eraseFromParent();
+}
+
+// Carry polarity (silicon/vendor-manual-verified: ARCompact ISA Programmer's
+// Reference, Table 50, and the explicit SUB/SBC text "If the carry flag is
+// set upon performing the subtract, the carry flag should be interpreted as
+// a 'borrow'"; cross-checked against the emulator's alu.rs ALU model, which
+// implements the identical polarity). This is the OPPOSITE of the
+// "ARM-style, C=1=no-borrow" assumption that appears in some design notes --
+// that assumption is WRONG for ARCompact and produced a real, empirically
+// confirmed bug here (see below). ARCCC (MCTargetDesc/ARCInfo.h) names
+// value 0x5 "LO" (vendor synonyms: CS, C -- tests raw STATUS32.C, fires
+// when C=1) and value 0x6 "HS" (vendor synonyms: CC, NC -- tests /C, fires
+// when C=0).
+//
+// The raw C bit's MEANING is producer-dependent:
+//   - SUB.f: C=1 means borrow (a<b unsigned). Table 50 confirms this
+//     directly: 0x5 "LO ... lower than (unsigned)" tests raw C, so testing
+//     C=1 IS "a<b"; 0x6 "HS ... higher or same (unsigned)" tests /C, so
+//     testing C=0 IS "a>=b". USUBSAT/USUBO key off a SUB.f producer, so
+//     LO<->"a<b, borrow" holds exactly as named: USUBSAT/USUBO select on LO
+//     (a<b/borrow).
+//   - ADD.f: C=1 means plain unsigned carry-out/overflow -- unambiguous,
+//     no "borrow" reinterpretation applies (that vendor text is specific to
+//     SUB/SBC). To select "did this add overflow" you must test raw C=1,
+//     i.e. LO (0x5) -- NOT HS. Using HS here (as an earlier version of this
+//     file did) tests /C and fires on NO overflow: it is the exact inverse
+//     of the intended behavior. Empirically confirmed on the arc700
+//     emulator: with the (former, buggy) HS-based expansion,
+//     uaddsat32(0xFFFFFFFF, 1) returned 0x00000000 instead of the correct
+//     saturated 0xFFFFFFFF, and uaddsat32(1, 2) spuriously returned
+//     0xFFFFFFFF instead of 3 -- i.e. every input was wrong. UADDSAT and
+//     UADDO (both ADD.f-producer consumers) select on LO (C=1, overflow).
+void ARCExpandPseudos::expandUADDSAT(MachineFunction &MF,
+                                     MachineBasicBlock::iterator MII) {
+  // Expand:
+  //   %Dst<def> = UADDSAT_PSEUDO %A, %B, %STATUS<imp-def>
+  // To:
+  //   %Sum<def> = ADD_f_rrr %A, %B, %STATUS<imp-def>
+  //   %NegOne<def> = MOV_rs12 -1
+  //   %Dst<def,tied1> = MOV_cc %NegOne, %Sum<tied0>, lo, %STATUS<imp-use>
+  MachineInstr &MI = *MII;
+  const MachineOperand &Dst = MI.getOperand(0);
+  const MachineOperand &A = MI.getOperand(1);
+  const MachineOperand &B = MI.getOperand(2);
+  MachineRegisterInfo &MRI = MF.getRegInfo();
+  Register SumReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+  Register NegOneReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+
+  // sum = a+b; C=1 (LO tests raw C) iff unsigned carry-out (the add
+  // wrapped). See the polarity comment above expandUADDSAT: ADD.f's C is a
+  // plain carry-out, so "did it overflow" is tested by LO (raw C=1), not
+  // HS (which tests /C and fires on NO overflow).
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ADD_f_rrr),
+         SumReg)
+      .add(A)
+      .add(B);
+  // -1 does not fit MOV_cc_ru6's u6 window (0..63) and ARCompact has no
+  // conditional-s12/limm DOP form, so the clamp value is pre-materialized
+  // unconditionally (does not touch STATUS32).
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_rs12),
+         NegOneReg)
+      .addImm(-1);
+  // Dst = LO(carry set, i.e. raw C=1, unsigned add overflow) ? -1 : sum.
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_cc))
+      .add(Dst)
+      .addReg(NegOneReg)
+      .addReg(SumReg)
+      .addImm(ARCCC::LO);
+  MI.eraseFromParent();
+}
+
+void ARCExpandPseudos::expandUSUBSAT(MachineFunction &MF,
+                                     MachineBasicBlock::iterator MII) {
+  // Expand:
+  //   %Dst<def> = USUBSAT_PSEUDO %A, %B, %STATUS<imp-def>
+  // To:
+  //   %Diff<def> = SUB_f_rrr %A, %B, %STATUS<imp-def>
+  //   %Dst<def,tied1> = MOV_cc_ru6 0, lo, %Diff<tied0>, %STATUS<imp-use>
+  MachineInstr &MI = *MII;
+  const MachineOperand &Dst = MI.getOperand(0);
+  const MachineOperand &A = MI.getOperand(1);
+  const MachineOperand &B = MI.getOperand(2);
+  MachineRegisterInfo &MRI = MF.getRegInfo();
+  Register DiffReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+
+  // diff = a-b; C=0 (LO) iff borrow (a<b).
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::SUB_f_rrr),
+         DiffReg)
+      .add(A)
+      .add(B);
+  // Clamp value 0 fits u6 directly -- no extra materialization instruction.
+  // Dst = LO(carry clear, borrow) ? 0 : diff.
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_cc_ru6))
+      .add(Dst)
+      .addImm(0)
+      .addImm(ARCCC::LO)
+      .addReg(DiffReg);
+  MI.eraseFromParent();
+}
+
+void ARCExpandPseudos::expandUADDO(MachineFunction &MF,
+                                   MachineBasicBlock::iterator MII) {
+  // Expand:
+  //   %Sum<def>, %Ovf<def> = UADDO_PSEUDO %A, %B, %STATUS<imp-def>
+  // To:
+  //   %Sum<def> = ADD_f_rrr %A, %B, %STATUS<imp-def>
+  //   %Zero<def> = MOV_ru6 0
+  //   %Ovf<def,tied1> = MOV_cc_ru6 1, lo, %Zero<tied0>, %STATUS<imp-use>
+  MachineInstr &MI = *MII;
+  const MachineOperand &SumDst = MI.getOperand(0);
+  const MachineOperand &OvfDst = MI.getOperand(1);
+  const MachineOperand &A = MI.getOperand(2);
+  const MachineOperand &B = MI.getOperand(3);
+  MachineRegisterInfo &MRI = MF.getRegInfo();
+  Register ZeroReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::ADD_f_rrr))
+      .add(SumDst)
+      .add(A)
+      .add(B);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_ru6),
+         ZeroReg)
+      .addImm(0);
+  // Ovf = LO(carry set, i.e. raw C=1, unsigned add overflow) ? 1 : 0. See
+  // the polarity comment above expandUADDSAT: ADD.f's C is a plain
+  // carry-out, tested by raw-C-true (LO), not by HS (which tests /C).
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_cc_ru6))
+      .add(OvfDst)
+      .addImm(1)
+      .addImm(ARCCC::LO)
+      .addReg(ZeroReg);
+  MI.eraseFromParent();
+}
+
+void ARCExpandPseudos::expandUSUBO(MachineFunction &MF,
+                                   MachineBasicBlock::iterator MII) {
+  // Expand:
+  //   %Diff<def>, %Ovf<def> = USUBO_PSEUDO %A, %B, %STATUS<imp-def>
+  // To:
+  //   %Diff<def> = SUB_f_rrr %A, %B, %STATUS<imp-def>
+  //   %Zero<def> = MOV_ru6 0
+  //   %Ovf<def,tied1> = MOV_cc_ru6 1, lo, %Zero<tied0>, %STATUS<imp-use>
+  MachineInstr &MI = *MII;
+  const MachineOperand &DiffDst = MI.getOperand(0);
+  const MachineOperand &OvfDst = MI.getOperand(1);
+  const MachineOperand &A = MI.getOperand(2);
+  const MachineOperand &B = MI.getOperand(3);
+  MachineRegisterInfo &MRI = MF.getRegInfo();
+  Register ZeroReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::SUB_f_rrr))
+      .add(DiffDst)
+      .add(A)
+      .add(B);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_ru6),
+         ZeroReg)
+      .addImm(0);
+  // Ovf = LO(carry clear, borrow, unsigned sub overflow) ? 1 : 0.
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_cc_ru6))
+      .add(OvfDst)
+      .addImm(1)
+      .addImm(ARCCC::LO)
+      .addReg(ZeroReg);
   MI.eraseFromParent();
 }
 
@@ -221,6 +394,22 @@ bool ARCExpandPseudos::runOnMachineFunction(MachineFunction &MF) {
         break;
       case ARC::CTTZ:
         expandCTTZ(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::UADDSAT_PSEUDO:
+        expandUADDSAT(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::USUBSAT_PSEUDO:
+        expandUSUBSAT(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::UADDO_PSEUDO:
+        expandUADDO(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::USUBO_PSEUDO:
+        expandUSUBO(MF, MBBI);
         Expanded = true;
         break;
       case ARC::ARC_LR_PSEUDO:

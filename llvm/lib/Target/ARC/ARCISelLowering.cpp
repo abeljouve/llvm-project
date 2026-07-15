@@ -118,6 +118,16 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   // !Subtarget.hasMPY() so this is a no-op when MUL is Legal.
   setTargetDAGCombine(ISD::MUL);
 
+  // Overflow-to-branch/select fusion -- docs/llvm-arc700-optimizations/
+  // 19-flag-consuming-arithmetic-idioms.md and performOverflowBrcondCombine/
+  // performOverflowSelectCombine below. Fires at Level::BeforeLegalizeTypes,
+  // strictly before BRCOND/SELECT's generic Expand and before
+  // LowerUADDO/LowerUSUBO's own Custom-lowering ever run, so it can
+  // intercept the raw generic ISD::UADDO/USUBO overflow result before the
+  // value-materializing fallback path is even constructed.
+  setTargetDAGCombine(ISD::BRCOND);
+  setTargetDAGCombine(ISD::SELECT);
+
   // Use i32 for setcc operations results (slt, sgt, ...).
   setBooleanContents(ZeroOrOneBooleanContent);
   setBooleanVectorContents(ZeroOrOneBooleanContent);
@@ -249,6 +259,34 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::CTPOP, MVT::i32, Expand);
   }
 
+  // Unsigned carry-consuming arithmetic idioms -- docs/llvm-arc700-
+  // optimizations/19-flag-consuming-arithmetic-idioms.md (UNSIGNED subset
+  // only. Signed SADDSAT/SSUBSAT/SADDO/SSUBO and AVGFLOORU/cmp3 are deferred).
+  //
+  // UADDSAT/USUBSAT are ordinary 1-result nodes with generic PatFrags already
+  // defined upstream (TargetSelectionDAG.td) -- mirror the CTLZ/CTTZ precedent
+  // just above: Legal + a pseudo whose embedded Pat is the bare generic node,
+  // expanded pre-RA in ARCExpandPseudos into a `.f`-form ADD/SUB producer +
+  // conditional-MOV consumer.
+  setOperationAction(ISD::UADDSAT, MVT::i32, Legal);
+  setOperationAction(ISD::USUBSAT, MVT::i32, Legal);
+  // UMIN/UMAX are left to the generic Expand (CMP + SELECT_CC -> ARCISD::CMOV).
+  // A dedicated Legal CMP+MOV_cc pseudo was measured to REGRESS real firmware
+  // .text: marking them Legal makes DAGCombiner canonicalize more
+  // select/compare shapes into umin/umax, and the tied-operand conditional-MOV
+  // pseudo blocks folds the generic SELECT_CC path still gets -- a net size
+  // loss with no correctness benefit here (both forms are CMP + conditional
+  // MOV). Keep them Expand.
+  //
+  // UADDO/USUBO are 2-result nodes with no generic PatFrag upstream. Custom:
+  // when the overflow result feeds a branch/select it is rewritten to a native
+  // unsigned compare-branch/select by performOverflowBrcondCombine /
+  // performOverflowSelectCombine (below); otherwise it Custom-lowers to a
+  // 2-result ARCISD::UADDO/USUBO node (LowerUADDO/LowerUSUBO) that a Pat
+  // matches into the value-materializing pseudo.
+  setOperationAction(ISD::UADDO, MVT::i32, Custom);
+  setOperationAction(ISD::USUBO, MVT::i32, Custom);
+
   setOperationAction(ISD::READCYCLECOUNTER, MVT::i32, Legal);
   setOperationAction(ISD::READCYCLECOUNTER, MVT::i64,
                      isTypeLegal(MVT::i64) ? Legal : Custom);
@@ -357,6 +395,27 @@ SDValue ARCTargetLowering::LowerBSWAP(SDValue Op, SelectionDAG &DAG) const {
   // through the blanket Expand set at the top of this constructor) and
   // would re-enter legalization instead of hitting the SWAP Pat.
   return DAG.getNode(ISD::ROTR, dl, VT, T, DAG.getConstant(16, dl, ShVT));
+}
+
+SDValue ARCTargetLowering::LowerUADDO(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc dl(Op);
+  assert(Op.getValueType() == MVT::i32 && "Only know how to lower i32 UADDO");
+  SDValue A = Op.getOperand(0);
+  SDValue B = Op.getOperand(1);
+  // 2-result target node; the legalizer (LegalizeDAG.cpp's multi-result
+  // Custom-lowering path) pulls Res.getValue(1) out for the overflow
+  // result on its own, so returning the SDValue (result #0) is sufficient.
+  return DAG.getNode(ARCISD::UADDO, dl, DAG.getVTList(MVT::i32, MVT::i32), A,
+                     B);
+}
+
+SDValue ARCTargetLowering::LowerUSUBO(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc dl(Op);
+  assert(Op.getValueType() == MVT::i32 && "Only know how to lower i32 USUBO");
+  SDValue A = Op.getOperand(0);
+  SDValue B = Op.getOperand(1);
+  return DAG.getNode(ARCISD::USUBO, dl, DAG.getVTList(MVT::i32, MVT::i32), A,
+                     B);
 }
 
 SDValue ARCTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
@@ -1286,9 +1345,234 @@ SDValue ARCTargetLowering::PerformDAGCombine(SDNode *N,
   switch (N->getOpcode()) {
   case ISD::MUL:
     return performMULCombine(N, DCI);
+  case ISD::BRCOND:
+    return performOverflowBrcondCombine(N, DCI);
+  case ISD::SELECT:
+    return performOverflowSelectCombine(N, DCI);
   default:
     return {};
   }
+}
+
+//===----------------------------------------------------------------------===//
+//  Overflow-to-branch/select fusion -- dossier 19
+//
+//  Rewrite `br i1 (uaddo/usubo A,B).1, bb` / `select i1 (uaddo/usubo A,B).1,
+//  T, F` into an equivalent unsigned compare-and-branch / compare-and-select
+//  instead of materializing the overflow bit into a 0/1 GPR and re-testing
+//  it. See docs/llvm-arc700-optimizations/19-flag-consuming-arithmetic-
+//  idioms.md and docs/notes/isa-characterization.md section 5.4.
+//
+//  The two overflow predicates reduce to a plain unsigned comparison of
+//  values this target already compares natively (ISD::SETULT -> the existing
+//  ISDCCtoARCCC / BRcc / CMOV paths, which are silicon-validated -- so this
+//  introduces NO new hand-coded carry-polarity, the sole class of silent
+//  miscompile this whole area risks):
+//
+//    * UADDO: unsigned (A+B) overflows (carries out) iff the truncated 32-bit
+//      sum is strictly less than either addend. So overflow == (Sum <u A),
+//      where Sum = A + B. The Sum node produced here also REPLACES the
+//      original node's result #0 (the sum) when it is live, so the addend is
+//      added exactly once and shared between the wrapped-around value and the
+//      overflow test -- the whole point of an add-with-overflow.
+//    * USUBO: unsigned (A-B) borrows iff A <u B. The comparison is on the raw
+//      operands, independent of the difference; the difference (result #0)
+//      is materialized with a plain SUB and shared only when it is live.
+//
+//  Because the rewrite lands on ISD::BR_CC / ISD::SELECT_CC (both already
+//  Custom-lowered for this target) rather than a flag-glued producer/consumer
+//  pair, there is NO STATUS32 adjacency constraint: the compare operands are
+//  ordinary register values read by BRcc/CMP, so a live sum/difference can be
+//  freely scheduled and cross-block-exported with no glue conflict. Overflow
+//  nodes whose overflow result is used as a genuine value (stored, returned,
+//  or arithmetically combined) are NOT matched here and fall through to the
+//  existing Custom value-materializing path (LowerUADDO/LowerUSUBO ->
+//  UADDO_PSEUDO/USUBO_PSEUDO), which stays correct for that case.
+//===----------------------------------------------------------------------===//
+
+namespace {
+
+// Recognize a fusable overflow test feeding a BRCOND/SELECT condition and
+// report the underlying overflow SDValue plus whether the branch/select
+// should fire on the OPPOSITE polarity (Invert -- i.e. on "no overflow").
+// Two shapes are matched:
+//
+//   (1) Cond IS DIRECTLY the overflow result: Cond == (uaddo/usubo A,B).1.
+//       This is the shape SelectionDAGBuilder constructs for `br i1 %ovf,
+//       %trueBB, %falseBB` when %trueBB is NOT the block laid out immediately
+//       after the branch (no fallthrough-inversion needed), and always for
+//       `select i1 %ovf, T, F` (SELECT's condition is used as-is, with no
+//       block-order-dependent inversion trick). Invert = false.
+//
+//   (2) Cond is `setcc(overflow, C, cc)` with C in {0,1} and cc in
+//       {SETEQ,SETNE} testing the overflow bit against a boolean constant.
+//       This is what shape (1) becomes whenever the "true" successor is the
+//       physically-next block: SelectionDAGBuilder inverts the condition for
+//       fallthrough via `xor(overflow, 1)`, and DAGCombiner's own generic
+//       `(brcond (xor x, 1)) -> (brcond (setcc x, 1, ne))` canonicalization
+//       rewrites that xor into this setcc BEFORE our target hook sees the
+//       node -- so the common `if (a+b < a) goto slow;` fallthrough shape
+//       arrives in this wrapped form. Both `(ovf != 1)` and `(ovf == 0)`
+//       mean "branch when NOT overflow" -> Invert = true; both `(ovf == 1)`
+//       and `(ovf != 0)` mean "branch when overflow" -> Invert = false.
+//
+// The overflow result must be single-use along the peeled chain: the SETCC
+// (if present) must be Cond's only definition reaching N, and the overflow
+// bit must be the SETCC's (or N's, in shape (1)) only use -- otherwise a
+// second consumer of the same overflow bit would still need the materialized
+// boolean, defeating the rewrite. Declining is always safe: the original
+// node proceeds through the existing value-materializing path. (The
+// arithmetic result #0 -- the sum/difference -- MAY be freely used elsewhere;
+// only the overflow bit's single-use matters, since the rewrite re-shares
+// result #0 via an explicit ADD/SUB.)
+static bool matchOverflowCond(SDValue Cond, SDValue &Overflow, bool &Invert) {
+  auto isOverflowResult = [](SDValue V) {
+    return (V.getOpcode() == ISD::UADDO || V.getOpcode() == ISD::USUBO) &&
+           V.getResNo() == 1;
+  };
+
+  if (isOverflowResult(Cond)) {
+    Overflow = Cond;
+    Invert = false;
+    return true;
+  }
+
+  if (Cond.getOpcode() != ISD::SETCC || !Cond.hasOneUse())
+    return false;
+  SDValue LHS = Cond.getOperand(0);
+  SDValue RHS = Cond.getOperand(1);
+  if (!isOverflowResult(LHS) || !LHS.hasOneUse())
+    return false;
+  auto *C = dyn_cast<ConstantSDNode>(RHS);
+  if (!C)
+    return false;
+  ISD::CondCode CC = cast<CondCodeSDNode>(Cond.getOperand(2))->get();
+
+  if (CC == ISD::SETNE && C->isOne())
+    Invert = true; // (ovf != 1) == !ovf
+  else if (CC == ISD::SETEQ && C->isZero())
+    Invert = true; // (ovf == 0) == !ovf
+  else if (CC == ISD::SETEQ && C->isOne())
+    Invert = false; // (ovf == 1) == ovf
+  else if (CC == ISD::SETNE && C->isZero())
+    Invert = false; // (ovf != 0) == ovf
+  else
+    return false; // Some other constant/cc combination -- not a plain
+                  // boolean test; decline rather than guess.
+
+  Overflow = LHS;
+  return true;
+}
+
+// Build the unsigned compare (LHS, RHS) whose SETULT is exactly the overflow
+// predicate of the matched UADDO/USUBO node, and -- when the node's
+// arithmetic result #0 (the wrapped sum / the difference) is still live --
+// re-materialize it with a plain ADD/SUB and redirect its users there, so the
+// single add/sub is shared between the value and the overflow test. Returns
+// the SETULT condition code; the caller applies Invert.
+static ISD::CondCode buildOverflowCompare(SDValue Overflow, SelectionDAG &DAG,
+                                          const SDLoc &dl, SDValue &CmpLHS,
+                                          SDValue &CmpRHS) {
+  SDValue A = Overflow.getOperand(0);
+  SDValue B = Overflow.getOperand(1);
+  SDValue ResultVal(Overflow.getNode(), 0); // result #0: sum or difference
+  if (Overflow.getOpcode() == ISD::UADDO) {
+    // Sum is needed by the compare regardless of whether result #0 is live.
+    SDValue Sum = DAG.getNode(ISD::ADD, dl, MVT::i32, A, B);
+    if (!ResultVal.use_empty())
+      DAG.ReplaceAllUsesOfValueWith(ResultVal, Sum);
+    CmpLHS = Sum; // overflow == (Sum <u A)
+    CmpRHS = A;
+  } else {
+    // USUBO: borrow == (A <u B); the difference is only re-shared if live.
+    if (!ResultVal.use_empty()) {
+      SDValue Diff = DAG.getNode(ISD::SUB, dl, MVT::i32, A, B);
+      DAG.ReplaceAllUsesOfValueWith(ResultVal, Diff);
+    }
+    CmpLHS = A;
+    CmpRHS = B;
+  }
+  return ISD::SETULT;
+}
+
+} // end anonymous namespace
+
+SDValue ARCTargetLowering::performOverflowBrcondCombine(
+    SDNode *N, DAGCombinerInfo &DCI) const {
+  // ISD::BRCOND: (chain, cond, dest), all three explicit here (chain is
+  // operand(0) because SDNPHasChain places it first).
+  SDValue Chain = N->getOperand(0);
+  SDValue Cond = N->getOperand(1);
+  SDValue Dest = N->getOperand(2);
+
+  SDValue Overflow;
+  bool Invert;
+  if (!matchOverflowCond(Cond, Overflow, Invert))
+    return SDValue();
+  // Cond (whether the raw overflow bit or the peeled setcc) must be this
+  // BRCOND's only use of it -- if the same Cond also feeds another
+  // branch/select, the boolean stays materialized for that other consumer, so
+  // there is nothing to gain and we must not rewrite a value others depend on.
+  if (!Cond.hasOneUse())
+    return SDValue();
+
+  SDValue A = Overflow.getOperand(0);
+  // Explicit VT guard (mirrors performMULCombine's style above) rather than
+  // relying on "i32 is currently ARC's only legal scalar type" -- protects
+  // against a future subtarget/vector extension routing through this combine.
+  if (A.getValueType() != MVT::i32)
+    return SDValue();
+
+  SelectionDAG &DAG = DCI.DAG;
+  SDLoc dl(N);
+
+  // Reduce the overflow predicate to a native unsigned comparison and re-share
+  // the arithmetic result #0 (sum/difference) when it is live. Emit ISD::BR_CC
+  // -- Custom-lowered to ARCISD::BRcc (a combined compare-and-branch reading
+  // ordinary register operands, no STATUS32 glue) -- so a live sum can be
+  // scheduled/exported without any adjacency conflict.
+  SDValue CmpLHS, CmpRHS;
+  ISD::CondCode CC = buildOverflowCompare(Overflow, DAG, dl, CmpLHS, CmpRHS);
+  if (Invert) // branch on "no overflow"
+    CC = ISD::getSetCCInverse(CC, MVT::i32); // integer type -> SETULT -> SETUGE
+  return DAG.getNode(ISD::BR_CC, dl, MVT::Other, Chain,
+                     DAG.getCondCode(CC), CmpLHS, CmpRHS, Dest);
+}
+
+SDValue ARCTargetLowering::performOverflowSelectCombine(
+    SDNode *N, DAGCombinerInfo &DCI) const {
+  // ISD::SELECT: (cond, T, F).
+  SDValue Cond = N->getOperand(0);
+  SDValue TVal = N->getOperand(1);
+  SDValue FVal = N->getOperand(2);
+
+  SDValue Overflow;
+  bool Invert;
+  if (!matchOverflowCond(Cond, Overflow, Invert))
+    return SDValue();
+  if (!Cond.hasOneUse())
+    return SDValue();
+
+  SDValue A = Overflow.getOperand(0);
+  if (A.getValueType() != MVT::i32)
+    return SDValue();
+  // ARC has one register class (i32); guard the select's own result type
+  // explicitly too, mirroring the BRCOND combine's defensiveness.
+  if (N->getValueType(0) != MVT::i32)
+    return SDValue();
+
+  SelectionDAG &DAG = DCI.DAG;
+  SDLoc dl(N);
+
+  // Same reduction as the branch case, landing on ISD::SELECT_CC (Custom ->
+  // ARCISD::CMP + CMOV). SETULT selects TVal on overflow; Invert swaps the
+  // picked values rather than the compare so the SETULT stays canonical.
+  SDValue CmpLHS, CmpRHS;
+  ISD::CondCode CC = buildOverflowCompare(Overflow, DAG, dl, CmpLHS, CmpRHS);
+  SDValue T = Invert ? FVal : TVal;
+  SDValue F = Invert ? TVal : FVal;
+  return DAG.getNode(ISD::SELECT_CC, dl, N->getValueType(0), CmpLHS, CmpRHS, T,
+                     F, DAG.getCondCode(CC));
 }
 
 // Rewrite `mul x, C` into a bounded chain of add/sub/shl/neg DAG nodes (see
@@ -1700,6 +1984,10 @@ SDValue ARCTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     return LowerJumpTable(Op, DAG);
   case ISD::BSWAP:
     return LowerBSWAP(Op, DAG);
+  case ISD::UADDO:
+    return LowerUADDO(Op, DAG);
+  case ISD::USUBO:
+    return LowerUSUBO(Op, DAG);
   case ISD::VASTART:
     return LowerVASTART(Op, DAG);
   case ISD::READCYCLECOUNTER:

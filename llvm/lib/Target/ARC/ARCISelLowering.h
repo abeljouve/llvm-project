@@ -95,6 +95,12 @@ private:
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBSWAP(SDValue Op, SelectionDAG &DAG) const;
+  // Unsigned add/sub-with-overflow -- see docs/llvm-arc700-optimizations/
+  // 19-flag-consuming-arithmetic-idioms.md. Build the 2-result ARCISD::
+  // UADDO/USUBO target node; the legalizer pulls .getValue(1) out for the
+  // overflow result (LegalizeDAG.cpp's multi-result Custom-lowering path).
+  SDValue LowerUADDO(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerUSUBO(SDValue Op, SelectionDAG &DAG) const;
   SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
 
   // Bounded scaled-add/shift/sub/neg synthesizer for `mul x, C` on cores
@@ -112,6 +118,39 @@ private:
   // than a __mulsi3 call under the current opt-size profile, or when the
   // subtarget has a hardware multiplier.
   SDValue performMULCombine(SDNode *N, DAGCombinerInfo &DCI) const;
+
+  // Overflow-to-branch/select rewrite -- docs/llvm-arc700-optimizations/
+  // 19-flag-consuming-arithmetic-idioms.md. Recognizes ISD::BRCOND /
+  // ISD::SELECT whose sole condition is the overflow result (#1) of a raw
+  // (not-yet-Custom-lowered) generic ISD::UADDO/USUBO node and rewrites it to
+  // the equivalent native unsigned compare-and-branch / compare-and-select
+  // (ISD::BR_CC / ISD::SELECT_CC, both already Custom-lowered here) instead of
+  // letting LowerUADDO/LowerUSUBO materialize a 0/1 boolean that is then
+  // redundantly re-compared. UADDO overflow == (A+B <u A); USUBO borrow ==
+  // (A <u B) -- both plain ISD::SETULT, so the silicon-validated
+  // ISDCCtoARCCC / BRcc / CMOV paths carry the polarity and NO new carry-flag
+  // condition is hand-coded here. The node's arithmetic result #0 (the
+  // wrapped sum / the difference) MAY be live: it is re-materialized with a
+  // plain ADD/SUB and shared, so unlike a flag-glued producer/consumer there
+  // is no STATUS32 adjacency constraint and a live result exports freely.
+  //
+  // These run as target DAG combines on ISD::BRCOND / ISD::SELECT (registered
+  // via setTargetDAGCombine in the constructor), firing at
+  // Level::BeforeLegalizeTypes -- before ISD::BRCOND's generic Expand, before
+  // ISD::SELECT's generic Expand, and before LowerUADDO/LowerUSUBO's own
+  // Custom-lowering (all later, in LegalizeDAG) -- so when either hook fires
+  // the raw generic ISD::UADDO/USUBO node is still intact and the
+  // materialize-then-recompare sequence is never constructed for the matched
+  // (single-overflow-use) case.
+  //
+  // Returns SDValue() (declines, no-op) whenever the overflow bit is not the
+  // sole condition (Cond.hasOneUse() == false -- e.g. also stored/returned),
+  // is not width-i32, or the guarded node is not UADDO/USUBO's overflow
+  // result -- in every such case the ORIGINAL node proceeds untouched through
+  // the existing value-materializing path (LowerUADDO/LowerUSUBO ->
+  // UADDO_PSEUDO/USUBO_PSEUDO), correct for a genuinely-used overflow value.
+  SDValue performOverflowBrcondCombine(SDNode *N, DAGCombinerInfo &DCI) const;
+  SDValue performOverflowSelectCombine(SDNode *N, DAGCombinerInfo &DCI) const;
 
   // Subsumed by performMULCombine above (see its comment) -- always returns
   // false so DAGCombiner::visitMUL's own decomposition never fires and every

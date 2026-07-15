@@ -58,6 +58,19 @@ def ARCcmp : SDNode<"ARCISD::CMP", SDT_ARCcmptst, [SDNPOutGlue]>;
 // Conditional mov
 def ARCcmov : SDNode<"ARCISD::CMOV", SDT_ARCcmov, [SDNPInGlue]>;
 
+// Unsigned add/sub-with-overflow. 2-result target nodes -- unlike
+// UADDSAT/USUBSAT/UMIN/UMAX (which reuse upstream's generic PatFrags
+// directly, see the UADDSAT_PSEUDO/etc. defs below), ISD::UADDO/USUBO have
+// no generic PatFrag anywhere upstream (every target Custom-lowers them in
+// C++), so LowerUADDO/LowerUSUBO in ARCISelLowering.cpp build these target
+// nodes explicitly and a Pat below matches them into the pseudo. See
+// docs/llvm-arc700-optimizations/19-flag-consuming-arithmetic-idioms.md.
+def SDT_ARCUAddSubO : SDTypeProfile<2, 2, [SDTCisVT<0, i32>, SDTCisVT<1, i32>,
+                                            SDTCisSameAs<0, 2>,
+                                            SDTCisSameAs<0, 3>]>;
+def ARCuaddo : SDNode<"ARCISD::UADDO", SDT_ARCUAddSubO, []>;
+def ARCusubo : SDNode<"ARCISD::USUBO", SDT_ARCUAddSubO, []>;
+
 // Conditional Branch
 def ARCbrcc : SDNode<"ARCISD::BRcc", SDT_ARCbrcc, [SDNPHasChain]>;
 
@@ -170,6 +183,46 @@ let Defs = [STATUS32], Predicates = [HasBitScan] in {
                            (ins GPR32:$B),
                            "error.ffs $A, $B",
                            [(set GPR32:$A, (cttz i32:$B))]>;
+}
+
+// Unsigned carry-consuming arithmetic idioms (UADDSAT/USUBSAT/UADDO/USUBO).
+// Each pseudo bundles a `.f`-form ADD/SUB producer with its conditional-mov
+// consumer as ONE atomic pre-RA pseudo (mirroring the CTLZ/CTTZ mechanism
+// above) so nothing can be scheduled between the STATUS32 producer and
+// consumer; ARCExpandPseudos.cpp expands each into its real instruction
+// sequence. No `Predicates` gate: ADD/SUB/MOV/mov.cc are baseline ARCompact,
+// always present (unlike CTLZ/CTTZ's HasBitScan gate). See
+// docs/llvm-arc700-optimizations/19-flag-consuming-arithmetic-idioms.md and
+// docs/notes/isa-characterization.md for the silicon carry-polarity facts.
+// The carry polarity is standard ARCompact (NOT ARM-style): after SUB,
+// C=1 means BORROW (a<b unsigned) and C=0 means no borrow (a>=b); after ADD,
+// C=1 is the unsigned carry-out. The full per-idiom .c/.cc selection and its
+// silicon derivation live in the polarity comment above expandUADDSAT() in
+// ARCExpandPseudos.cpp, which the expansions rely on. (UMIN/UMAX are left to
+// generic Expand -- a Legal pseudo for them regressed .text; see
+// ARCISelLowering.cpp.)
+let Defs = [STATUS32] in {
+  def UADDSAT_PSEUDO : PseudoInstARC<(outs GPR32:$Dst),
+                           (ins GPR32:$A, GPR32:$B),
+                           "# UADDSAT_PSEUDO $Dst, $A, $B",
+                           [(set GPR32:$Dst, (uaddsat i32:$A, i32:$B))]>;
+
+  def USUBSAT_PSEUDO : PseudoInstARC<(outs GPR32:$Dst),
+                           (ins GPR32:$A, GPR32:$B),
+                           "# USUBSAT_PSEUDO $Dst, $A, $B",
+                           [(set GPR32:$Dst, (usubsat i32:$A, i32:$B))]>;
+
+  def UADDO_PSEUDO : PseudoInstARC<(outs GPR32:$Sum, GPR32:$Ovf),
+                           (ins GPR32:$A, GPR32:$B),
+                           "# UADDO_PSEUDO $Sum, $Ovf, $A, $B",
+                           [(set GPR32:$Sum, GPR32:$Ovf,
+                                 (ARCuaddo i32:$A, i32:$B))]>;
+
+  def USUBO_PSEUDO : PseudoInstARC<(outs GPR32:$Diff, GPR32:$Ovf),
+                           (ins GPR32:$A, GPR32:$B),
+                           "# USUBO_PSEUDO $Diff, $Ovf, $A, $B",
+                           [(set GPR32:$Diff, GPR32:$Ovf,
+                                 (ARCusubo i32:$A, i32:$B))]>;
 }
 
 //===----------------------------------------------------------------------===//
