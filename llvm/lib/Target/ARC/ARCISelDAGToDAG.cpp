@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "ARC.h"
+#include "ARCConstantMaterialization.h"
 #include "ARCSelectionDAGInfo.h"
 #include "ARCTargetMachine.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
@@ -212,9 +213,38 @@ void ARCDAGToDAGISel::Select(SDNode *N) {
   switch (N->getOpcode()) {
   case ISD::Constant: {
     uint64_t CVal = N->getAsZExtVal();
+    // Fast path, byte-identical to before this pseudo existed: a signed
+    // 12-bit-representable constant is a single 4-byte MOV_rs12, no recipe
+    // search performed. This is an INTEGER ConstantSDNode only -- global /
+    // constant-pool / block-address / jump-table addresses go through
+    // ARCISD::GAWRAPPER and MOV_rlimm(tconstpool) in ARCInstrInfo.td,
+    // never through this Select case, so they are structurally untouched
+    // by the CONST32 recipe below.
+    if (isInt<12>(CVal)) {
+      ReplaceNode(N, CurDAG->getMachineNode(
+                         ARC::MOV_rs12, SDLoc(N), MVT::i32,
+                         CurDAG->getTargetConstant(CVal, SDLoc(N), MVT::i32)));
+      return;
+    }
+    // Otherwise, try the bounded seed<<shift recipe search. It only
+    // returns a recipe strictly cheaper (6 bytes) than the 8-byte
+    // MOV_rlimm baseline (4-byte host + 4-byte LIMM word); when no such
+    // recipe exists, fall back to MOV_rlimm exactly as before. The
+    // recipe's seed step is the compact 16-bit `mov_s`, which only exists
+    // on ARCompact cores (Feature_IsARCompact) -- gate the whole recipe on
+    // that, exactly like the ARCompact-only instructions elsewhere in this
+    // backend, so a plain ARCv1 target (no ARCompact) keeps emitting
+    // MOV_rlimm and never selects a CONST32 pseudo it cannot legally
+    // expand.
+    if (Subtarget->isARCompact() &&
+        synthesizeConst32(static_cast<uint32_t>(CVal))) {
+      ReplaceNode(N, CurDAG->getMachineNode(
+                         ARC::CONST32, SDLoc(N), MVT::i32,
+                         CurDAG->getTargetConstant(CVal, SDLoc(N), MVT::i32)));
+      return;
+    }
     ReplaceNode(N, CurDAG->getMachineNode(
-                       isInt<12>(CVal) ? ARC::MOV_rs12 : ARC::MOV_rlimm,
-                       SDLoc(N), MVT::i32,
+                       ARC::MOV_rlimm, SDLoc(N), MVT::i32,
                        CurDAG->getTargetConstant(CVal, SDLoc(N), MVT::i32)));
     return;
   }

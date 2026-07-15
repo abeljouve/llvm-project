@@ -74,6 +74,22 @@ def GPR32: RegisterClass<"ARC", [i32], 32,
 
 def SREG : RegisterClass<"ARC", [i32], 1, (add STATUS32)>;
 
-def GPR_S : RegisterClass<"ARC", [i32], 8,
+// Alignment (3rd parameter) is 32, matching GPR32 below -- NOT the register
+// count (8). Both classes hold i32 values; TableGen's automatic subclass
+// inference (CodeGenRegisters.cpp's testSubClass/RegSizeInfo::isSubClassOf)
+// additionally requires the candidate subclass's SpillAlignment to divide
+// the superclass's evenly, on top of the plain register-set containment
+// GPR_S already satisfies (its 8 registers are a literal subset of GPR32's
+// list below). A previous mismatched alignment (8, not a multiple-of
+// relationship with GPR32's 32) silently defeated that inference: TableGen
+// fell back to synthesizing a separate "GPR32_and_GPR_S" intersection class
+// instead of recognizing GPR_S as a true subclass, so a GPR_S-typed vreg
+// (e.g. the destination of a compact `mov_s`) could not be fed directly
+// into an instruction operand declared GPR32 (e.g. `asl`'s source) --
+// MachineVerifier rejected it as an "Illegal virtual register", confirmed
+// by an actual `llc -verify-machineinstrs` run. Matching the alignment
+// makes GPR_S a genuine TableGen subclass of GPR32, as its register
+// membership always implied it should be.
+def GPR_S : RegisterClass<"ARC", [i32], 32,
   (add R0, R1, R2, R3, R12, R13, R14, R15)>;
 

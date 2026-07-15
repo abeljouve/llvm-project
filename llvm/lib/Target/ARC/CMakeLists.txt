@@ -17,6 +17,7 @@ add_public_tablegen_target(ARCCommonTableGen)
 add_llvm_target(ARCCodeGen
   ARCAsmPrinter.cpp
   ARCBranchFinalize.cpp
+  ARCConstantMaterialization.cpp
   ARCDelaySlotFiller.cpp
   ARCExpandHWLoops.cpp
   ARCExpandPseudos.cpp
