@@ -97,8 +97,25 @@ static void generateStackAdjustment(MachineBasicBlock &MBB,
 static unsigned determineLastCalleeSave(ArrayRef<CalleeSavedInfo> CSI) {
   unsigned Last = 0;
   for (auto Reg : CSI) {
-    assert(Reg.getReg() >= ARC::R13 && Reg.getReg() <= ARC::R25 &&
-           "Unexpected callee saved reg.");
+    // CSI is expected to only ever contain R13..R25 -- the funclet-manageable
+    // range backing __st_r13_to_rN / __ld_r13_to_rN -- because
+    // ARCRegisterInfo::getCalleeSavedRegs() now hands PEI a spill-candidate
+    // list narrowed to exactly that range (FP/GP are excluded there; BLINK
+    // is never part of CSI at all, it is pushed/popped unconditionally via
+    // PUSH_S_BLINK/POP_S_BLINK gated on MFI.hasCalls()). That makes this a
+    // "should never happen" invariant rather than a live one. Still, don't
+    // assert-crash on an out-of-range entry if some future change to the
+    // CSI-population path ever lets one through (e.g. FP arriving via an
+    // inline-asm explicit-register operand, which is exactly the bug this
+    // guarded against before the getCalleeSavedRegs narrowing): skip it and
+    // keep going rather than taking down the compiler. See
+    // ARCRegisterInfo::getCalleeSavedRegs() for the structural fix and
+    // docs/bugs/ (workshop root) for the original ICE repro.
+    if (Reg.getReg() < ARC::R13 || Reg.getReg() > ARC::R25) {
+      LLVM_DEBUG(dbgs() << "Skipping unexpected callee-saved reg "
+                        << Reg.getReg() << " outside R13..R25 funclet range\n");
+      continue;
+    }
     if (Reg.getReg() > Last)
       Last = Reg.getReg();
   }
