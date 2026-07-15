@@ -220,7 +220,17 @@ void ARCDAGToDAGISel::Select(SDNode *N) {
     // ARCISD::GAWRAPPER and MOV_rlimm(tconstpool) in ARCInstrInfo.td,
     // never through this Select case, so they are structurally untouched
     // by the CONST32 recipe below.
-    if (isInt<12>(CVal)) {
+    //
+    // The s12-fitness test must use the SIGN-extended value: CVal is the
+    // zero-extension of the i32 constant's 32-bit pattern (e.g. -5 ->
+    // CVal == 0x00000000FFFFFFFB), which never satisfies isInt<12>'s
+    // [-2048,2047] range even when -5 fits MOV_rs12's signed 12-bit
+    // immediate. Sign-extend the low 32 bits purely for the range test;
+    // CVal itself is unchanged below -- truncating either representation
+    // to 32 bits (via getTargetConstant(..., MVT::i32)) yields the
+    // identical bit pattern MOV_rs12's encoder needs.
+    int64_t SExtVal = SignExtend64<32>(CVal);
+    if (isInt<12>(SExtVal)) {
       ReplaceNode(N, CurDAG->getMachineNode(
                          ARC::MOV_rs12, SDLoc(N), MVT::i32,
                          CurDAG->getTargetConstant(CVal, SDLoc(N), MVT::i32)));
