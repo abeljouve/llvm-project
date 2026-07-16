@@ -194,11 +194,34 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   // bswap->SWAPE Pat in ARCARCompactPatterns.td is gated behind the
   // off-by-default HasSwape predicate so it can never fire here; it exists
   // only for a hypothetical future ARCv2-word CPU that genuinely has swape.
-  //
-  // ABS executes on this silicon (wrapping, non-saturating: ABS(INT_MIN) ==
-  // INT_MIN) and keeps its single-instruction Legal lowering + Pat below.
   setOperationAction(ISD::BSWAP, MVT::i32, Custom);
-  setOperationAction(ISD::ABS, MVT::i32, Legal);
+
+  // ABS executes on this silicon (wrapping, non-saturating: ABS(INT_MIN) ==
+  // INT_MIN) and keeps its single-instruction Legal lowering.
+  //
+  // The action MUST stay in lockstep with the predicate on its only
+  // selection pattern: `abs b,c` is an ARCompact-only opcode with no ARCv2
+  // encoding, so `def : Pat<(abs GPR32:$c), (ARC_ABS_b_c GPR32:$c)>` lives
+  // inside `let Predicates = [IsARCompact]` in ARCARCompactPatterns.td. An
+  // unconditional Legal here left every non-ARCompact subtarget with a legal
+  // node and no pattern able to select it -- a hard "Cannot select: i32 =
+  // abs" crash, reachable from a bare source-level abs()/labs()/(x<0?-x:x)
+  // and, on a subtarget that also lacks MPY, from performSDivRemCombine's
+  // ISD::ABS below. Same bug class as the HasMPY/TargetLowering desync
+  // recorded in this backend's notes: an unconditional action paired with a
+  // predicated pattern.
+  //
+  // On non-ARCompact, Expand routes through TargetLowering::expandABS, which
+  // prefers smax(x, 0-x) when SUB and SMAX are Legal -- both are Legal here
+  // unconditionally (above), so it selects as `rsub`+`max`. That shape
+  // preserves the wrapping semantics the constant-divisor synthesis relies
+  // on: 0-INT_MIN wraps to INT_MIN, and smax(INT_MIN, INT_MIN) == INT_MIN,
+  // i.e. ABS(INT_MIN)'s bit pattern is still the unsigned magnitude
+  // 0x80000000. (Expand is what the blanket Expand loop above already
+  // leaves it at; naming it explicitly is what makes the lockstep with the
+  // Pat predicate legible at the point where a future edit would break it.)
+  setOperationAction(ISD::ABS, MVT::i32,
+                     Subtarget.isARCompact() ? Legal : Expand);
 
   setOperationAction(ISD::Constant, MVT::i32, Legal);
   setOperationAction(ISD::UNDEF, MVT::i32, Legal);
@@ -2136,8 +2159,13 @@ SDValue ARCTargetLowering::performSDivRemCombine(SDNode *N,
   SDLoc dl(N);
   SelectionDAG &DAG = DCI.DAG;
 
-  // ua = ABS(a); ABS is Legal on this target (ABS(INT_MIN) == INT_MIN, whose
-  // bit pattern IS the correct unsigned magnitude 0x80000000). The unsigned
+  // ua = ABS(a). ABS(INT_MIN) == INT_MIN, whose bit pattern IS the correct
+  // unsigned magnitude 0x80000000. That holds under either action ISD::ABS
+  // can carry here (see the setOperationAction call in the constructor): the
+  // single `abs` instruction on ARCompact, and smax(x, 0-x) via expandABS
+  // elsewhere -- 0-INT_MIN wraps to INT_MIN and smax(INT_MIN, INT_MIN) ==
+  // INT_MIN. This combine gates only on !hasMPY(), NOT on isARCompact(), so
+  // it does reach the non-ARCompact expansion. The unsigned
   // reciprocal builders below are already proven correct over the FULL u32
   // range, of which ua's range is a strict subset -- no new unsigned proof
   // obligation here, only the signed wrapper below needed the dedicated

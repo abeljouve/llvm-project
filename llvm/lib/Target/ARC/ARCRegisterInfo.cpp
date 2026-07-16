@@ -16,6 +16,7 @@
 #include "ARCMachineFunctionInfo.h"
 #include "ARCSubtarget.h"
 #include "llvm/ADT/BitVector.h"
+#include "llvm/ADT/Twine.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -25,6 +26,7 @@
 #include "llvm/CodeGen/TargetFrameLowering.h"
 #include "llvm/IR/Function.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 
@@ -34,6 +36,35 @@ using namespace llvm;
 
 #define GET_REGINFO_TARGET_DESC
 #include "ARCGenRegisterInfo.inc"
+
+/// Required alignment, in bytes, of the *effective address* of a
+/// frame-index-based access, derived purely from the access width.
+///
+/// The S9 field of LD_rs9 / ST_rs9 is a signed byte offset and the ARC700
+/// encoding itself imposes no alignment. The requirement is a property of the
+/// silicon, not of the encoding: this core has no hardware unaligned-access
+/// fixup and no STATUS32.AD "unaligned enable" path, and a misaligned
+/// multi-byte access does NOT trap. The effective address is silently rounded
+/// down (word: addr & ~3, half-word: addr & ~1), so the access reads or writes
+/// the WRONG location with no error signal whatsoever at runtime. See
+/// docs/notes/isa-characterization.md. A prior comment in this file claiming
+/// STATUS32.AD performs a runtime fixup was an unverified assumption disproved
+/// by silicon characterization -- do not reintroduce it.
+static unsigned getRequiredFrameAccessAlign(unsigned Opc) {
+  switch (Opc) {
+  case ARC::LD_rs9:
+  case ARC::ST_rs9:
+    return 4;
+  case ARC::LDH_rs9:
+  case ARC::LDH_X_rs9:
+  case ARC::STH_rs9:
+    return 2;
+  default:
+    // LDB_rs9 / LDB_X_rs9 / STB_rs9 are byte-wide (no alignment requirement);
+    // GETFI is an address computation, not an access.
+    return 1;
+  }
+}
 
 static void replaceFrameIndex(MachineBasicBlock::iterator II,
                               const ARCInstrInfo &TII, unsigned Reg,
@@ -45,6 +76,67 @@ static void replaceFrameIndex(MachineBasicBlock::iterator II,
   DebugLoc DL = MI.getDebugLoc();
   unsigned BaseReg = FrameReg;
   unsigned KillState = 0;
+
+  // Alignment guard. This MUST be evaluated here, at the top, against the
+  // incoming Offset -- i.e. the true effective displacement from FrameReg,
+  // before either of the two Offset-rewriting paths below runs. Both stack
+  // pointers are 4-byte aligned at runtime (TargetFrameLowering is
+  // constructed with Align(4) in ARCFrameLowering.h, StackSize and
+  // MaxCallStackReq are allocated with Align(4) in ARCISelLowering.cpp, and
+  // FP is derived from SP in the prologue), so `Offset % Width != 0` is
+  // exactly equivalent to "the effective address is misaligned".
+  //
+  // This check replaces a set of per-opcode asserts that previously sat in
+  // the switch below. It is strictly STRONGER than what it replaces, on
+  // three counts -- each of which was a hole a real misaligned access
+  // already escaped through:
+  //   1. The LD_rlimm early-out immediately below returns before that switch
+  //      is ever reached, so a far, misaligned LD_rs9 was emitted unchecked.
+  //   2. The scratch-register path below zeroes Offset before the switch, so
+  //      the old asserts saw 0 and passed trivially for every far access.
+  //   3. assert() compiles out under NDEBUG. A release build therefore
+  //      emitted the misaligned access silently -- which, given that this
+  //      hardware does not fault on it, is precisely the silent
+  //      wrong-address read this guard exists to prevent. It must fire in
+  //      release builds too, so it is a real diagnostic, not an assert.
+  //
+  // Reaching here misaligned is not valid user code that we should quietly
+  // accommodate; it means an insufficiently-aligned IR load/store reached
+  // ISel carrying an alignment claim the backend trusted.
+  // ARCTargetLowering::allowsMisalignedMemoryAccesses (ARCISelLowering.cpp)
+  // unconditionally reports misaligned multi-byte accesses as neither legal
+  // nor fast, so SelectionDAG legalization peels an *honestly* under-aligned
+  // access into byte/half-word ops long before an LD_rs9/ST_rs9/LDH_rs9/
+  // STH_rs9 can be selected. That defence is structurally unable to cover IR
+  // that *overstates* its alignment, because
+  // TargetLoweringBase::allowsMemoryAccessForAlignment short-circuits to
+  // "fast" whenever the claimed Alignment >= the type's ABI alignment and
+  // never consults the hook at all. So a misaligned access arriving here
+  // means the IR asserted an alignment its address does not have (in C, a
+  // cast such as `*(u32 *)(p + 3)` -- undefined behaviour that the frontend
+  // is entitled to believe).
+  //
+  // Diagnose loudly instead of miscompiling: fix whatever produced the false
+  // alignment claim. Do NOT relax this check, and do NOT "fix" it by
+  // refusing the fold in ARCISelDAGToDAG's SelectAddrModeS9 -- that would
+  // merely re-materialise the identical bad address into a register
+  // (`add rX, fp, -313` + `ld rX, [rX, 0]`) and emit the very same wrong
+  // access with the diagnostic silenced.
+  unsigned ReqAlign = getRequiredFrameAccessAlign(MI.getOpcode());
+  if (ReqAlign > 1 && (Offset % static_cast<int>(ReqAlign)) != 0)
+    report_fatal_error(
+        Twine("ARC: misaligned frame access in function '") +
+            MBB.getParent()->getName() + "': " + TII.getName(MI.getOpcode()) +
+            " requires " + Twine(ReqAlign) +
+            "-byte alignment, but the effective frame offset is " +
+            Twine(Offset) +
+            ". This target does not fault on a misaligned access -- it "
+            "silently clears the low address bits -- so this would read or "
+            "write the wrong address at runtime. It means an IR load/store "
+            "claimed an alignment its address does not have; correct the "
+            "alignment at the source, do not relax this check.",
+        /*GenCrashDiag=*/false);
+
   if (MI.getOpcode() == ARC::LD_rs9 && (Offset >= 256 || Offset < -256)) {
     // Loads can always be reached with LD_rlimm.
     BuildMI(MBB, II, DL, TII.get(ARC::LD_rlimm), Reg)
@@ -88,33 +180,14 @@ static void replaceFrameIndex(MachineBasicBlock::iterator II,
     Offset = 0;
     KillState = RegState::Kill;
   }
+  // Alignment of the effective address is enforced by the guard at the top of
+  // this function, against the pre-rewrite Offset -- deliberately not here,
+  // where the LD_rlimm early-out and the scratch-register path have already
+  // bypassed or zeroed Offset. See that guard's comment.
   switch (MI.getOpcode()) {
-  // The S9 field of LD_rs9 / ST_rs9 is a signed byte offset; the ARC700
-  // encoding itself imposes no alignment. On real BCM55030 silicon,
-  // misaligned word/half-word accesses do NOT trap and are NOT hardware
-  // fixed up: STATUS32.AD does not provide an unaligned-access-enable path
-  // on this core, and a misaligned effective address is silently rounded
-  // down (word: addr & ~3, half-word: addr & ~1), corrupting the accessed
-  // data. See docs/notes/isa-characterization.md. A prior comment here
-  // claiming "STATUS32.AD" performs a runtime fixup was an unverified
-  // assumption, disproved by silicon characterization -- do not
-  // reintroduce it.
-  //
-  // ARCTargetLowering::allowsMisalignedMemoryAccesses (ARCISelLowering.cpp)
-  // now unconditionally reports misaligned multi-byte accesses as illegal,
-  // so SelectionDAG legalization always peels an insufficiently-aligned IR
-  // load/store into byte/half-word ops before an LD_rs9/ST_rs9/LDH_rs9/
-  // STH_rs9 can ever be selected. A frame-relative multi-byte access
-  // reaching here with a non-naturally-aligned effective offset is
-  // therefore a backend bug, not valid user code -- reinstate the
-  // assertion to catch it.
   case ARC::LD_rs9:
-    assert((Offset % 4 == 0) && "LD needs 4 byte alignment.");
-    [[fallthrough]];
   case ARC::LDH_rs9:
   case ARC::LDH_X_rs9:
-    assert((Offset % 2 == 0) && "LDH needs 2 byte alignment.");
-    [[fallthrough]];
   case ARC::LDB_rs9:
   case ARC::LDB_X_rs9:
     LLVM_DEBUG(dbgs() << "Building LDFI\n");
@@ -124,11 +197,7 @@ static void replaceFrameIndex(MachineBasicBlock::iterator II,
         .addMemOperand(*MI.memoperands_begin());
     break;
   case ARC::ST_rs9:
-    assert((Offset % 4 == 0) && "ST needs 4 byte alignment.");
-    [[fallthrough]];
   case ARC::STH_rs9:
-    assert((Offset % 2 == 0) && "STH needs 2 byte alignment.");
-    [[fallthrough]];
   case ARC::STB_rs9:
     LLVM_DEBUG(dbgs() << "Building STFI\n");
     BuildMI(MBB, II, DL, TII.get(MI.getOpcode()))
@@ -306,10 +375,10 @@ bool ARCRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   // fold constant into offset.
   Offset += MI.getOperand(FIOperandNum + 1).getImm();
 
-  // TODO: assert based on the load type:
-  // ldb needs no alignment,
-  // ldh needs 2 byte alignment
-  // ld needs 4 byte alignment
+  // Offset is now the full effective displacement from the frame register.
+  // Per-access-width alignment of this value is checked by the guard at the
+  // top of replaceFrameIndex (ldb: none, ldh: 2 bytes, ld: 4 bytes), which is
+  // where it can still see the pre-rewrite Offset.
   LLVM_DEBUG(dbgs() << "Offset             : " << Offset << "\n"
                     << "<--------->\n");
 
