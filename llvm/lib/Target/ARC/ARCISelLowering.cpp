@@ -129,6 +129,14 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   setTargetDAGCombine(ISD::UDIV);
   setTargetDAGCombine(ISD::UREM);
 
+  // Constant-divisor SIGNED div/rem synthesis (dossier 18, SIGNED phase) --
+  // see performSDivRemCombine below. Same architecture/rationale as the
+  // UDIV/UREM registration above: a pure DAGCombine, never setOperationAction
+  // (Custom), so it cannot corrupt TargetLowering's legality checks for
+  // sibling, non-whitelisted SDIV/SREM nodes.
+  setTargetDAGCombine(ISD::SDIV);
+  setTargetDAGCombine(ISD::SREM);
+
   // Overflow-to-branch/select fusion -- docs/llvm-arc700-optimizations/
   // 19-flag-consuming-arithmetic-idioms.md and performOverflowBrcondCombine/
   // performOverflowSelectCombine below. Fires at Level::BeforeLegalizeTypes,
@@ -212,17 +220,18 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::SMUL_LOHI, MVT::i32, LibCall);
     setOperationAction(ISD::UMUL_LOHI, MVT::i32, LibCall);
   }
-  // UDIV/UREM are deliberately left at their default Expand action for
-  // EVERY subtarget (never set to Custom/Legal/LibCall here) -- dossier 18's
-  // constant-divisor synthesis (performUDivRemCombine /
-  // performURemDigitFoldCombine, registered as DAGCombines above) fires
-  // ahead of legalization and needs no operation-action change; see those
-  // functions' section header comment in this file for why marking UDIV
-  // Custom would be actively harmful (it corrupts
-  // TargetLowering::expandREM's legality check for sibling, non-whitelisted
-  // UREM nodes). A hardware-multiplier subtarget (hasMPY()) additionally
-  // gets a good generic BuildUDIV reciprocal for free via the Expand path
-  // once MULHU is Legal (branch above) -- both DAGCombines explicitly
+  // UDIV/UREM/SDIV/SREM are deliberately left at their default Expand action
+  // for EVERY subtarget (never set to Custom/Legal/LibCall here) -- dossier
+  // 18's constant-divisor synthesis (performUDivRemCombine /
+  // performURemDigitFoldCombine for unsigned, performSDivRemCombine for
+  // signed -- all registered as DAGCombines above) fires ahead of
+  // legalization and needs no operation-action change; see those functions'
+  // section header comment in this file for why marking UDIV/SDIV Custom
+  // would be actively harmful (it corrupts TargetLowering::expandREM's
+  // legality check for sibling, non-whitelisted UREM/SREM nodes). A
+  // hardware-multiplier subtarget (hasMPY()) additionally gets a good
+  // generic BuildSDIV/BuildUDIV reciprocal for free via the Expand path once
+  // MULHS/MULHU is Legal (branch above) -- all three DAGCombines explicitly
   // decline whenever Subtarget.hasMPY(), so they never compete with it.
   setOperationAction(ISD::LOAD, MVT::i32, Legal);
   setOperationAction(ISD::STORE, MVT::i32, Legal);
@@ -2060,6 +2069,116 @@ SDValue ARCTargetLowering::performURemDigitFoldCombine(
   }
 }
 
+//===----------------------------------------------------------------------===//
+//  Constant-divisor SIGNED div/rem synthesis (dossier 18, SIGNED phase)
+//
+//  sdiv/srem by a compile-time-constant divisor of magnitude in {3, 5, 10}
+//  (either sign), for cores without a hardware multiplier
+//  (!Subtarget.hasMPY()). Reuses the unsigned reciprocal builders
+//  (emitDivRem3/5/10) applied to |a| and |C| verbatim -- see the .h file's
+//  performSDivRemCombine doc comment for the full derivation. sdiv/srem here
+//  are C-style truncating (round-toward-zero) semantics, matching what
+//  __divsi3/__modsi3 (the libcall this replaces) already implement.
+//
+//  Every shipped divisor (+-3, +-5, +-10) and its full signed wrapper
+//  (ABS + reciprocal + sign-adjust) was exhaustively verified over all 2^32
+//  int32 inputs against native C round-toward-zero `/`/`%` (0 mismatches),
+//  including an explicit INT_MIN spot-check for each, in the dossier-18
+//  SIGNED PROVE phase before this code was written -- see
+//  llvm/test/CodeGen/ARC/arc700eb-sdivmod.ll for the acceptance coverage.
+//  Any magnitude outside {3, 5, 10}, or a divisor with no unsigned
+//  ReciprocalDivMod whitelist entry, is explicitly OUT OF SCOPE for this cut.
+//
+//  Cost gate mirrors performUDivRemCombine's exactly: at -Oz/-Os
+//  (MinSize/OptSize) both SDIV and SREM decline unconditionally and fall
+//  through to the existing Expand -> __divsi3/__modsi3 libcall path.
+//===----------------------------------------------------------------------===//
+
+SDValue ARCTargetLowering::performSDivRemCombine(SDNode *N,
+                                                 DAGCombinerInfo &DCI) const {
+  assert((N->getOpcode() == ISD::SDIV || N->getOpcode() == ISD::SREM) &&
+        "performSDivRemCombine: expected ISD::SDIV or ISD::SREM");
+  if (Subtarget.hasMPY())
+    return SDValue();
+
+  EVT VT = N->getValueType(0);
+  if (VT != MVT::i32)
+    return SDValue();
+
+  SDValue N0 = N->getOperand(0);
+  SDValue Divisor = N->getOperand(1);
+  auto *DivC = dyn_cast<ConstantSDNode>(Divisor);
+  if (!DivC || DivC->isOpaque())
+    return SDValue(); // Non-constant / opaque divisor: fall through to the
+                      // existing Expand -> libcall path, unchanged.
+
+  int64_t D = DivC->getSExtValue();
+  if (D == 0)
+    return SDValue(); // Constant-fold-away-able / UB divide-by-zero: leave
+                      // it exactly as-is for the existing lowering to handle.
+
+  bool Cneg = D < 0;
+  uint64_t Dm = Cneg ? static_cast<uint64_t>(-D) : static_cast<uint64_t>(D);
+  // Reuses the SAME whitelist table performUDivRemCombine consults --
+  // magnitude-keyed, so {3, 5, 10} in either sign resolve to the same
+  // ReciprocalDivMod entry. Do not extend without a matching exhaustive-2^32
+  // SIGNED proof landing first (the dossier's hard gate).
+  if (!lookupDivisor(Dm, DivRemKind::ReciprocalDivMod))
+    return SDValue(); // Not whitelisted for the reciprocal path.
+
+  // Cost gate: mirror performUDivRemCombine's -Oz/-Os policy exactly (see
+  // the section header comment above).
+  const MachineFunction &MF = DCI.DAG.getMachineFunction();
+  if (MF.getFunction().hasMinSize() || MF.getFunction().hasOptSize())
+    return SDValue();
+
+  SDLoc dl(N);
+  SelectionDAG &DAG = DCI.DAG;
+
+  // ua = ABS(a); ABS is Legal on this target (ABS(INT_MIN) == INT_MIN, whose
+  // bit pattern IS the correct unsigned magnitude 0x80000000). The unsigned
+  // reciprocal builders below are already proven correct over the FULL u32
+  // range, of which ua's range is a strict subset -- no new unsigned proof
+  // obligation here, only the signed wrapper below needed the dedicated
+  // exhaustive proof (see section header comment).
+  SDValue UA = DAG.getNode(ISD::ABS, dl, VT, N0);
+  SDValue UQ, UR;
+  switch (Dm) {
+  case 3:
+    emitDivRem3(UA, dl, DAG, VT, UQ, UR);
+    break;
+  case 5:
+    emitDivRem5(UA, dl, DAG, VT, UQ, UR);
+    break;
+  case 10:
+    emitDivRem10(UA, dl, DAG, VT, UQ, UR);
+    break;
+  default:
+    llvm_unreachable(
+        "performSDivRemCombine: divisor whitelist check above is stale");
+  }
+
+  SDValue Zero = DAG.getConstant(0, dl, VT);
+  if (N->getOpcode() == ISD::SDIV) {
+    // q = (a<0) XOR (C<0) ? -uq : uq. C's sign is a compile-time constant,
+    // so this collapses to a single SELECT_CC keyed on sign(a) alone: for
+    // C>0 negate iff a<0 (SETLT); for C<0 negate iff a>=0 (SETGE). Negation
+    // is a SUB from 0 (RSUB), never a multiply.
+    SDValue NegUQ = subV(Zero, UQ, dl, DAG, VT);
+    ISD::CondCode CC = Cneg ? ISD::SETGE : ISD::SETLT;
+    return DAG.getNode(ISD::SELECT_CC, dl, VT, N0, Zero, NegUQ, UQ,
+                       DAG.getCondCode(CC));
+  }
+
+  // ISD::SREM: C-style truncated remainder always follows the DIVIDEND's
+  // sign only (independent of the divisor's sign) -- r = sign(a) * ur,
+  // equivalent to `a - q*C` (verified together with the quotient in the
+  // exhaustive proof above) but needs no back-multiply at all.
+  SDValue NegUR = subV(Zero, UR, dl, DAG, VT);
+  return DAG.getNode(ISD::SELECT_CC, dl, VT, N0, Zero, NegUR, UR,
+                     DAG.getCondCode(ISD::SETLT));
+}
+
 SDValue ARCTargetLowering::PerformDAGCombine(SDNode *N,
                                              DAGCombinerInfo &DCI) const {
   switch (N->getOpcode()) {
@@ -2077,6 +2196,9 @@ SDValue ARCTargetLowering::PerformDAGCombine(SDNode *N,
     if (SDValue R = performUDivRemCombine(N, DCI))
       return R;
     return performURemDigitFoldCombine(N, DCI);
+  case ISD::SDIV:
+  case ISD::SREM:
+    return performSDivRemCombine(N, DCI);
   case ISD::BRCOND:
     return performOverflowBrcondCombine(N, DCI);
   case ISD::SELECT:

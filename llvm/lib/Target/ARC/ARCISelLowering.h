@@ -160,6 +160,47 @@ private:
   SDValue performUDivRemCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performURemDigitFoldCombine(SDNode *N, DAGCombinerInfo &DCI) const;
 
+  // Constant-divisor SIGNED div/rem synthesis (dossier 18, SIGNED phase).
+  // Reuses the exact same magnitude-3/5/10 unsigned reciprocal builders as
+  // performUDivRemCombine above (emitDivRem3/5/10) applied to |a| and |C|,
+  // then sign-adjusts. sdiv/srem here are C-style truncating (round-toward-
+  // zero) semantics:
+  //
+  //   ua = ABS(a)   -- ABS is Legal on this target; ABS(INT_MIN) == INT_MIN,
+  //                    whose bit pattern reinterpreted as unsigned is
+  //                    0x80000000 == the true magnitude of INT_MIN, which is
+  //                    already covered by the unsigned reciprocal's full
+  //                    2^32-input proof (a strict subset of that range).
+  //   uq,ur = the committed unsigned reciprocal divmod of ua by |C|.
+  //   q = (a<0) XOR (C<0) ? -uq : uq  -- C's sign is a compile-time constant,
+  //       so this collapses to a single SELECT_CC keyed on sign(a) alone,
+  //       choosing SETLT (C>0) or SETGE (C<0) as the negate condition.
+  //   r = sign(a) * ur  -- i.e. `(a<0) ? -ur : ur`, independent of C's sign.
+  //       Equivalent to `a - q*C` (verified in the exhaustive proof below)
+  //       but needs no back-multiply at all, since C-style truncation always
+  //       makes the remainder follow the DIVIDEND's sign only.
+  //
+  // Negation is always a SUB from 0 (RSUB), never a multiply. Both SELECT_CC
+  // nodes route through the already-Custom-lowered LowerSELECT_CC path (same
+  // ARCISD::CMP + CMOV shape reduceMod above uses) -- no new hand-coded
+  // comparison logic.
+  //
+  // Whitelist reuse: consults the SAME ProvenUDivRemWhitelist table (keyed
+  // by magnitude, DivRemKind::ReciprocalDivMod) that performUDivRemCombine
+  // uses -- {3, 5, 10} in either sign. Every shipped signed divisor
+  // ({+-3, +-5, +-10}) was exhaustively verified (0 mismatches over all
+  // 2^32 int32 inputs, including an explicit INT_MIN spot-check) against
+  // native C round-toward-zero `/`/`%` in the dossier-18 SIGNED PROVE phase
+  // before this code was written -- see
+  // llvm/test/CodeGen/ARC/arc700eb-sdivmod.ll for the acceptance coverage.
+  //
+  // Declines (returns SDValue()) for a non-constant divisor, a magnitude
+  // outside the whitelist, hasMPY(), or MinSize/OptSize (same -Oz/-Os cost
+  // gate as performUDivRemCombine -- the synthesized sequence is never
+  // smaller than the __divsi3/__modsi3 call site) -- in every such case the
+  // node proceeds untouched through the existing Expand -> libcall path.
+  SDValue performSDivRemCombine(SDNode *N, DAGCombinerInfo &DCI) const;
+
   // Overflow-to-branch/select rewrite -- docs/llvm-arc700-optimizations/
   // 19-flag-consuming-arithmetic-idioms.md. Recognizes ISD::BRCOND /
   // ISD::SELECT whose sole condition is the overflow result (#1) of a raw
