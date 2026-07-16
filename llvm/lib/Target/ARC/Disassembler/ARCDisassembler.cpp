@@ -99,6 +99,10 @@ static DecodeStatus DecodeBranchTargetS(MCInst &Inst, unsigned InsnS,
                                         uint64_t Address,
                                         const MCDisassembler *Decoder);
 
+static void DecodeSymbolicOperandOff(MCInst &Inst, uint64_t Address,
+                                     uint64_t Offset,
+                                     const MCDisassembler *Decoder);
+
 static DecodeStatus DecodeMEMrs9(MCInst &, unsigned, uint64_t,
                                  const MCDisassembler *);
 
@@ -168,7 +172,21 @@ static DecodeStatus decodeBranchTarget9(MCInst &Inst, unsigned InsnS,
 static DecodeStatus decodeBranchTarget13(MCInst &Inst, unsigned InsnS,
                                          uint64_t Address,
                                          const MCDisassembler *Decoder) {
-  return DecodeBranchTargetS<13>(Inst, InsnS, Address, Decoder);
+  // LP loop-end target -- the sole user of brtarget_s13.
+  //
+  // This cannot go through DecodeBranchTargetS<13>: the operand is a SIGNED
+  // 12-bit field (the REG_S12IMM split), not a 13-bit one, and it holds the
+  // displacement scaled by 2. Sign-extending from 13 would take bit 12 as the
+  // sign -- a bit the 12-bit field never sets -- so every negative loop-end
+  // displacement would decode as a large positive one, and every target would
+  // land at half its true distance for want of the <<1.
+  //
+  // The base is also (PC & ~3) rather than PC, which matters whenever an `lp`
+  // sits at a 2-mod-4 address (ARCompact mixes 16- and 32-bit encodings, so
+  // it can).
+  int32_t Offset = SignExtend32<12>(InsnS) * 2;
+  DecodeSymbolicOperandOff(Inst, Address & ~UINT64_C(3), Offset, Decoder);
+  return MCDisassembler::Success;
 }
 
 static DecodeStatus decodeBranchTarget21(MCInst &Inst, unsigned InsnS,

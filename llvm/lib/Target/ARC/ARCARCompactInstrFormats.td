@@ -238,8 +238,11 @@ def brtarget_s10 : Operand<OtherVT> {
   let EncoderMethod = "getBranchTargetS21HEncoding";
   let DecoderMethod = "decodeBranchTarget10";
 }
+// LP loop-end target. NOT a Bcc-shaped branch: the displacement lives in
+// the REG_S12IMM split field at bits [11:0], not in the S21H fields at
+// bits [26:17] (which on an LP word are B[2:0] / P[1:0] / sub-opcode).
 def brtarget_s13 : Operand<OtherVT> {
-  let EncoderMethod = "getBranchTargetS21HEncoding";
+  let EncoderMethod = "getLPTargetEncoding";
   let DecoderMethod = "decodeBranchTarget13";
 }
 def brtarget_s21 : Operand<OtherVT> {

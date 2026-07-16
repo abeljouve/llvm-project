@@ -75,6 +75,14 @@ unsigned ARCELFObjectWriter::getRelocType(const MCFixup &Fixup,
     // point means the assembler was asked to emit a cross-section S9
     // relocation — which would overflow at link time anyway.
     report_fatal_error("ARC S9 branch target out of range (no S9 reloc)");
+  case ARC::fixup_arc_s13_lp_pcrel:
+    // LP reaches only +/-4 KiB, so a zero-overhead loop is always
+    // intra-function and ARCAsmBackend::applyFixup resolves it locally.
+    // There is no standard ARC ELF reloc for the 13-bit LP loop-end
+    // field, so reaching this point means the assembler was asked to
+    // emit a cross-section LP relocation — which could not be encoded
+    // in range anyway. Same policy as fixup_arc_s9h_pcrel.
+    report_fatal_error("ARC LP loop-end target out of range (no S13 reloc)");
   default:
     llvm_unreachable("Invalid fixup kind!");
   }

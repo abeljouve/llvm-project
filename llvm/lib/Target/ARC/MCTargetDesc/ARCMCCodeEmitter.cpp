@@ -120,6 +120,14 @@ public:
                                  SmallVectorImpl<MCFixup> &Fixups,
                                  const MCSubtargetInfo &STI) const;
 
+  // getLPTargetEncoding - Return binary encoding for an LP loop-end
+  // target operand (13-bit half-word signed PC-relative). LP does NOT
+  // share the Bcc S21H layout: its displacement lives in the REG_S12IMM
+  // split field at bits [11:0], while bits [26:17] hold the opcode.
+  unsigned getLPTargetEncoding(const MCInst &MI, unsigned OpNo,
+                               SmallVectorImpl<MCFixup> &Fixups,
+                               const MCSubtargetInfo &STI) const;
+
   void encodeInstruction(const MCInst &MI, SmallVectorImpl<char> &CB,
                          SmallVectorImpl<MCFixup> &Fixups,
                          const MCSubtargetInfo &STI) const override;
@@ -307,6 +315,31 @@ unsigned ARCMCCodeEmitter::getBRccTargetEncoding(
   // PC-relative displacement, split between bits [23:17] and bit [15].
   Fixups.push_back(MCFixup::create(
       0, MO.getExpr(), MCFixupKind(ARC::fixup_arc_s9h_pcrel),
+      /*PCRel=*/true));
+  return 0;
+}
+
+unsigned ARCMCCodeEmitter::getLPTargetEncoding(
+    const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups,
+    const MCSubtargetInfo &STI) const {
+  const MCOperand &MO = MI.getOperand(OpNo);
+  // An immediate operand is the pre-scaled signed 12-bit loop-end field
+  // (i.e. displacement >> 1), matching the `bits<12>` operand the LP
+  // instruction definition slices. The td slices place it; nothing else
+  // to do here.
+  if (MO.isImm())
+    return static_cast<unsigned>(MO.getImm());
+
+  assert(MO.isExpr() && "Expected an expression operand");
+  // LP encodes the loop end as a 13-bit signed half-word PC-relative
+  // displacement in the REG_S12IMM split field at bits [11:0]. It must
+  // NOT reuse the Bcc S21H fixup: that scatter writes bits [26:17],
+  // which on an LP word are B[2:0] / P[1:0] / sub-opcode — OR-ing a
+  // displacement there rewrites the opcode into an undecodable word (or,
+  // when the bits happen to already be set, silently leaves the
+  // displacement at zero so the loop targets its own address).
+  Fixups.push_back(MCFixup::create(
+      0, MO.getExpr(), MCFixupKind(ARC::fixup_arc_s13_lp_pcrel),
       /*PCRel=*/true));
   return 0;
 }

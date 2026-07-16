@@ -38,6 +38,15 @@ enum Fixups {
   // across bits [23:17] + bit [15] of the 32-bit instruction word.
   fixup_arc_s9h_pcrel,
 
+  // 13-bit signed half-word PC-relative zero-overhead loop end (LP). The
+  // displacement is carried in the REG_S12IMM split field: the encoded
+  // value is (target - (PC & ~3)) >> 1 as a signed 12-bit number, with
+  // S[5:0] in bits [11:6] and S[11:6] in bits [5:0]. Range is +/-4 KiB.
+  // This is NOT the Bcc S21H layout: on an LP word bits [26:17] hold
+  // B[2:0], P[1:0] and the sub-opcode, so a displacement scattered there
+  // would corrupt the opcode itself.
+  fixup_arc_s13_lp_pcrel,
+
   // Marker.
   fixup_arc_invalid,
   NumTargetFixupKinds = fixup_arc_invalid - FirstTargetFixupKind
