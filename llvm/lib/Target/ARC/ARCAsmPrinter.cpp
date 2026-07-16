@@ -46,6 +46,13 @@ public:
   StringRef getPassName() const override { return "ARC Assembly Printer"; }
   void emitInstruction(const MachineInstr *MI) override;
 
+private:
+  /// Lower and emit exactly one instruction. Bundle walking is the caller's
+  /// job -- see emitInstruction.
+  void emitSingleInstruction(const MachineInstr *MI);
+
+public:
+
   bool runOnMachineFunction(MachineFunction &MF) override;
 
   bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
@@ -56,7 +63,39 @@ public:
 
 } // end anonymous namespace
 
+// A filled delay slot is a *flag-only* bundle: ARCDelaySlotFiller builds it
+// with MIBundleBuilder, which only sets the BundledSucc / BundledPred flags on
+// the transfer and its slot instruction -- it inserts no TargetOpcode::BUNDLE
+// header. So there is nothing here for isBundle() to match, and the delayed
+// transfer is itself the bundle head: it must be emitted like any other
+// instruction, and its members emitted after it.
+//
+// This walk is not optional. AsmPrinter iterates a block with a
+// MachineBasicBlock::iterator, which is a bundle_iterator and therefore yields
+// only bundle heads. Without the walk the slot instruction is never lowered,
+// never reaches the streamer, and silently vanishes from .text -- whereupon the
+// delayed transfer executes whatever word happens to follow it as its delay
+// slot. That is a silent wrong-code bug, not a crash: -verify-machineinstrs
+// stays quiet and the only symptom is a short .text.
 void ARCAsmPrinter::emitInstruction(const MachineInstr *MI) {
+  const MachineBasicBlock *MBB = MI->getParent();
+  MachineBasicBlock::const_instr_iterator I = MI->getIterator();
+  MachineBasicBlock::const_instr_iterator E = MBB->instr_end();
+
+  do {
+    // A TargetOpcode::BUNDLE marker encodes nothing and must not be lowered.
+    // ARCDelaySlotFiller never creates one, but tolerating both bundle shapes
+    // keeps this correct if some later pass starts using finalizeBundle().
+    // Meta instructions (DBG_VALUE, lifetime markers, ...) likewise emit no
+    // code; the generic AsmPrinter filters them before calling us, but a
+    // bundle member reaches the streamer only through this loop.
+    if (!I->isBundle() && !I->isMetaInstruction())
+      emitSingleInstruction(&*I);
+    ++I;
+  } while (I != E && I->isInsideBundle());
+}
+
+void ARCAsmPrinter::emitSingleInstruction(const MachineInstr *MI) {
   ARC_MC::verifyInstructionPredicates(MI->getOpcode(),
                                       getSubtargetInfo().getFeatureBits());
 

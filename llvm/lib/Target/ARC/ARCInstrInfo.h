@@ -15,6 +15,7 @@
 
 #include "ARCRegisterInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
+#include <optional>
 
 #define GET_INSTRINFO_HEADER
 #include "ARCGenInstrInfo.inc"
@@ -109,6 +110,41 @@ public:
   MachineBasicBlock::iterator loadImmediate(MachineBasicBlock &MBB,
                                             MachineBasicBlock::iterator MI,
                                             unsigned Reg, uint64_t Value) const;
+
+  /// If \p Opc is a transfer that ARCompact defines a delayed (`.d`) encoding
+  /// for, return that encoding's opcode; otherwise std::nullopt.
+  ///
+  /// This is the single source of truth for "does this transfer have a delay
+  /// slot we may fill". ARCDelaySlotFiller keys off this rather than off
+  /// MCInstrDesc::hasDelaySlot() for two reasons:
+  ///
+  ///  - The forms ISel selects are the non-delayed (N=0) encodings, which
+  ///    correctly report hasDelaySlot() == false. Keying on hasDelaySlot()
+  ///    finds nothing, which is why the filler was inert.
+  ///  - It doubles as a "this is a transfer" predicate for the backward scan.
+  ///    That matters because not every ARCompact transfer is modelled as one:
+  ///    ARC_BBIT{0,1}_b_u6_s9_d -- which ARCBranchFinalize::tryFuseBBIT
+  ///    creates from real code -- has isBranch = 0 and isTerminator = 0, so
+  ///    isBranch() alone would let the scan walk straight past a live
+  ///    conditional branch.
+  ///
+  /// Returns nullopt for the delayed forms themselves, so a transfer can never
+  /// be converted twice, and for the LIMM-carrying transfers (J_LImm /
+  /// JL_LImm): the ISA states that a jump carrying long-immediate data has no
+  /// delay slot at all.
+  static std::optional<unsigned> getDelayedOpcode(unsigned Opc);
+
+  /// True if \p MI touches architectural state that the generated ARCompact
+  /// instruction descriptions do not model, and so must never be reordered or
+  /// sunk into a delay slot.
+  ///
+  /// The generated defs derive from ALU base classes that hardcode
+  /// `hasSideEffects = 0; mayLoad = 0; mayStore = 0`, which is wrong for AUX
+  /// access (lr/sr), loop setup (lp) and traps. Those defs now carry an
+  /// explicit `let hasSideEffects = 1`, so hasUnmodeledSideEffects() already
+  /// catches them; this opcode-keyed check is deliberate redundancy, so that
+  /// regenerating the .td files cannot silently disarm the guard.
+  static bool hasUnmodeledARCompactSideEffects(const MachineInstr &MI);
 };
 
 } // end namespace llvm

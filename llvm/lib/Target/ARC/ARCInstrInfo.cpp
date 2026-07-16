@@ -487,3 +487,70 @@ bool ARCInstrInfo::getBaseAndOffsetPosition(const MachineInstr &MI,
 
   return true;
 }
+
+std::optional<unsigned> ARCInstrInfo::getDelayedOpcode(unsigned Opc) {
+  switch (Opc) {
+  default:
+    // Everything not listed -- including the delayed forms themselves, so a
+    // transfer is never converted twice, and including J_LImm / JL_LImm,
+    // which carry long-immediate data and therefore have no delay slot at
+    // all (ARCompact ISA, delay slots, rule 2).
+    return std::nullopt;
+
+  // N-bit family: same opcode, Inst{5} (N) 0 -> 1. Size is unchanged.
+  case ARC::BR:         return ARC::BR_D;
+  case ARC::Bcc:        return ARC::Bcc_D;
+  case ARC::BRcc_rr:    return ARC::BRcc_rr_D;
+  case ARC::BRcc_ru6:   return ARC::BRcc_ru6_D;
+  case ARC::BL:         return ARC::BL_D;
+  case ARC::TCB:        return ARC::TCB_D;
+  case ARC::ARC_BBIT0_b_u6_s9_d: return ARC::ARC_BBIT0_b_u6_s9_delayed;
+  case ARC::ARC_BBIT1_b_u6_s9_d: return ARC::ARC_BBIT1_b_u6_s9_delayed;
+
+  // Sub-opcode family: .d is a distinct encoding, not a bit. Size unchanged.
+  case ARC::J:          return ARC::J_D;   // 0x20200000 -> 0x20210000
+  case ARC::JL:         return ARC::JL_D;  // 0x20220000 -> 0x20230000
+
+  // 16-bit return. Highest-value target of the pass: every function ends in
+  // one, and the delayed twin is also 2 bytes (0x7EE0 -> 0x7FE0), so the
+  // conversion is size-neutral.
+  case ARC::J_S_BLINK:  return ARC::J_S_BLINK_D;
+  }
+}
+
+bool ARCInstrInfo::hasUnmodeledARCompactSideEffects(const MachineInstr &MI) {
+  switch (MI.getOpcode()) {
+  default:
+    return false;
+  // Auxiliary-register reads. AUX space contains clear-on-read and FIFO
+  // registers, so an `lr` is neither repeatable nor reorderable against
+  // another AUX access.
+  case ARC::ARC_LR_b_c:
+  case ARC::ARC_LR_z_c:
+  case ARC::ARC_LR_b_u6:
+  case ARC::ARC_LR_z_u6:
+  case ARC::ARC_LR_b_s12:
+  case ARC::ARC_LR_z_s12:
+  case ARC::ARC_LR_b_limm:
+  case ARC::ARC_LR_z_limm:
+  // Auxiliary-register writes.
+  case ARC::ARC_SR_b_c:
+  case ARC::ARC_SR_b_u6:
+  case ARC::ARC_SR_b_s12:
+  case ARC::ARC_SR_limm_c:
+  case ARC::ARC_SR_b_limm:
+  case ARC::ARC_SR_limm_u6:
+  case ARC::ARC_SR_limm_s12:
+  case ARC::ARC_SR_limm:
+  // Zero-overhead loop setup. LP_COUNT / LP_START / LP_END are not modelled
+  // as registers, and the ISA requires >= 4 instruction *words* of
+  // separation after an LP_COUNT write -- a constraint nothing here can
+  // express, so the only safe rule is not to move across it.
+  case ARC::ARC_LP_s13:
+  case ARC::ARC_LP_u7_cc:
+  // Traps.
+  case ARC::ARC_TRAP0_0:
+  case ARC::ARC_TRAP_S_u6:
+    return true;
+  }
+}

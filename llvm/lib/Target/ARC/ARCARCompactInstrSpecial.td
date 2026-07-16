@@ -368,6 +368,11 @@ def ARC_LP_s13 : ARCompactInst32_3op<0b00100, 0b101000, "lp",
   // Opcode: 0x20A80000, Mask: 0xF8FF8000
   // Operands: SIMM13_A16_20
   // Flags: none
+  // Zero-overhead loop setup: writes LP_START / LP_END (and the ISA requires
+  // >= 4 instruction *words* of separation after an LP_COUNT write). None of
+  // LP_COUNT / LP_START / LP_END is modelled as a register here, so this is
+  // the only thing keeping code-motion passes away from it.
+  let hasSideEffects = 1;
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101010000;
   bits<12> simm13_a16_20;
@@ -382,6 +387,11 @@ def ARC_LP_u7_cc : ARCompactInst32_3op<0b00100, 0b101000, "lp",
   // Opcode: 0x20E80020, Mask: 0xF8FF8020
   // Operands: UIMM7_A16_20
   // Flags: C_CC
+  // Zero-overhead loop setup: writes LP_START / LP_END (and the ISA requires
+  // >= 4 instruction *words* of separation after an LP_COUNT write). None of
+  // LP_COUNT / LP_START / LP_END is modelled as a register here, so this is
+  // the only thing keeping code-motion passes away from it.
+  let hasSideEffects = 1;
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b111010000;
   let Inst{5} = 1;
@@ -397,6 +407,13 @@ def ARC_LR_b_c : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Opcode: 0x202A0000, Mask: 0xF8FF8000
   // Operands: RB_CHK, BRAKET, RC, BRAKETdup
   // Flags: none
+  // Reads an auxiliary register. ARCompactInst32_3op, the base class,
+  // hardcodes `hasSideEffects = 0; mayLoad = 0; mayStore = 0` because it
+  // models ALU ops -- which left every AUX access looking like a pure
+  // register move to any pass that reorders code. AUX space holds
+  // clear-on-read and FIFO registers, so an `lr` is not repeatable and not
+  // reorderable against another AUX access.
+  let hasSideEffects = 1;
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001010100;
   bits<6> rb_chk;
@@ -413,6 +430,13 @@ def ARC_LR_z_c : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Opcode: 0x262A7000, Mask: 0xFFFFF000
   // Operands: ZA, BRAKET, RC, BRAKETdup
   // Flags: none
+  // Reads an auxiliary register. ARCompactInst32_3op, the base class,
+  // hardcodes `hasSideEffects = 0; mayLoad = 0; mayStore = 0` because it
+  // models ALU ops -- which left every AUX access looking like a pure
+  // register move to any pass that reorders code. AUX space holds
+  // clear-on-read and FIFO registers, so an `lr` is not repeatable and not
+  // reorderable against another AUX access.
+  let hasSideEffects = 1;
   let Inst{31-12} = 0b00100110001010100111;
   bits<6> rc;
   let Inst{11-6} = rc;
@@ -425,6 +449,13 @@ def ARC_LR_b_u6 : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Opcode: 0x206A0000, Mask: 0xF8FF803F
   // Operands: RB_CHK, BRAKET, UIMM6_20, BRAKETdup
   // Flags: none
+  // Reads an auxiliary register. ARCompactInst32_3op, the base class,
+  // hardcodes `hasSideEffects = 0; mayLoad = 0; mayStore = 0` because it
+  // models ALU ops -- which left every AUX access looking like a pure
+  // register move to any pass that reorders code. AUX space holds
+  // clear-on-read and FIFO registers, so an `lr` is not repeatable and not
+  // reorderable against another AUX access.
+  let hasSideEffects = 1;
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b011010100;
   let Inst{5-0} = 0b000000;
@@ -442,6 +473,13 @@ def ARC_LR_z_u6 : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Opcode: 0x266A7000, Mask: 0xFFFFF03F
   // Operands: ZA, BRAKET, UIMM6_20, BRAKETdup
   // Flags: none
+  // Reads an auxiliary register. ARCompactInst32_3op, the base class,
+  // hardcodes `hasSideEffects = 0; mayLoad = 0; mayStore = 0` because it
+  // models ALU ops -- which left every AUX access looking like a pure
+  // register move to any pass that reorders code. AUX space holds
+  // clear-on-read and FIFO registers, so an `lr` is not repeatable and not
+  // reorderable against another AUX access.
+  let hasSideEffects = 1;
   let Inst{31-12} = 0b00100110011010100111;
   let Inst{5-0} = 0b000000;
   bits<6> uimm6_20;
@@ -455,6 +493,13 @@ def ARC_LR_b_s12 : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Opcode: 0x20AA0000, Mask: 0xF8FF8000
   // Operands: RB_CHK, BRAKET, SIMM12_20, BRAKETdup
   // Flags: none
+  // Reads an auxiliary register. ARCompactInst32_3op, the base class,
+  // hardcodes `hasSideEffects = 0; mayLoad = 0; mayStore = 0` because it
+  // models ALU ops -- which left every AUX access looking like a pure
+  // register move to any pass that reorders code. AUX space holds
+  // clear-on-read and FIFO registers, so an `lr` is not repeatable and not
+  // reorderable against another AUX access.
+  let hasSideEffects = 1;
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101010100;
   bits<6> rb_chk;
@@ -472,6 +517,13 @@ def ARC_LR_z_s12 : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Opcode: 0x26AA7000, Mask: 0xFFFFF000
   // Operands: ZA, BRAKET, SIMM12_20, BRAKETdup
   // Flags: none
+  // Reads an auxiliary register. ARCompactInst32_3op, the base class,
+  // hardcodes `hasSideEffects = 0; mayLoad = 0; mayStore = 0` because it
+  // models ALU ops -- which left every AUX access looking like a pure
+  // register move to any pass that reorders code. AUX space holds
+  // clear-on-read and FIFO registers, so an `lr` is not repeatable and not
+  // reorderable against another AUX access.
+  let hasSideEffects = 1;
   let Inst{31-12} = 0b00100110101010100111;
   bits<12> simm12_20;
   let Inst{11-6} = simm12_20{11-6};
@@ -485,6 +537,13 @@ def ARC_LR_b_limm : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Opcode: 0x202A0F80, Mask: 0xF8FF8FC0
   // Operands: RB_CHK, BRAKET, LIMM, BRAKETdup
   // Flags: none
+  // Reads an auxiliary register. ARCompactInst32_3op, the base class,
+  // hardcodes `hasSideEffects = 0; mayLoad = 0; mayStore = 0` because it
+  // models ALU ops -- which left every AUX access looking like a pure
+  // register move to any pass that reorders code. AUX space holds
+  // clear-on-read and FIFO registers, so an `lr` is not repeatable and not
+  // reorderable against another AUX access.
+  let hasSideEffects = 1;
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001010100;
   let Inst{11-6} = 0b111110;
@@ -499,6 +558,13 @@ def ARC_LR_z_limm : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   // Opcode: 0x262A7F80, Mask: 0xFFFFFFC0
   // Operands: ZA, BRAKET, LIMM, BRAKETdup
   // Flags: none
+  // Reads an auxiliary register. ARCompactInst32_3op, the base class,
+  // hardcodes `hasSideEffects = 0; mayLoad = 0; mayStore = 0` because it
+  // models ALU ops -- which left every AUX access looking like a pure
+  // register move to any pass that reorders code. AUX space holds
+  // clear-on-read and FIFO registers, so an `lr` is not repeatable and not
+  // reorderable against another AUX access.
+  let hasSideEffects = 1;
   let Inst{31-6} = 0b00100110001010100111111110;
   // Operand(s) limm need custom disassembler.
   let isCodeGenOnly = 1;
@@ -696,6 +762,10 @@ def ARC_SR_b_c : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Opcode: 0x202B0000, Mask: 0xF8FF8000
   // Operands: RB_CHK, BRAKET, RC, BRAKETdup
   // Flags: none
+  // Writes an auxiliary register -- see the note on ARC_LR_b_c. Ordering
+  // against other AUX accesses is architecturally observable, so this must
+  // not inherit the ALU base class's `hasSideEffects = 0`.
+  let hasSideEffects = 1;
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001010110;
   bits<6> rb_chk;
@@ -712,6 +782,10 @@ def ARC_SR_b_u6 : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Opcode: 0x206B0000, Mask: 0xF8FF803F
   // Operands: RB_CHK, BRAKET, UIMM6_20, BRAKETdup
   // Flags: none
+  // Writes an auxiliary register -- see the note on ARC_LR_b_c. Ordering
+  // against other AUX accesses is architecturally observable, so this must
+  // not inherit the ALU base class's `hasSideEffects = 0`.
+  let hasSideEffects = 1;
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b011010110;
   let Inst{5-0} = 0b000000;
@@ -729,6 +803,10 @@ def ARC_SR_b_s12 : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Opcode: 0x20AB0000, Mask: 0xF8FF8000
   // Operands: RB_CHK, BRAKET, SIMM12_20, BRAKETdup
   // Flags: none
+  // Writes an auxiliary register -- see the note on ARC_LR_b_c. Ordering
+  // against other AUX accesses is architecturally observable, so this must
+  // not inherit the ALU base class's `hasSideEffects = 0`.
+  let hasSideEffects = 1;
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101010110;
   bits<6> rb_chk;
@@ -746,6 +824,10 @@ def ARC_SR_limm_c : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Opcode: 0x262B7000, Mask: 0xFFFFF000
   // Operands: LIMM, BRAKET, RC, BRAKETdup
   // Flags: none
+  // Writes an auxiliary register -- see the note on ARC_LR_b_c. Ordering
+  // against other AUX accesses is architecturally observable, so this must
+  // not inherit the ALU base class's `hasSideEffects = 0`.
+  let hasSideEffects = 1;
   let Inst{31-12} = 0b00100110001010110111;
   // Operand(s) limm need custom disassembler.
   let isCodeGenOnly = 1;
@@ -758,6 +840,10 @@ def ARC_SR_b_limm : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Opcode: 0x202B0F80, Mask: 0xF8FF8FC0
   // Operands: RB_CHK, BRAKET, LIMM, BRAKETdup
   // Flags: none
+  // Writes an auxiliary register -- see the note on ARC_LR_b_c. Ordering
+  // against other AUX accesses is architecturally observable, so this must
+  // not inherit the ALU base class's `hasSideEffects = 0`.
+  let hasSideEffects = 1;
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001010110;
   let Inst{11-6} = 0b111110;
@@ -772,6 +858,10 @@ def ARC_SR_limm_u6 : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Opcode: 0x266B7000, Mask: 0xFFFFF03F
   // Operands: LIMM, BRAKET, UIMM6_20, BRAKETdup
   // Flags: none
+  // Writes an auxiliary register -- see the note on ARC_LR_b_c. Ordering
+  // against other AUX accesses is architecturally observable, so this must
+  // not inherit the ALU base class's `hasSideEffects = 0`.
+  let hasSideEffects = 1;
   let Inst{31-12} = 0b00100110011010110111;
   let Inst{5-0} = 0b000000;
   // Operand(s) limm need custom disassembler.
@@ -785,6 +875,10 @@ def ARC_SR_limm_s12 : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Opcode: 0x26AB7000, Mask: 0xFFFFF000
   // Operands: LIMM, BRAKET, SIMM12_20, BRAKETdup
   // Flags: none
+  // Writes an auxiliary register -- see the note on ARC_LR_b_c. Ordering
+  // against other AUX accesses is architecturally observable, so this must
+  // not inherit the ALU base class's `hasSideEffects = 0`.
+  let hasSideEffects = 1;
   let Inst{31-12} = 0b00100110101010110111;
   // Operand(s) limm need custom disassembler.
   let isCodeGenOnly = 1;
@@ -797,6 +891,10 @@ def ARC_SR_limm : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   // Opcode: 0x262B7F80, Mask: 0xFFFFFFC0
   // Operands: LIMM, BRAKET, LIMMdup, BRAKETdup
   // Flags: none
+  // Writes an auxiliary register -- see the note on ARC_LR_b_c. Ordering
+  // against other AUX accesses is architecturally observable, so this must
+  // not inherit the ALU base class's `hasSideEffects = 0`.
+  let hasSideEffects = 1;
   let Inst{31-6} = 0b00100110001010110111111110;
   // Operand(s) limm need custom disassembler.
   let isCodeGenOnly = 1;
@@ -819,6 +917,10 @@ def ARC_TRAP0_0 : ARCompactInst32_2op<0b00100, 0b111111, "trap0",
   // Opcode: 0x226F003F, Mask: 0xFFFFFFFF
   // Operands: 0
   // Flags: none
+  // Raises an exception -- not an ALU op, despite the base class. The ISA
+  // also forbids it immediately following a BRcc / BBIT, i.e. in their
+  // delay slot.
+  let hasSideEffects = 1;
   let Inst{31-0} = 0b00100010011011110000000000111111;
 }
 

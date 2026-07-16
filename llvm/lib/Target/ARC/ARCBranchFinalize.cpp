@@ -659,13 +659,22 @@ bool ARCBranchFinalize::runOnMachineFunction(MachineFunction &MF) {
       } else {
         MaxSize += Size;
       }
-      // The delay-slot filler runs AFTER this pass and inserts a 4-byte NOP
-      // into every unfilled delay slot, growing the code past this estimate.
-      // Count that worst case so the per-branch range check below never
-      // underestimates the real displacement -- an out-of-range compact
+      // The delay-slot filler runs AFTER this pass. In its default mode it
+      // does not grow the code at all: it *moves* an instruction from before
+      // a transfer into its slot and flips the transfer to a same-size .d
+      // encoding, so a block's size is unchanged. The one residual effect is
+      // that a filled transfer's own PC shifts up to 4 bytes earlier, which
+      // can lengthen a forward displacement by up to 4 -- comfortably inside
+      // the ~2x margin the range check below already keeps (it bounds to a
+      // signed 9-bit *byte* displacement, ~+/-256, while the hardware encodes
+      // half-words, ~+/-510).
+      //
+      // Reserve 4 bytes for any transfer that already carries a delay slot at
+      // this point (hand-written MIR, and the -arc-nop-delay-filler A/B mode,
+      // which does insert a NOP per slot). An out-of-range compact
       // compare-and-branch (BRcc) or bit-test-and-branch (bbit) is a hard
-      // relocation error, not a silent miscompile, so the estimate must be a
-      // conservative upper bound on the final layout.
+      // relocation error, not a silent miscompile, so the estimate must stay
+      // a conservative upper bound on the final layout.
       unsigned PCSize = Size;
       if (MI.getDesc().hasDelaySlot())
         PCSize += 4;

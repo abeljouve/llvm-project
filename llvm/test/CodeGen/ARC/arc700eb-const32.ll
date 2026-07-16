@@ -1,5 +1,15 @@
-; RUN: llc -march=arceb -mcpu=arc700eb -mattr=+arcompact -verify-machineinstrs < %s | FileCheck %s
+; RUN: llc -march=arceb -mcpu=arc700eb -mattr=+arcompact -verify-machineinstrs -arc-disable-delay-filler < %s | FileCheck %s
 ; RUN: llc -march=arceb -mcpu=arc700eb -mattr=+arcompact -verify-machineinstrs < %s | not grep -E "mpy|swape|\bffs\b|\bfls\b|rtie|\bex\b|adds|subs|bset|bclr|bmsk|bxor"
+
+; -arc-disable-delay-filler: this file tests instruction *selection* and
+; encodings, not scheduling. The delay slot filler is a late pass that sinks
+; the last instruction of a block into the return's delay slot, which leaves
+; `j_s.d` sitting between instructions this file asserts are adjacent with
+; CHECK-NEXT. The selected instructions and their encodings are unchanged --
+; only the return moves -- so the filler is turned off here to keep those
+; adjacency assertions meaningful and independent of the filler's heuristics.
+; Delay-slot behaviour has its own coverage in delay-slot-filler.mir and
+; arc700eb-delay-slot-*.mir.
 
 ; CONST32 recipe (dossier 21 idea 4): materialize a 32-bit INTEGER constant
 ; that does not fit a signed 12-bit immediate via a cheap

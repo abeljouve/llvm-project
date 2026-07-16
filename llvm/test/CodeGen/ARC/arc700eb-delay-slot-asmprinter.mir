@@ -1,0 +1,53 @@
+# RUN: llc -mtriple=arceb -mcpu=arc700eb -start-before=arc-delay-slot-filler \
+# RUN:     -verify-machineinstrs -o - %s | FileCheck %s
+
+# The AsmPrinter must emit BOTH members of a delay-slot bundle.
+#
+# A filled slot is a bundle: [delayed transfer, slot instruction]. AsmPrinter
+# walks the block with a MachineBasicBlock::iterator, which is a
+# bundle_iterator and therefore yields only bundle heads. Without an explicit
+# walk in ARCAsmPrinter::emitInstruction the slot instruction is never lowered
+# and never reaches the streamer -- it silently disappears from the object
+# file, and the delayed transfer then takes whatever word happens to follow it
+# as its delay slot and executes that instead.
+#
+# The walk must be driven off the bundle *flags* (isInsideBundle), not off
+# isBundle(): ARCDelaySlotFiller builds its bundles with MIBundleBuilder,
+# which only sets BundledSucc/BundledPred and inserts no TargetOpcode::BUNDLE
+# header. There is thus nothing for isBundle() to match, and the transfer
+# itself is the head -- an isBundle()-keyed walk (the Hexagon idiom, which
+# does have real BUNDLE headers) never fires and drops the slot on the floor.
+# That exact bug shipped in the first draft of this pass and this test is what
+# caught it.
+#
+# This is a silent wrong-code bug, not a crash: -verify-machineinstrs stays
+# quiet and llc exits 0. The only symptom is a short .text -- which is exactly
+# what this test catches, by requiring the slot instruction to appear in the
+# output immediately after the transfer that owns it.
+#
+# `-start-before` also means ARCSizeReduction does not run, so the candidate
+# stays a 4-byte `add` rather than being shrunk to a 2-byte compact form (only
+# 4-byte slot occupants are allowed for now -- see the size guard in
+# ARCDelaySlotFiller::delayHasHazard).
+#
+# Expected: j_s [blink] (0x7EE0) becomes its delayed twin j_s.d [blink]
+# (0x7FE0) -- also 2 bytes, so the conversion is size-neutral -- with the
+# `add` retired for free in its slot.
+
+# CHECK-LABEL: f:
+# CHECK:       j_s.d [%blink]
+# CHECK-NEXT:  add %r0, %r0, %r1
+
+--- |
+  define i32 @f(i32 %a, i32 %b) { ret i32 0 }
+...
+---
+name:            f
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    $r0 = ADD_rrr $r0, $r1
+    J_S_BLINK implicit $blink
+...

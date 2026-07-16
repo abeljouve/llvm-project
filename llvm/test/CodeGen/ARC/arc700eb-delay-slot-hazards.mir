@@ -1,0 +1,362 @@
+# RUN: llc -mtriple=arceb -mcpu=arc700eb -run-pass=arc-delay-slot-filler \
+# RUN:     -verify-machineinstrs -o - %s | FileCheck %s
+
+# Negative tests for the ARCompact delay slot filler: one per hazard that the
+# filler was only ever safe from because it was inert (it keyed on
+# hasDelaySlot(), which no code-generated transfer sets, so it filled nothing).
+# The moment it fills, each of these becomes live.
+#
+# Every test here asserts that the transfer stays in its plain, non-delayed
+# form: no `_D` twin, and no reordering. Each is paired with a "the fill would
+# otherwise have happened" control -- the hazardous instruction is always in a
+# position the filler would happily have taken.
+
+--- |
+  define void @volatile_load_not_reordered() { ret void }
+  define void @volatile_store_not_sunk() { ret void }
+  define void @aux_read_order_preserved() { ret void }
+  define void @aux_write_not_sunk() { ret void }
+  define void @flag_producer_stays_adjacent() { ret void }
+  define void @lp_setup_not_crossed() { ret void }
+  define void @bbit_is_a_barrier() { ret void }
+  define void @limm_instruction_not_sunk() { ret void }
+  define void @blink_restore_not_sunk_into_return() { ret void }
+  define void @call_blink_def_respected() { ret void }
+  define void @inline_asm_not_sunk() { ret void }
+  define void @frame_setup_not_sunk() { ret void }
+...
+
+---
+# Volatile / MMIO ordering.
+#
+# A volatile load has hasSideEffects = 0 -- volatility lives only in the
+# MachineMemOperand, which no generic register/hazard check reads -- so without
+# an explicit hasOrderedMemoryRef() guard the filler would sink the load at +0
+# past the load at +4 and invert two MMIO reads while the MMO still said
+# `volatile`. The two loads must keep their order and neither may move.
+name:            volatile_load_not_reordered
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: volatile_load_not_reordered
+  ; CHECK:      $r2 = LD_rs9 $r0, 0 :: (volatile load (s32))
+  ; CHECK-NEXT: $r3 = LD_rs9 $r0, 4 :: (volatile load (s32))
+  ; CHECK-NEXT: BR %bb.1
+  ; CHECK-NOT:  BR_D
+  bb.0:
+    successors: %bb.1(0x80000000)
+    liveins: $r0
+
+    $r2 = LD_rs9 $r0, 0 :: (volatile load (s32))
+    $r3 = LD_rs9 $r0, 4 :: (volatile load (s32))
+    BR %bb.1
+
+  bb.1:
+    liveins: $r2, $r3
+    $r0 = ADD_rrr $r2, $r3
+...
+
+---
+# A volatile store must not be sunk into a delay slot either.
+name:            volatile_store_not_sunk
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: volatile_store_not_sunk
+  ; CHECK:      ST_rs9 $r1, $r0, 0 :: (volatile store (s32))
+  ; CHECK-NEXT: BR %bb.1
+  ; CHECK-NOT:  BR_D
+  bb.0:
+    successors: %bb.1(0x80000000)
+    liveins: $r0, $r1
+
+    ST_rs9 $r1, $r0, 0 :: (volatile store (s32))
+    BR %bb.1
+
+  bb.1:
+    liveins: $r0
+    $r0 = ADD_rrr $r0, $r0
+...
+
+---
+# AUX ordering -- the most severe of the modelling gaps.
+#
+# ARC_LR_* / ARC_SR_* derive from ARCompactInst32_3op, whose body hardcodes
+# `hasSideEffects = 0; mayLoad = 0; mayStore = 0` because it models ALU ops.
+# That left every AUX access looking like a pure register move: the filler
+# would emit the read of aux 262 first and put the read of aux 260 in its
+# slot, inverting them. On a clear-on-read or FIFO AUX register that is a
+# firmware bug. Neither read may move.
+name:            aux_read_order_preserved
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: aux_read_order_preserved
+  ; CHECK:      $r2 = ARC_LR_b_s12 260
+  ; CHECK-NEXT: $r3 = ARC_LR_b_s12 262
+  ; CHECK-NEXT: BR %bb.1
+  ; CHECK-NOT:  BR_D
+  bb.0:
+    successors: %bb.1(0x80000000)
+
+    $r2 = ARC_LR_b_s12 260
+    $r3 = ARC_LR_b_s12 262
+    BR %bb.1
+
+  bb.1:
+    liveins: $r2, $r3
+    $r0 = ADD_rrr $r2, $r3
+...
+
+---
+# An AUX write must not be sunk into a delay slot, and must not be crossed.
+name:            aux_write_not_sunk
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: aux_write_not_sunk
+  ; CHECK:      $r2 = ARC_SR_b_s12 261
+  ; CHECK-NEXT: BR %bb.1
+  ; CHECK-NOT:  BR_D
+  bb.0:
+    successors: %bb.1(0x80000000)
+
+    $r2 = ARC_SR_b_s12 261
+    BR %bb.1
+
+  bb.1:
+    liveins: $r0
+    $r0 = ADD_rrr $r0, $r0
+...
+
+---
+# Flag producer / consumer adjacency.
+#
+# The branch reads STATUS32; the CMP defines it. The CMP is the only
+# instruction available, so the slot must stay empty rather than the flag
+# producer being hoisted across its consumer.
+name:            flag_producer_stays_adjacent
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: flag_producer_stays_adjacent
+  ; CHECK:      CMP_rr $r0, $r1, implicit-def $status32
+  ; CHECK-NEXT: Bcc %bb.1, 1, implicit $status32
+  ; CHECK-NOT:  Bcc_D
+  ; CHECK-NOT:  ARC_NOP_0
+  bb.0:
+    successors: %bb.1(0x40000000), %bb.2(0x40000000)
+    liveins: $r0, $r1
+
+    CMP_rr $r0, $r1, implicit-def $status32
+    Bcc %bb.1, 1, implicit $status32
+
+  bb.1:
+    liveins: $r0
+    $r0 = ADD_rrr $r0, $r0
+
+  bb.2:
+    liveins: $r1
+    $r1 = ADD_rrr $r1, $r1
+...
+
+---
+# Zero-overhead loop setup.
+#
+# LP_COUNT / LP_START / LP_END are not modelled as registers at all, and the
+# ISA requires at least 4 instruction *words* to be fetched after an LP_COUNT
+# write. Nothing in the filler can express that, so `lp` must be an absolute
+# barrier: the ADD ahead of it may not be sunk across it into the branch's
+# slot.
+name:            lp_setup_not_crossed
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: lp_setup_not_crossed
+  ; CHECK:      $r2 = ADD_rrr $r0, $r1
+  ; CHECK-NEXT: ARC_LP_s13 %bb.1
+  ; CHECK-NEXT: BR %bb.1
+  ; CHECK-NOT:  BR_D
+  bb.0:
+    successors: %bb.1(0x80000000)
+    liveins: $r0, $r1
+
+    $r2 = ADD_rrr $r0, $r1
+    ARC_LP_s13 %bb.1
+    BR %bb.1
+
+  bb.1:
+    liveins: $r2
+    $r0 = ADD_rrr $r2, $r2
+...
+
+---
+# A transfer LLVM does not model as a transfer must still be a barrier.
+#
+# ARC_BBIT1_b_u6_s9_d is created from ordinary code by
+# ARCBranchFinalize::tryFuseBBIT, but its generated def used to carry
+# isBranch = 0 / isTerminator = 0 -- a live conditional branch that every
+# code-motion pass was free to treat as an ordinary reorderable instruction.
+# A backward scan guarded only by isBranch() walked straight through it and
+# would sink the ADD into the following `b`'s slot, where it stops executing
+# whenever the bbit is taken.
+#
+# Two independent things now stop that, and this test covers both:
+#   1. The def is marked isBranch / isTerminator (fixed at the source, in
+#      ARCARCompactInstrBranch.td), so isBranch() catches it.
+#   2. The filler's scan additionally breaks on getDelayedOpcode(), which
+#      knows every transfer regardless of how it is modelled.
+# Removing either one alone still passes; removing both fails. Note that (1)
+# is load-bearing far beyond this pass: without it the MachineVerifier -- and
+# the MIR parser, which runs it -- rejects any function containing a fused
+# bbit outright ("MBB has unexpected successors which are not branch
+# targets"), so the pre-fix state cannot even be expressed in MIR.
+#
+# The ADD deliberately defines $r0 -- the very register the bbit tests. That
+# makes the bbit unable to fill its own slot with it (a def of a register the
+# transfer uses is a hazard), which is what leaves the ADD parked in front of
+# the bbit as bait. The `b` is then the only transfer that could take it, and
+# the barrier is the only thing stopping it. Without that isolation the test
+# proves nothing: if the bbit is allowed to consume the ADD into its own slot
+# first, the `b` has no candidate left regardless of whether the barrier works.
+name:            bbit_is_a_barrier
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: bbit_is_a_barrier
+  ; CHECK:      $r0 = ADD_rrr $r0, $r1
+  ; CHECK-NEXT: ARC_BBIT1_b_u6_s9_d $r0, 5, %bb.1
+  ; CHECK-NEXT: BR %bb.2
+  ; CHECK-NOT:  BR_D
+  ; CHECK-NOT:  ARC_BBIT1_b_u6_s9_delayed
+  bb.0:
+    successors: %bb.1(0x40000000), %bb.2(0x40000000)
+    liveins: $r0, $r1
+
+    $r0 = ADD_rrr $r0, $r1
+    ARC_BBIT1_b_u6_s9_d $r0, 5, %bb.1
+    BR %bb.2
+
+  bb.1:
+    liveins: $r0
+    $r0 = ADD_rrr $r0, $r0
+
+  bb.2:
+    liveins: $r0
+    $r1 = ADD_rrr $r0, $r0
+...
+
+---
+# Slot occupant size.
+#
+# MOV_rlimm carries a 32-bit long immediate and is 8 bytes. Whether an 8-byte
+# LIMM-carrying instruction is a legal delay-slot occupant is NOT proven on
+# this part: the ISA says only that a *transfer* carrying a LIMM has no delay
+# slot, and is silent on a LIMM instruction sitting *in* one, and the silicon
+# probe that measured the slot used a 4-byte ADD. Until that is characterised,
+# only 4-byte occupants are allowed.
+name:            limm_instruction_not_sunk
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: limm_instruction_not_sunk
+  ; CHECK:      $r2 = MOV_rlimm 305419896
+  ; CHECK-NEXT: BR %bb.1
+  ; CHECK-NOT:  BR_D
+  bb.0:
+    successors: %bb.1(0x80000000)
+
+    $r2 = MOV_rlimm 305419896
+    BR %bb.1
+
+  bb.1:
+    liveins: $r2
+    $r0 = ADD_rrr $r2, $r2
+...
+
+---
+# The return's dependence on BLINK.
+#
+# J_S_BLINK declared no operands at all, so insertDefsUses' truncation to
+# MCID.getNumOperands() recorded nothing whatsoever for a return -- and unlike
+# SPARC, which re-inserts its link register by hand, ARC never re-added BLINK.
+# An epilogue reload of BLINK could then be sunk into the return's own delay
+# slot, and the return would go to a stale address.
+#
+# The load carries a plain, non-volatile MMO on purpose: without one,
+# hasOrderedMemoryRef() would be true (an access whose memory we know nothing
+# about is treated as ordered) and the memory barrier would reject it before
+# the BLINK check was ever consulted -- the test would then pass without
+# testing anything.
+name:            blink_restore_not_sunk_into_return
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: blink_restore_not_sunk_into_return
+  ; CHECK:      $blink = LD_rs9 $sp, 0 :: (load (s32))
+  ; CHECK-NEXT: J_S_BLINK implicit $blink
+  ; CHECK-NOT:  J_S_BLINK_D
+  bb.0:
+    liveins: $sp
+
+    $blink = LD_rs9 $sp, 0 :: (load (s32))
+    J_S_BLINK implicit $blink
+...
+
+---
+# A call writes BLINK, so an instruction reading BLINK must not be sunk into
+# the call's slot -- it would read the new return address, not the old one.
+# BL's `Defs = [BLINK]` is an implicit operand, and the old truncation to
+# MCID.getNumOperands() (1: the target, which is not even a register) dropped
+# every implicit operand, so BLINK never reached RegDefs.
+name:            call_blink_def_respected
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: call_blink_def_respected
+  ; CHECK:      $r2 = ADD_rrr $blink, $blink
+  ; CHECK-NEXT: BL @call_blink_def_respected
+  ; CHECK-NOT:  BL_D
+  bb.0:
+    liveins: $blink, $sp
+
+    $r2 = ADD_rrr $blink, $blink
+    BL @call_blink_def_respected, csr_arc, implicit-def dead $blink, implicit $sp, implicit-def $sp
+    J_S_BLINK implicit $blink
+...
+
+---
+# Inline asm is opaque: never sink it, never cross it. (This is what protects
+# hand-written MMIO accessors, which C `volatile` alone does not.)
+name:            inline_asm_not_sunk
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: inline_asm_not_sunk
+  ; CHECK:      INLINEASM
+  ; CHECK:      BR %bb.1
+  ; CHECK-NOT:  BR_D
+  bb.0:
+    successors: %bb.1(0x80000000)
+
+    INLINEASM &"nop", 1 /* sideeffect attdialect */
+    BR %bb.1
+
+  bb.1:
+    liveins: $r0
+    $r0 = ADD_rrr $r0, $r0
+...
+
+---
+# Frame setup / destroy carry meaning that the surrounding CFI describes
+# positionally, so they must not be sunk into a delay slot.
+#
+# As above, the store carries a plain MMO so that the frame-setup flag is what
+# rejects it rather than the "unknown memory is ordered" barrier.
+name:            frame_setup_not_sunk
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: frame_setup_not_sunk
+  ; CHECK:      frame-setup ST_rs9 $blink, $sp, 0 :: (store (s32))
+  ; CHECK-NEXT: BR %bb.1
+  ; CHECK-NOT:  BR_D
+  bb.0:
+    successors: %bb.1(0x80000000)
+    liveins: $blink, $sp
+
+    frame-setup ST_rs9 $blink, $sp, 0 :: (store (s32))
+    BR %bb.1
+
+  bb.1:
+    liveins: $r0
+    $r0 = ADD_rrr $r0, $r0
+...
