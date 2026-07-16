@@ -62,6 +62,12 @@ struct ReduceEntry {
 /// All entries require all listed register operands in GPR_S.
 /// "DestEqSrc1" entries correspond to instructions of the form "OP b,b,c"
 /// where the 16-bit encoding implies dest==first-src.
+///
+/// CMP_rr / CMP_ru6 also appear here (as markers only -- see tryReduce's
+/// dedicated `if (Entry.WideOpc == ARC::CMP_rr || ...)` path) because their
+/// narrow descriptors are (outs), all-uses, and cannot be built by the
+/// shared MOV/CMP "case 1" handler below, which marks operand 0 as a
+/// Define -- correct for MOV_S, wrong for a compare.
 static const ReduceEntry ReduceTable[] = {
   // 3-operand ALU: ADD_S / SUB_S / AND_S / OR_S / XOR_S (b,b,c form)
   // 32-bit: ARC_ADD_a_b_c  (outs ra), (ins rb, rc)  -- a==b checked at runtime
@@ -71,15 +77,18 @@ static const ReduceEntry ReduceTable[] = {
   { ARC::ARC_OR_a_b_c,  ARC::ARC_OR_S_b_c,        2, true  },
   { ARC::ARC_XOR_a_b_c, ARC::ARC_XOR_S_b_c,       2, true  },
 
-  // Shift instructions (b,b,c form) -- use _v1 variants (b,b,c)
-  { ARC::ARC_ASL_a_b_c, ARC::ARC_ASL_S_b_c_v1,   2, true  },
-  { ARC::ARC_ASR_a_b_c, ARC::ARC_ASR_S_b_c_v1,   2, true  },
-  { ARC::ARC_LSR_a_b_c, ARC::ARC_LSR_S_b_c_v1,   2, true  },
+  // NOTE: ARC_ASL_a_b_c / ARC_ASR_a_b_c / ARC_LSR_a_b_c (ARCompact-namespace
+  // shift opcodes) are deliberately NOT listed here. Like ARC_ADD_a_b_c's
+  // siblings above they are never selected by ISel (empty `[]` DAG Pattern
+  // lists in ARCARCompactInstrALU.td) -- but unlike ADD/SUB/AND/OR/XOR, the
+  // real ISel-emitted shift opcodes are handled below via ASL_rrr/ASR_rrr/
+  // LSR_rrr, so keeping these dead rows around is pure redundant weight with
+  // no live coverage they'd add. Removed for hygiene (dossier 05 quarantine).
 
-  // ---- Real ISel-emitted GEN4 ALU opcodes ------------------------------
+  // ---- Real ISel-emitted GEN4/EXT5 ALU opcodes -------------------------
   // The entries above reference ARCompact-namespace opcodes that ISel never
-  // produces. ISel lowers add/sub/and/or/xor to the *_rrr forms
-  // (ArcBinaryGEN4Inst), whose operand layout is exactly
+  // produces. ISel lowers add/sub/and/or/xor/shifts to the *_rrr forms
+  // (ArcBinaryGEN4Inst / ArcBinaryEXT5Inst), whose operand layout is exactly
   //   (outs GPR32:$A), (ins GPR32:$B, GPR32:$C)  ==  [A(def), B(use), C(use)]
   // -- the same shape the DestEqSrc1 path already handles. Reduce them to the
   // identical 16-bit b,b,c encodings when A==B and all regs are in GPR_S.
@@ -91,21 +100,35 @@ static const ReduceEntry ReduceTable[] = {
   { ARC::AND_rrr, ARC::ARC_AND_S_b_c,      2, true },
   { ARC::OR_rrr,  ARC::ARC_OR_S_b_c,       2, true },
   { ARC::XOR_rrr, ARC::ARC_XOR_S_b_c,      2, true },
-  // NOTE: shift reductions (ASL_rrr/ASR_rrr/LSR_rrr) are deliberately NOT
-  // added. The 16-bit shift defs in ARCARCompactInstr16.td are buggy: the
-  // operand-encoding variants ARC_{ASL,ASR,LSR}_S_b_c_v1 (sub-opcodes
-  // 0x18/0x1A/0x19, the correct "B <- B SHIFT C" operation) do NOT bind
-  // rb_s/rc_s to any instruction bits, so they assemble to a fixed r0,r0
-  // encoding; the *_S_b_c forms that DO encode operands (0x1B/0x1C/0x1D) are
-  // the "shift by one" sub-opcodes (B <- C+C etc.), a different operation.
-  // Reducing shifts with either would silently miscompile (caught by the
-  // test suite on a shift-by-register case). Leave shifts at 32-bit
-  // until the .td shift encodings are fixed.
 
-  // 2-operand: MOV_S, CMP_S  (b,c form -- any GPR32 for src is OK via ARC_MOV_S_b_h)
-  // We use the reg-reg form which requires dest in GPR_S; src can be any reg.
-  { ARC::ARC_MOV_b_c,   ARC::ARC_MOV_S_b_h,       1, false },
-  { ARC::ARC_CMP_b_c,   ARC::ARC_CMP_S_b_h,       1, false },
+  // Register-count shifts (B <- B SHIFT C). Previously blocked: the 16-bit
+  // _v1 defs (sub-opcodes 0x18/0x19/0x1A, the real "B <- B SHIFT C"
+  // operation per docs/isa/15-encoding-16bit.md Table 71) did not bind
+  // rb_s/rc_s to any instruction bits, so the MC encoder emitted a fixed
+  // r0,r0 encoding regardless of operands. Fixed in ARCARCompactInstr16.td
+  // (dossier 05) -- byte-verified via the authoritative disassembler
+  // (0x7DD8 -> `asl r13, r13, r14`). Same DestEqSrc1 b,b,c shape as
+  // ADD_rrr/SUB_rrr/etc. above.
+  { ARC::ASL_rrr, ARC::ARC_ASL_S_b_c_v1, 2, true },
+  { ARC::ASR_rrr, ARC::ARC_ASR_S_b_c_v1, 2, true },
+  { ARC::LSR_rrr, ARC::ARC_LSR_S_b_c_v1, 2, true },
+
+  // Reg-reg move. MOV_rr layout: (outs GPR32:$B), (ins GPR32:$C) --
+  // op[0]=dest(def), op[1]=src(use), identical shape the shared MOV/CMP
+  // "case 1" handler already builds (`.addReg(RB,Define).addReg(RC)`).
+  // Dest must be in GPR_S; src can be any GPR32 via the r6h field. Was
+  // previously blocked by the r6h scatter bug (fixed in
+  // ARCARCompactInstr16.td, dossier 05; byte-verified 0x74A9 ->
+  // `mov r12, r13`).
+  { ARC::MOV_rr, ARC::ARC_MOV_S_b_h, 1, false },
+
+  // CMP_rr / CMP_ru6 -> CMP_S b,h / CMP_S b,u7. Markers only -- built by the
+  // dedicated `if (Entry.WideOpc == ARC::CMP_rr || ...)` path in tryReduce,
+  // not the generic switch (see the doc comment above ReduceTable). Was
+  // previously blocked by both the r6h scatter bug and the CMP_S
+  // operand-as-def bug; both fixed in ARCARCompactInstr16.td (dossier 05).
+  { ARC::CMP_rr,  ARC::ARC_CMP_S_b_h,  1, false },
+  { ARC::CMP_ru6, ARC::ARC_CMP_S_b_u7, 1, false },
 
   // Real ISel-emitted move-immediate. MOV_rs12 layout:
   //   (outs GPR32:$B), (ins immS<12>:$S12)  -- reg dest + signed-12 imm.
@@ -132,21 +155,6 @@ static const ReduceEntry ReduceTable[] = {
   // tryReduce (SP base + offset checks).
   { ARC::LD_rs9,        ARC::SP_LD_S,             1, false },
   { ARC::ST_rs9,        ARC::SP_ST_S,             1, false },
-  // NOTE: the ISel reg-reg copy MOV_rr is deliberately NOT reduced to
-  // ARC_MOV_S_b_h. That 16-bit "mov_s b,h" form mis-encodes the source
-  // register (the 6-bit r6h field scatter produces the wrong source for high
-  // GPRs), so reducing reg-reg moves silently copies the wrong register --
-  // caught by the test suite (a value-returning move produced the wrong register instead of
-  // the original pointer). Leave reg-reg moves at 32-bit until the r6h
-  // encoding is fixed.
-
-  // NOTE: CMP_ru6 -> CMP_S b,u7 is NOT reduced. The narrow ARC_CMP_S_b_u7
-  // declares (outs GPR_S:$rb_s) in TableGen, but cmp only READS that register
-  // (it sets flags, never writes). There is no way to fill that output slot
-  // with a use without the MachineVerifier rejecting it ("Explicit definition
-  // marked as use"), and marking it a real/dead def would falsely clobber a
-  // live register. Reducing cmp safely needs the .td def reworked so $rb_s is
-  // a use; left at 32-bit until then.
 
   // 1-operand (dest+src both in GPR_S): NOT_S, NEG_S
   { ARC::ARC_NOT_b_c,   ARC::ARC_NOT_S_b_c,        2, false },
@@ -178,6 +186,8 @@ private:
   bool runOnMachineBasicBlock(MachineBasicBlock &MBB);
   bool tryReduce(MachineBasicBlock &MBB, MachineBasicBlock::iterator &MI,
                  const ReduceEntry &Entry);
+  bool tryReduceSextPair(MachineBasicBlock &MBB, MachineInstr &Asl,
+                          MachineInstr &Asr);
 };
 
 char ARCSizeReduction::ID = 0;
@@ -226,6 +236,24 @@ bool ARCSizeReduction::runOnMachineBasicBlock(MachineBasicBlock &MBB) {
     if (MI->isDebugInstr())
       continue;
 
+    // Two-instruction fusion: ASL_rru6 immediately followed by ASR_rru6 ->
+    // SEXB_S / SEXW_S. This is not expressible in the flat single-opcode
+    // ReduceTable (2 MIs in, 1 MI out), so it is matched separately, before
+    // the table dispatch below. It must run before `I` (already advanced
+    // past MI) is relied on for the next loop iteration, because a
+    // successful fusion also erases the instruction `I` currently points
+    // to -- the caller must redirect `I` past both erased instructions.
+    if (MI->getOpcode() == ARC::ASL_rru6 && I != E && !I->isDebugInstr() &&
+        I->getOpcode() == ARC::ASR_rru6) {
+      MachineBasicBlock::iterator AsrIt = I;
+      MachineBasicBlock::iterator AfterAsr = std::next(AsrIt);
+      if (tryReduceSextPair(MBB, *MI, *AsrIt)) {
+        Changed = true;
+        I = AfterAsr;
+        continue;
+      }
+    }
+
     unsigned Opc = MI->getOpcode();
 
     for (const ReduceEntry &Entry : ReduceTable) {
@@ -241,6 +269,91 @@ bool ARCSizeReduction::runOnMachineBasicBlock(MachineBasicBlock &MBB) {
   }
 
   return Changed;
+}
+
+/// Fuse the two-instruction sign-extend idiom the legalizer emits for
+/// `sext_inreg i32,i8` / `i16` on ARC700 (there is no single-instruction
+/// SEXB/SEXH -- ARCv2-only, gated off via !HasSEXT):
+///   $r = ASL_rru6 $rin, Imm
+///   $r = ASR_rru6 $r,   Imm     (Imm == 24 for byte, 16 for half)
+/// into the compact `sexb_s` / `sexw_s`. ASL_rru6/ASR_rru6 (non-`.f`) carry
+/// no implicit STATUS32 def, so the fusion is flag-neutral, matching
+/// sexb_s/sexw_s's own "Flags: none".
+bool ARCSizeReduction::tryReduceSextPair(MachineBasicBlock &MBB,
+                                          MachineInstr &Asl,
+                                          MachineInstr &Asr) {
+  if (Asl.getNumExplicitOperands() < 3 || Asr.getNumExplicitOperands() < 3)
+    return false;
+
+  const MachineOperand &AslDst = Asl.getOperand(0);
+  const MachineOperand &AslSrc = Asl.getOperand(1);
+  const MachineOperand &AslImm = Asl.getOperand(2);
+  const MachineOperand &AsrDst = Asr.getOperand(0);
+  const MachineOperand &AsrSrc = Asr.getOperand(1);
+  const MachineOperand &AsrImm = Asr.getOperand(2);
+
+  if (!AslDst.isReg() || !AslSrc.isReg() || !AslImm.isImm() ||
+      !AsrDst.isReg() || !AsrSrc.isReg() || !AsrImm.isImm())
+    return false;
+
+  // Same shift amount on both halves, and it must be a byte (24) or
+  // halfword (16) sign-extend -- any other amount is not this idiom.
+  int64_t Imm = AslImm.getImm();
+  if (Imm != AsrImm.getImm() || (Imm != 16 && Imm != 24))
+    return false;
+
+  Register AslD = AslDst.getReg();
+  Register AsrS = AsrSrc.getReg();
+  Register AsrD = AsrDst.getReg();
+
+  // The ASR must consume exactly the value the ASL just produced, shifting
+  // it back in place: the same physical register threads through both
+  // halves (ASL's dest == ASR's src == ASR's dest).
+  if (AslD != AsrS || AslD != AsrD)
+    return false;
+
+  // The intermediate shifted-left-only value must have no other observers:
+  // require the ASR's read of it to be a kill. Post-RA there is no use-list
+  // to walk, so a kill flag is the only available signal that nothing else
+  // reads the intermediate value; without it, fusing could silently drop a
+  // write another instruction still depends on. If the flag is conservatively
+  // unset the fusion simply does not fire (safe, just misses the size win).
+  if (!AsrSrc.isKill())
+    return false;
+
+  Register RIn = AslSrc.getReg();
+  Register ROut = AslD; // == AsrD
+  if (!isGPR_S(RIn, TRI) || !isGPR_S(ROut, TRI))
+    return false;
+
+  unsigned NarrowOpc = (Imm == 24) ? ARC::ARC_SEXB_S_b_c : ARC::ARC_SEXW_S_b_c;
+
+  LLVM_DEBUG(dbgs() << "  Fusing " << Asl << "  + " << Asr
+                     << "    into 16-bit sext\n");
+
+  MachineInstrBuilder MIB =
+      BuildMI(MBB, Asl.getIterator(), Asl.getDebugLoc(), TII->get(NarrowOpc))
+          .addReg(ROut, RegState::Define | getDeadRegState(AsrDst.isDead()))
+          .addReg(RIn, getKillRegState(AslSrc.isKill()));
+
+  // Carry over any additional implicit operands from either half. Neither
+  // ASL_rru6 nor ASR_rru6 (non-.f) declares implicit defs, so this is
+  // normally a no-op; kept for robustness against future descriptor changes.
+  for (unsigned i = 3, e = Asl.getNumOperands(); i != e; ++i) {
+    const MachineOperand &MO = Asl.getOperand(i);
+    if (MO.isImplicit())
+      MIB.add(MO);
+  }
+  for (unsigned i = 3, e = Asr.getNumOperands(); i != e; ++i) {
+    const MachineOperand &MO = Asr.getOperand(i);
+    if (MO.isImplicit())
+      MIB.add(MO);
+  }
+
+  Asr.eraseFromParent();
+  Asl.eraseFromParent();
+  ++NumReduced;
+  return true;
 }
 
 bool ARCSizeReduction::tryReduce(MachineBasicBlock &MBB,
@@ -287,6 +400,53 @@ bool ARCSizeReduction::tryReduce(MachineBasicBlock &MBB,
       const MachineOperand &MO = Old.getOperand(i);
       if (MO.isImplicit())
         MIB.add(MO);
+    }
+
+    MI->eraseFromParent();
+    ++NumReduced;
+    return true;
+  }
+
+  // Dedicated path: CMP_rr / CMP_ru6 (compare, no destination) -> CMP_S b,h
+  // / CMP_S b,u7. `cmp` never writes a GPR: both the wide and (now-fixed)
+  // narrow descriptors are (outs), all operands are uses, and STATUS32 is
+  // defined implicitly via each MCInstrDesc's `Defs = [STATUS32]` -- BuildMI
+  // auto-populates that implicit-def when constructing the narrow MI, so it
+  // must NOT also be copied from Old (that would duplicate the def).
+  // Layout: op[0]=B(use, must be GPR_S), op[1]=C(use, any GPR32) / u6 imm.
+  if (Entry.WideOpc == ARC::CMP_rr || Entry.WideOpc == ARC::CMP_ru6) {
+    if (NumOps < 2)
+      return false;
+    const MachineOperand &OpB = Old.getOperand(0);
+    const MachineOperand &OpC = Old.getOperand(1);
+    if (!OpB.isReg())
+      return false;
+    Register RB = OpB.getReg();
+    if (!isGPR_S(RB, TRI))
+      return false;
+
+    MachineInstrBuilder MIB;
+    if (Entry.WideOpc == ARC::CMP_rr) {
+      if (!OpC.isReg())
+        return false;
+      LLVM_DEBUG(dbgs() << "  Reducing " << Old << " to 16-bit (cmp_s b,h)\n");
+      MIB = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(ARC::ARC_CMP_S_b_h))
+                .addReg(RB, getKillRegState(OpB.isKill()))
+                .addReg(OpC.getReg(), getKillRegState(OpC.isKill()));
+    } else {
+      if (!OpC.isImm())
+        return false;
+      int64_t Imm = OpC.getImm();
+      // immU6 (the only pattern that selects CMP_ru6) is always 0..63,
+      // which always fits the target's u7 [0,127] field; the explicit
+      // range check mirrors the same defensive check used for ADD_rru6
+      // below rather than trusting the ISel-side invariant blindly.
+      if (Imm < 0 || Imm > 127)
+        return false;
+      LLVM_DEBUG(dbgs() << "  Reducing " << Old << " to 16-bit (cmp_s b,u7)\n");
+      MIB = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(ARC::ARC_CMP_S_b_u7))
+                .addReg(RB, getKillRegState(OpB.isKill()))
+                .addImm(Imm);
     }
 
     MI->eraseFromParent();
@@ -413,15 +573,18 @@ bool ARCSizeReduction::tryReduce(MachineBasicBlock &MBB,
     if (Entry.NarrowOpc == ARC::ARC_ADD_S_ra_s_b_c) {
       // ADD_S a,b,c — explicit 3-op form in TableGen
       MIB = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(Entry.NarrowOpc))
-                .addReg(RA, RegState::Define)
-                .addReg(RB)
-                .addReg(RC);
+                .addReg(RA, RegState::Define | getDeadRegState(OpA.isDead()))
+                .addReg(RB, getKillRegState(OpB.isKill()))
+                .addReg(RC, getKillRegState(OpC.isKill()));
     } else {
       // All other DestEqSrc1 instructions: 2-operand compact (b,b,c encoded
       // as (outs rb), (ins rc) since dest==first-src is implicit in encoding).
+      // RB (src1) is the same physical register as RA (dest) here -- its own
+      // kill state is moot, the def below ends that register's live range
+      // regardless of any flag on the now-erased wide instruction's src1.
       MIB = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(Entry.NarrowOpc))
-                .addReg(RA, RegState::Define)
-                .addReg(RC);
+                .addReg(RA, RegState::Define | getDeadRegState(OpA.isDead()))
+                .addReg(RC, getKillRegState(OpC.isKill()));
     }
 
     // Copy implicit operands (e.g. kill flags).
@@ -439,9 +602,12 @@ bool ARCSizeReduction::tryReduce(MachineBasicBlock &MBB,
   // Non-DestEqSrc1 cases.
   switch (Entry.NarrowNumRegs) {
   case 1: {
-    // MOV_S b,h  and  CMP_S b,h
-    // 32-bit: (outs GPR32:$rb), (ins GPR32:$rc)
-    // 16-bit: (outs GPR_S:$rb_s), (ins GPR32:$r6h)  -- dest must be GPR_S
+    // MOV_S b,h (reg-reg move; CMP_rr/CMP_ru6 are intercepted by the
+    // dedicated path above -- CMP's $rb_s is a use, not a def, so it cannot
+    // share this Define-based build).
+    // 32-bit MOV_rr: (outs GPR32:$B), (ins GPR32:$C)
+    // 16-bit ARC_MOV_S_b_h: (outs GPR_S:$rb_s), (ins GPR32:$r6h)  -- dest
+    // must be GPR_S; src can be any GPR32 via the r6h field.
     if (NumOps < 2)
       return false;
 
@@ -458,12 +624,12 @@ bool ARCSizeReduction::tryReduce(MachineBasicBlock &MBB,
     if (!isGPR_S(RB, TRI))
       return false;
 
-    LLVM_DEBUG(dbgs() << "  Reducing " << Old << " to 16-bit (MOV/CMP b,h)\n");
+    LLVM_DEBUG(dbgs() << "  Reducing " << Old << " to 16-bit (mov_s b,h)\n");
 
     MachineInstrBuilder MIB =
         BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(Entry.NarrowOpc))
-            .addReg(RB, RegState::Define)
-            .addReg(RC);
+            .addReg(RB, RegState::Define | getDeadRegState(OpB.isDead()))
+            .addReg(RC, getKillRegState(OpC.isKill()));
 
     for (unsigned i = 2, e = Old.getNumOperands(); i != e; ++i) {
       const MachineOperand &MO = Old.getOperand(i);

@@ -1,0 +1,146 @@
+# RUN: llc -mtriple=arceb -mcpu=arc700eb -mattr=+arcompact -run-pass=arc-size-reduction -verify-machineinstrs -o - %s | FileCheck %s
+
+# Dossier 05: MIR-level regression coverage for the ARCSizeReduction rows
+# newly enabled once the underlying ARCARCompactInstr16.td descriptor bugs
+# were repaired (h-field scatter on MOV_S/CMP_S b,h; CMP_S operand-as-def;
+# missing operand bindings on the ASL/ASR/LSR _v1 shift variants). See
+# arc700eb-compact16.ll for the source-level (llc mnemonic) coverage of the
+# same reductions; this file isolates the pass itself at the MIR level,
+# including flag-preservation and the two-instruction sexb_s/sexw_s fusion's
+# negative (kill-flag-absent) case.
+
+--- |
+  ; ARCSizeReduction only fires when the function is optsize/minsize -- every
+  ; stub function below needs the attribute or the pass bails out before
+  ; looking at a single instruction.
+  define void @test_mov_rr() #0 { ret void }
+  define void @test_cmp_rr_live_flag() #0 { ret void }
+  define void @test_cmp_ru6() #0 { ret void }
+  define void @test_shifts() #0 { ret void }
+  define void @test_sext_fusion() #0 { ret void }
+  define void @test_sext_fusion_not_killed() #0 { ret void }
+
+  attributes #0 = { minsize optsize }
+...
+
+---
+name:            test_mov_rr
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; CHECK-LABEL: name: test_mov_rr
+    ; CHECK: $r0 = ARC_MOV_S_b_h killed $r1
+    $r0 = MOV_rr killed $r1
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_cmp_rr_live_flag
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r0, $r1, $r2, $r3
+
+    ; The compact compare's implicit STATUS32 def must round-trip into the
+    ; following flag-consuming conditional move -- proves Defs=[STATUS32]
+    ; on the fixed (outs)-shaped ARC_CMP_S_b_h survives MachineVerifier and
+    ; a real downstream flag consumer, not just an isolated cmp_s.
+    ; CHECK-LABEL: name: test_cmp_rr_live_flag
+    ; CHECK: ARC_CMP_S_b_h $r0, killed $r1, implicit-def $status32
+    ; CHECK-NEXT: $r3 = MOV_cc killed $r2, killed $r3, 12, implicit killed $status32
+    CMP_rr $r0, killed $r1, implicit-def $status32
+    $r3 = MOV_cc killed $r2, killed $r3, 12, implicit killed $status32
+    J_S_BLINK implicit $blink, implicit $r3
+...
+
+---
+name:            test_cmp_ru6
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r3
+
+    ; CHECK-LABEL: name: test_cmp_ru6
+    ; CHECK: ARC_CMP_S_b_u7 killed $r3, 63, implicit-def $status32
+    CMP_ru6 killed $r3, 63, implicit-def $status32
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_shifts
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r12, $r13, $r14, $r15
+
+    ; CHECK-LABEL: name: test_shifts
+    ; ARC_*_S_b_c_v1 is the 2-operand compact encoding (outs rb_s),(ins rc_s)
+    ; -- dest==first-source is implicit, so only the second source (rc_s)
+    ; appears as an explicit operand alongside the dest.
+    ; CHECK: $r12 = ARC_ASL_S_b_c_v1 killed $r13
+    ; CHECK: $r14 = ARC_ASR_S_b_c_v1 killed $r15
+    $r12 = ASL_rrr killed $r12, killed $r13
+    $r14 = ASR_rrr killed $r14, killed $r15
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_sext_fusion
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r0, $r3
+
+    ; Byte sext (shift 24) and half sext (shift 16) fuse into sexb_s/sexw_s
+    ; when the ASL result is killed by the immediately-following ASR (no
+    ; other observer of the shifted-left-only intermediate value).
+    ; CHECK-LABEL: name: test_sext_fusion
+    ; CHECK: $r0 = ARC_SEXB_S_b_c killed $r0
+    ; CHECK: $r3 = ARC_SEXW_S_b_c killed $r3
+    $r0 = ASL_rru6 killed $r0, 24
+    $r0 = ASR_rru6 killed $r0, 24
+    $r3 = ASL_rru6 killed $r3, 16
+    $r3 = ASR_rru6 killed $r3, 16
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_sext_fusion_not_killed
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r0
+
+    ; Negative case: the ASR's read of the ASL result is NOT a kill (some
+    ; other instruction -- modeled here as an extra use via implicit
+    ; liveness on the branch -- still needs the shifted-left-only value).
+    ; The fusion must not fire: erasing the ASL would drop a write another
+    ; instruction still depends on. Must stay as the unfused pair.
+    ; CHECK-LABEL: name: test_sext_fusion_not_killed
+    ; CHECK: $r0 = ASL_rru6 $r0, 24
+    ; CHECK-NEXT: $r0 = ASR_rru6 $r0, 24
+    ; CHECK-NEXT: J_S_BLINK implicit $blink, implicit $r0
+    $r0 = ASL_rru6 $r0, 24
+    $r0 = ASR_rru6 $r0, 24
+    J_S_BLINK implicit $blink, implicit $r0
+...

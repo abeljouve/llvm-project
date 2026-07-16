@@ -10,6 +10,14 @@
 // DO NOT EDIT -- regenerate with:
 //   python3 tools/gen_tablegen.py
 //
+// Manual overrides: the generator mis-translated a handful of descriptors
+// -- the "High Register" h-field scatter (ADD_S/MOV_S/CMP_S b,h forms), the
+// compare-as-definition operand shape (CMP_S), and the register-count shift
+// v1 variants -- each hand-patched below with a comment explaining the bug
+// and citing the encoding evidence that pinned it down. Regenerating from
+// gen_tablegen.py would silently drop these fixes unless the generator
+// itself is corrected first.
+//
 //===----------------------------------------------------------------------===//
 
 // 99 instruction variants
@@ -97,6 +105,16 @@ def ARC_ADD_S_ra_s_b_c : ARCompactInst16_ALU<0b01100, "add_s",
 }
 
 // add_s b,b,h 01110bbbhhh00HHH.
+//
+// Manual fix: the generator scattered the 6-bit high-register field
+// backwards (bits[7:5]=h{5:3}, bits[2:0]=h{2:0}). docs/isa/15-encoding-16bit.md
+// Table 70's "Mov/Cmp/Add with High Register" layout is the opposite:
+// bits[7:5] = h[2:0] (low half), bits[2:0] = h[5:3] (high half). Confirmed
+// against the authoritative disassembler: the correct split of `mov_s
+// r12,r13` encodes 0x74A9 -> `mov r12, r13`; the buggy split of the same
+// operands encodes 0x742D -> `mov r12, r41` (wrong register). Same format
+// (0x0E) and same h-field shape is shared by MOV_S_b_h/MOV_S_h_b/CMP_S_b_h
+// below -- identical fix applied to all four.
 def ARC_ADD_S_b_h : ARCompactInst16_ALU<0b01110, "add_s",
     (outs GPR_S:$rb_s), (ins GPR32:$r6h),
     "add_s\t$rb_s, $r6h", []> {
@@ -105,12 +123,12 @@ def ARC_ADD_S_b_h : ARCompactInst16_ALU<0b01110, "add_s",
   // Flags: none
   let Inst{15-11} = 0b01110;
   let Inst{4-3} = 0b00;
-  
+
   bits<3> rb_s;
   let Inst{10-8} = rb_s;
   bits<6> r6h;
-  let Inst{7-5} = r6h{5-3};
-  let Inst{2-0} = r6h{2-0};
+  let Inst{7-5} = r6h{2-0};
+  let Inst{2-0} = r6h{5-3};
 }
 
 // add_s c,b,u3 01101bbbccc00uuu.
@@ -229,6 +247,18 @@ def ARC_ASL_S_b_c : ARCompactInst16_ALU<0b01111, "asl_s",
 }
 
 // asl_s b,b,c 01111bbbccc11000.
+//
+// Manual fix: the generator's dedup heuristic wrongly treated this as a
+// "duplicate encoding variant" of ARC_ASL_S_b_c (sub-opcode 0x1B) and left
+// rb_s/rc_s unbound, so the MC encoder emitted the fixed opcode word 0x7818
+// regardless of operands (silently encoding r0,r0). They are NOT duplicates:
+// per docs/isa/15-encoding-16bit.md Table 71, sub-opcode 0x18 is
+// "B <- B ASL C" (the real variable-register-count shift this reduction
+// needs), while 0x1B is the unrelated "B <- C+C" shift-by-one idiom that
+// ARC_ASL_S_b_c correctly encodes. Added the same rb_s/rc_s bit binding
+// already used by the neighboring correctly-encoded defs and dropped the
+// bogus isCodeGenOnly. Byte-verified: 0x7DD8 (b=r13, c=r14) decodes via the
+// authoritative disassembler as `asl r13, r13, r14`.
 def ARC_ASL_S_b_c_v1 : ARCompactInst16_ALU<0b01111, "asl_s",
     (outs GPR_S:$rb_s), (ins GPR_S:$rc_s),
     "asl_s\t$rb_s, $rc_s", []> {
@@ -237,9 +267,10 @@ def ARC_ASL_S_b_c_v1 : ARCompactInst16_ALU<0b01111, "asl_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b11000;
-  
-  // Duplicate encoding variant.
-  let isCodeGenOnly = 1;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // asl_s c,b,u3 01101bbbccc10uuu.
@@ -291,6 +322,12 @@ def ARC_ASR_S_b_c : ARCompactInst16_ALU<0b01111, "asr_s",
 }
 
 // asr_s b,b,c 01111bbbccc11010.
+//
+// Manual fix: same missing-bit-binding bug as ARC_ASL_S_b_c_v1 above. Per
+// Table 71, sub-opcode 0x1A is "B <- B ASR C" (the real variable shift);
+// 0x1C ("B <- C ASR 1", shift-by-one) is the unrelated instruction
+// ARC_ASR_S_b_c already encodes correctly. Added the rb_s/rc_s binding and
+// dropped the bogus isCodeGenOnly.
 def ARC_ASR_S_b_c_v1 : ARCompactInst16_ALU<0b01111, "asr_s",
     (outs GPR_S:$rb_s), (ins GPR_S:$rc_s),
     "asr_s\t$rb_s, $rc_s", []> {
@@ -299,9 +336,10 @@ def ARC_ASR_S_b_c_v1 : ARCompactInst16_ALU<0b01111, "asr_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b11010;
-  
-  // Duplicate encoding variant.
-  let isCodeGenOnly = 1;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // asr_s c,b,u3 01101bbbccc11uuu.
@@ -619,8 +657,21 @@ def ARC_B_S_s10 : ARCompactInst16_Branch<0b11110, "b_s",
 }
 
 // cmp_s b,h 01110bbbhhh10HHH.
+//
+// Two manual fixes:
+// 1. h-field scatter (see ARC_ADD_S_b_h above for the byte-verified evidence):
+//    bits[7:5]=h[2:0], bits[2:0]=h[5:3].
+// 2. Operand-as-def bug: `cmp` never writes a register -- it only reads
+//    both operands and sets STATUS32. The generator modeled $rb_s as an
+//    output (def), which is the same class of bug already fixed on
+//    BTST_S_b_u5 above and on the wide 32-bit CMP (ARCInstrInfo.td's
+//    `ArcSpecialDOPInst`, `(outs), (ins GPR32:$B, GPR32:$C)` under
+//    `isCompare = 1, Defs = [STATUS32]`). Moved $rb_s into (ins) and added
+//    the matching isCompare/Defs. Byte-identical encoding -- bits<3> rb_s
+//    still binds by name to Inst{10-8}, only the MachineInstr operand
+//    shape (def->use) and the flag metadata changed.
 def ARC_CMP_S_b_h : ARCompactInst16_ALU<0b01110, "cmp_s",
-    (outs GPR_S:$rb_s), (ins GPR32:$r6h),
+    (outs), (ins GPR_S:$rb_s, GPR32:$r6h),
     "cmp_s\t$rb_s, $r6h", []> {
   // Opcode: 0x00007010, Mask: 0x0000F818
   // Operands: RB_S, R6H
@@ -630,13 +681,19 @@ def ARC_CMP_S_b_h : ARCompactInst16_ALU<0b01110, "cmp_s",
   bits<3> rb_s;
   let Inst{10-8} = rb_s;
   bits<6> r6h;
-  let Inst{7-5} = r6h{5-3};
-  let Inst{2-0} = r6h{2-0};
+  let Inst{7-5} = r6h{2-0};
+  let Inst{2-0} = r6h{5-3};
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // cmp_s b,u7 11100bbb1uuuuuuu.
+//
+// Manual fix: same operand-as-def bug as ARC_CMP_S_b_h above -- $rb_s is a
+// source, never a destination. Moved into (ins); byte-identical encoding
+// (bits<3> rb_s binds by name).
 def ARC_CMP_S_b_u7 : ARCompactInst16_ALU<0b11100, "cmp_s",
-    (outs GPR_S:$rb_s), (ins u7imm:$uimm7_9_s),
+    (outs), (ins GPR_S:$rb_s, u7imm:$uimm7_9_s),
     "cmp_s\t$rb_s, $uimm7_9_s", []> {
   // Opcode: 0x0000E080, Mask: 0x0000F880
   // Operands: RB_S, UIMM7_9_S
@@ -647,11 +704,16 @@ def ARC_CMP_S_b_u7 : ARCompactInst16_ALU<0b11100, "cmp_s",
   let Inst{10-8} = rb_s;
   bits<7> uimm7_9_s;
   let Inst{6-0} = uimm7_9_s;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // cmp_s b,limm 01110bbb11010111.
+//
+// Manual fix: same operand-as-def bug as ARC_CMP_S_b_h above -- $rb_s is a
+// source, never a destination. Moved into (ins); byte-identical encoding.
 def ARC_CMP_S_b_limm : ARCompactInst16_ALU<0b01110, "cmp_s",
-    (outs GPR_S:$rb_s), (ins i32imm:$limm_s),
+    (outs), (ins GPR_S:$rb_s, i32imm:$limm_s),
     "cmp_s\t$rb_s, $limm_s", []> {
   // Opcode: 0x000070D7, Mask: 0x0000F8FF
   // Operands: RB_S, LIMM_S
@@ -660,6 +722,8 @@ def ARC_CMP_S_b_limm : ARCompactInst16_ALU<0b01110, "cmp_s",
   let Inst{7-0} = 0b11010111;
   // Operand(s) limm_s need custom disassembler.
   let isCodeGenOnly = 1;
+  let isCompare = 1;
+  let Defs = [STATUS32];
 }
 
 // extb_s b,c 01111bbbccc01111.
@@ -998,6 +1062,12 @@ def ARC_LSR_S_b_c : ARCompactInst16_ALU<0b01111, "lsr_s",
 }
 
 // lsr_s b,b,c 01111bbbccc11001.
+//
+// Manual fix: same missing-bit-binding bug as ARC_ASL_S_b_c_v1 above. Per
+// Table 71, sub-opcode 0x19 is "B <- B LSR C" (the real variable shift);
+// 0x1D ("B <- C LSR 1", shift-by-one) is the unrelated instruction
+// ARC_LSR_S_b_c already encodes correctly. Added the rb_s/rc_s binding and
+// dropped the bogus isCodeGenOnly.
 def ARC_LSR_S_b_c_v1 : ARCompactInst16_ALU<0b01111, "lsr_s",
     (outs GPR_S:$rb_s), (ins GPR_S:$rc_s),
     "lsr_s\t$rb_s, $rc_s", []> {
@@ -1006,9 +1076,10 @@ def ARC_LSR_S_b_c_v1 : ARCompactInst16_ALU<0b01111, "lsr_s",
   // Flags: none
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b11001;
-  
-  // Duplicate encoding variant.
-  let isCodeGenOnly = 1;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
 }
 
 // lsr_s b,b,u5 10111bbb001uuuuu.
@@ -1028,6 +1099,9 @@ def ARC_LSR_S_b_u5 : ARCompactInst16_ALU<0b10111, "lsr_s",
 }
 
 // mov_s b,h 01110bbbhhh01HHH.
+//
+// Manual fix: h-field scatter (see ARC_ADD_S_b_h above for the byte-verified
+// evidence): bits[7:5]=h[2:0], bits[2:0]=h[5:3].
 def ARC_MOV_S_b_h : ARCompactInst16_ALU<0b01110, "mov_s",
     (outs GPR_S:$rb_s), (ins GPR32:$r6h),
     "mov_s\t$rb_s, $r6h", []> {
@@ -1039,11 +1113,13 @@ def ARC_MOV_S_b_h : ARCompactInst16_ALU<0b01110, "mov_s",
   bits<3> rb_s;
   let Inst{10-8} = rb_s;
   bits<6> r6h;
-  let Inst{7-5} = r6h{5-3};
-  let Inst{2-0} = r6h{2-0};
+  let Inst{7-5} = r6h{2-0};
+  let Inst{2-0} = r6h{5-3};
 }
 
 // mov_s h,b 01110bbbhhh11HHH.
+//
+// Manual fix: same h-field scatter bug as ARC_MOV_S_b_h above.
 def ARC_MOV_S_h_b : ARCompactInst16_ALU<0b01110, "mov_s",
     (outs GPR_S:$rb_s), (ins GPR32:$r6h),
     "mov_s\t$r6h, $rb_s", []> {
@@ -1055,8 +1131,8 @@ def ARC_MOV_S_h_b : ARCompactInst16_ALU<0b01110, "mov_s",
   bits<3> rb_s;
   let Inst{10-8} = rb_s;
   bits<6> r6h;
-  let Inst{7-5} = r6h{5-3};
-  let Inst{2-0} = r6h{2-0};
+  let Inst{7-5} = r6h{2-0};
+  let Inst{2-0} = r6h{5-3};
 }
 
 // mov_s 0,b 01110bbb1101111H.
