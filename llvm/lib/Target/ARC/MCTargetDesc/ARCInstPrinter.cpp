@@ -175,6 +175,31 @@ void ARCInstPrinter::printMemOperandRI(const MCInst *MI, unsigned OpNum,
   O << "," << offset.getImm();
 }
 
+// MEMrr (ARCInstrFormats.td) is a compound reg+reg operand -- (GPR32:$B,
+// GPR32:$C) -- used only by the scaled reg+reg word load `ld.as` (LD_AS_rr).
+// It must NOT share printMemOperandRI: that method asserts/guards on the
+// second sub-operand being an immediate offset, which is never true here
+// (both sub-operands are registers), so routing MEMrr through it silently
+// printed "<invalid memop>" for every `ld.as` -- never caught before
+// because nothing exercised the scaled load through the AsmPrinter path
+// end-to-end.
+void ARCInstPrinter::printMemOperandRR(const MCInst *MI, unsigned OpNum,
+                                       raw_ostream &O) {
+  if (OpNum + 1 >= MI->getNumOperands()) {
+    O << "<invalid memop>";
+    return;
+  }
+  const MCOperand &base = MI->getOperand(OpNum);
+  const MCOperand &index = MI->getOperand(OpNum + 1);
+  if (!base.isReg() || !index.isReg()) {
+    O << "<invalid memop>";
+    return;
+  }
+  printRegName(O, base.getReg());
+  O << ",";
+  printRegName(O, index.getReg());
+}
+
 void ARCInstPrinter::printPredicateOperand(const MCInst *MI, unsigned OpNum,
                                            raw_ostream &O) {
 
