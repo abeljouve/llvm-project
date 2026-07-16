@@ -29,6 +29,38 @@ static cl::opt<bool>
                           cl::desc("Use arc callee save/restore functions"),
                           cl::init(true));
 
+// Callee-save/restore millicode helper ABI -- the exact contract the code
+// below emits against. These helpers are NOT part of LLVM: LLVM is a compiler,
+// not a runtime, and there is no compiler-rt ARC port. They are supplied by
+// whichever runtime/libgcc-equivalent the target links, and a missing one is a
+// loud undefined-symbol error at link time, never silent corruption.
+//
+// Contract, for a function whose highest callee-saved register is rLast
+// (N = Last - R12 slots covering r13..rLast):
+//
+//  * Entry state: SP points exactly at r13's slot -- i.e. the prologue has
+//    already done [st.aw fp,[sp,-4] if hasFP] -> push_s blink ->
+//    sub sp,sp,4*N, and only then bl __st_r13_to_rLast.
+//  * The store helper stores rK at [sp, 4*(K-13)] for K = 13..Last; the load
+//    helper loads from the identical offsets. Fixed offsets from a stable
+//    base -- never a moving-SP push/pop ladder, which would invalidate every
+//    later offset.
+//  * The helper MUST NOT modify SP. The caller owns the frame: the caller
+//    allocated the slots and the caller releases them (see the matching
+//    add in emitEpilogue).
+//  * The helper returns normally via `j [blink]` and clobbers blink ONLY.
+//    r0..r12 must survive it: the BL emitted here deliberately carries no
+//    regmask, only an implicit-kill of BLINK, so the register allocator is
+//    free to keep values live across the call in any other register. That is
+//    the millicode contract, not a missing regmask.
+//  * The libgcc-style `..._ret` tail-return helper variants (which consume
+//    the caller's return) are never emitted by this backend; the epilogue
+//    always returns on its own after the helper comes back.
+//  * Slots are allocated for the WHOLE r13..rLast range even when CSI is
+//    sparse (see assignCalleeSavedSpillSlots), so the helper may store and
+//    reload registers the function never touched. That is intentional and
+//    harmless -- it is what makes a single helper per Last sufficient -- and
+//    it is why there is no contiguity requirement on the callee-saved set.
 static const char *store_funclet_name[] = {
     "__st_r13_to_r15", "__st_r13_to_r16", "__st_r13_to_r17", "__st_r13_to_r18",
     "__st_r13_to_r19", "__st_r13_to_r20", "__st_r13_to_r21", "__st_r13_to_r22",
@@ -122,6 +154,32 @@ static unsigned determineLastCalleeSave(ArrayRef<CalleeSavedInfo> CSI) {
   return Last;
 }
 
+/// Does this function route its callee-save/restore through the
+/// __st_r13_to_rN / __ld_r13_to_rN helpers? \p Last is the result of
+/// determineLastCalleeSave() -- the MAX register in CSI. Note what this is
+/// NOT: there is no contiguity requirement on the callee-saved set, no size
+/// threshold, and no opt-level/optsize gate. A single callee-saved r15 is
+/// enough to select the r13..r15 helper.
+static bool usesSaveRestoreFunclet(unsigned Last) {
+  return UseSaveRestoreFunclet && Last > ARC::R14;
+}
+
+/// Is BLINK saved to a frame slot in this function? Non-leaf functions save it
+/// because they clobber it; a *leaf* function that takes the funclet path
+/// saves it too, because the `bl` to the helper clobbers it.
+///
+/// This predicate MUST be the single source of truth for both the slot
+/// ALLOCATION (assignCalleeSavedSpillSlots) and the CFI DESCRIPTION of that
+/// slot (emitPrologue). The two used to be spelled out separately and drifted:
+/// allocation read the full expression while the CFI site read only
+/// MFI.hasCalls(), so a leaf function reaching the funclet path pushed BLINK
+/// with no .cfi_offset for it -- describing the return-address register as
+/// unchanged when the helper call had in fact clobbered it. Keep both sites
+/// calling this.
+static bool needsBlinkSlot(const MachineFrameInfo &MFI, unsigned Last) {
+  return MFI.hasCalls() || usesSaveRestoreFunclet(Last);
+}
+
 void ARCFrameLowering::determineCalleeSaves(MachineFunction &MF,
                                             BitVector &SavedRegs,
                                             RegScavenger *RS) const {
@@ -163,6 +221,9 @@ void ARCFrameLowering::emitPrologue(MachineFunction &MF,
   MachineFrameInfo &MFI = MF.getFrameInfo();
   const std::vector<CalleeSavedInfo> &CSI = MFI.getCalleeSavedInfo();
   unsigned Last = determineLastCalleeSave(CSI);
+  // Hoisted so the CFI site below cannot drift away from the allocation site
+  // in assignCalleeSavedSpillSlots, which asks the same question.
+  const bool NeedsBlinkSlot = needsBlinkSlot(MFI, Last);
   unsigned StackSlotsUsedByFunclet = 0;
   bool SavedBlink = false;
   unsigned AlreadyAdjusted = 0;
@@ -188,15 +249,19 @@ void ARCFrameLowering::emitPrologue(MachineFunction &MF,
         .addImm(-4);
     AlreadyAdjusted += 4;
   }
-  if (UseSaveRestoreFunclet && Last > ARC::R14) {
+  if (usesSaveRestoreFunclet(Last)) {
     LLVM_DEBUG(dbgs() << "Creating store funclet.\n");
     // BL to __save_r13_to_<TRI->getRegAsmName()>
     StackSlotsUsedByFunclet = Last - ARC::R12;
     BuildMI(MBB, MBBI, dl, TII->get(ARC::PUSH_S_BLINK));
-    BuildMI(MBB, MBBI, dl, TII->get(ARC::SUB_rru6))
-        .addReg(ARC::SP)
-        .addReg(ARC::SP)
-        .addImm(4 * StackSlotsUsedByFunclet);
+    // Allocate the helper's slot range. Route through generateStackAdjustment
+    // rather than hardcoding SUB_rru6 so the 2-byte compact sub_s %sp,%sp,u7
+    // form gets selected. It always can be: N = Last - R12 is in [3,13], so
+    // the amount is 12..52 bytes -- 4-byte aligned and <= 124, i.e. always
+    // representable in the 16-bit form. Amount is NEGATIVE to allocate; cast
+    // to int before negating, as the product is unsigned.
+    generateStackAdjustment(MBB, MBBI, *ST.getInstrInfo(), dl,
+                            -(int)(4 * StackSlotsUsedByFunclet), ARC::SP);
     BuildMI(MBB, MBBI, dl, TII->get(ARC::BL))
         .addExternalSymbol(store_funclet_name[Last - ARC::R15])
         .addReg(ARC::BLINK, RegState::Implicit | RegState::Kill);
@@ -247,7 +312,11 @@ void ARCFrameLowering::emitPrologue(MachineFunction &MF,
     CurOffset -= 4;
   }
 
-  if (MFI.hasCalls()) {
+  // Describe the BLINK slot under exactly the condition that ALLOCATED it --
+  // assignCalleeSavedSpillSlots calls the same predicate. A leaf function on
+  // the funclet path has no calls of its own but still pushes BLINK (the `bl`
+  // to the helper clobbers it), and its unwind info must say so.
+  if (NeedsBlinkSlot) {
     CFIIndex = MF.addFrameInst(MCCFIInstruction::createOffset(
         nullptr, MRI->getDwarfRegNum(ARC::BLINK, true), CurOffset));
     BuildMI(MBB, MBBI, dl, TII->get(TargetOpcode::CFI_INSTRUCTION))
@@ -258,8 +327,13 @@ void ARCFrameLowering::emitPrologue(MachineFunction &MF,
   for (const auto &Entry : CSI) {
     MCRegister Reg = Entry.getReg();
     int FI = Entry.getFrameIdx();
-    // Skip BLINK and FP.
-    if ((hasFP(MF) && Reg == ARC::FP) || (MFI.hasCalls() && Reg == ARC::BLINK))
+    // Skip BLINK and FP -- both are described above, out of band. The BLINK
+    // arm is currently unreachable (ARCRegisterInfo::getCalleeSavedRegs()
+    // hands PEI a list narrowed to R13..R25, so BLINK never enters CSI at
+    // all), but keep it on the same predicate as the site that describes the
+    // slot: if that narrowing is ever relaxed this arm goes live, and it must
+    // not double-describe BLINK.
+    if ((hasFP(MF) && Reg == ARC::FP) || (NeedsBlinkSlot && Reg == ARC::BLINK))
       continue;
     CFIIndex = MF.addFrameInst(MCCFIInstruction::createOffset(
         nullptr, MRI->getDwarfRegNum(Reg, true), MFI.getObjectOffset(FI)));
@@ -301,7 +375,7 @@ void ARCFrameLowering::emitEpilogue(MachineFunction &MF,
   unsigned Last = determineLastCalleeSave(CSI);
   unsigned StackSlotsUsedByFunclet = 0;
   // Now, restore the callee save registers.
-  if (UseSaveRestoreFunclet && Last > ARC::R14) {
+  if (usesSaveRestoreFunclet(Last)) {
     // BL to __ld_r13_to_<TRI->getRegAsmName()>
     StackSlotsUsedByFunclet = Last - ARC::R12;
     AmountAboveFunclet += 4 * (StackSlotsUsedByFunclet + 1);
@@ -328,14 +402,13 @@ void ARCFrameLowering::emitEpilogue(MachineFunction &MF,
     BuildMI(MBB, MBBI, MBB.findDebugLoc(MBBI), TII->get(ARC::BL))
         .addExternalSymbol(load_funclet_name[Last - ARC::R15])
         .addReg(ARC::BLINK, RegState::Implicit | RegState::Kill);
-    unsigned Opc = ARC::ADD_rrlimm;
-    if (isUInt<6>(4 * StackSlotsUsedByFunclet))
-      Opc = ARC::ADD_rru6;
-    else if (isInt<12>(4 * StackSlotsUsedByFunclet))
-      Opc = ARC::ADD_rrs12;
-    BuildMI(MBB, MBBI, MBB.findDebugLoc(MBBI), TII->get(Opc), ARC::SP)
-        .addReg(ARC::SP)
-        .addImm(4 * (StackSlotsUsedByFunclet));
+    // Release the helper's slot range -- the caller owns the frame, the helper
+    // never touches SP. Mirrors the prologue: same 12..52-byte amount, so the
+    // 2-byte compact add_s %sp,%sp,u7 form always fits. Amount is POSITIVE to
+    // deallocate.
+    generateStackAdjustment(MBB, MBBI, *ST.getInstrInfo(),
+                            MBB.findDebugLoc(MBBI),
+                            (int)(4 * StackSlotsUsedByFunclet), ARC::SP);
   }
   // Now, pop blink if necessary.
   if (SavedBlink) {
@@ -393,8 +466,9 @@ bool ARCFrameLowering::assignCalleeSavedSpillSlots(
     (void)StackObj;
     CurOffset -= 4;
   }
-  if (MFI.hasCalls() || (UseSaveRestoreFunclet && Last > ARC::R14)) {
-    // Create a fixed slot for BLINK.
+  if (needsBlinkSlot(MFI, Last)) {
+    // Create a fixed slot for BLINK. emitPrologue describes this slot under
+    // the same predicate -- keep both on needsBlinkSlot().
     int StackObj  = MFI.CreateFixedSpillStackObject(4, CurOffset, true);
     LLVM_DEBUG(dbgs() << "Creating fixed object (" << StackObj
                       << ") for BLINK at " << CurOffset << "\n");
@@ -439,7 +513,7 @@ bool ARCFrameLowering::spillCalleeSavedRegisters(
                     << MBB.getParent()->getName() << "\n");
   // There are routines for saving at least 3 registers (r13 to r15, etc.)
   unsigned Last = determineLastCalleeSave(CSI);
-  if (UseSaveRestoreFunclet && Last > ARC::R14) {
+  if (usesSaveRestoreFunclet(Last)) {
     // Use setObjectOffset for these registers.
     // Needs to be in or before processFunctionBeforeFrameFinalized.
     // Or, do assignCalleeSaveSpillSlots?
@@ -456,7 +530,7 @@ bool ARCFrameLowering::restoreCalleeSavedRegisters(
                     << MBB.getParent()->getName() << "\n");
   // There are routines for saving at least 3 registers (r13 to r15, etc.)
   unsigned Last = determineLastCalleeSave(CSI);
-  if (UseSaveRestoreFunclet && Last > ARC::R14) {
+  if (usesSaveRestoreFunclet(Last)) {
     // Will be handled in epilog.
     return true;
   }
