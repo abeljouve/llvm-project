@@ -27,6 +27,7 @@
 #include "llvm/CodeGen/ValueTypes.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/IR/CallingConv.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/MathExtras.h"
@@ -2881,10 +2882,66 @@ bool ARCTargetLowering::isLegalAddressingMode(const DataLayout &DL,
                                               const AddrMode &AM, Type *Ty,
                                               unsigned AS,
                                               Instruction *I) const {
-  // Allow reg + reg<<2 (the scaled `ld.as` word addressing mode) so LSR keeps
-  // an indexed word access folded instead of pre-computing the scaled add.
-  return AM.Scale == 0 ||
-         (AM.Scale == 4 && !AM.BaseGV && AM.BaseOffs == 0 && AM.HasBaseReg);
+  // Unscaled reg (+imm folded elsewhere) is always fine -- the plain S9 /
+  // LIMM addressing forms are type- and kind-agnostic at this hook.
+  if (AM.Scale == 0)
+    return true;
+
+  if (AM.Scale != 4)
+    return false;
+
+  // Scale==4 models `base + (index << 2)`, which is ONLY selectable as the
+  // scaled reg+reg word load `ld.as rA,[rB,rC]` (ARCInstrInfo.td LD_AS_rr,
+  // matched off a plain, non-extending `load` DAG node). There is no scaled
+  // STORE form and no scaled byte/half form in this ISA -- advertising the
+  // mode for those would let LSR/CodeGenPrepare fold an address expression
+  // that ISel can never actually select, forcing a real explicit shift+add
+  // to reappear later (or worse, silently mis-costing the transform). Every
+  // extra condition below exists to keep this hook truthful about what
+  // LD_AS_rr can select.
+  if (AM.BaseGV || AM.BaseOffs != 0 || !AM.HasBaseReg)
+    return false;
+
+  // One generic address space only; ARC has no scaled-addressing story for
+  // any other AS (e.g. MMIO/uncached spaces always go through explicit
+  // `.di` base+offset forms, never `.as`).
+  if (AS != 0)
+    return false;
+
+  // Ty must be exactly a 32-bit, naturally-aligned scalar: the scaled load
+  // is a full-width, non-extending word access. This hook's signature has
+  // no separate Align parameter in this LLVM version, so alignment is
+  // approximated from Ty's own ABI alignment -- sufficient here because the
+  // only real caller path is a genuine i32/ptr load/store value type, not
+  // an arbitrarily-aligned bitcast.
+  if (!Ty || !Ty->isSized() || Ty->isVectorTy() || Ty->isAggregateType())
+    return false;
+  if (DL.getTypeSizeInBits(Ty) != 32)
+    return false;
+  if (DL.getABITypeAlign(Ty) < Align(4))
+    return false;
+
+  // When the originating IR Instruction is known, use it to rule out the
+  // cases the DAG pattern structurally cannot select: a STORE (no scaled
+  // store form exists) and a volatile/non-unordered-atomic LOAD (the scaled
+  // form has no `.di`/ordering-preserving variant, so telling the optimizer
+  // it's "free" here would be as unsafe as fusing/reordering it -- see the
+  // volatile/atomic rejection in ARCOptAddrMode.cpp for the machine-pass
+  // side of the same rule).
+  if (I) {
+    const auto *LI = dyn_cast<LoadInst>(I);
+    if (!LI)
+      return false; // StoreInst or anything else: no scaled form exists.
+    if (!LI->isUnordered())
+      return false; // volatile or atomic-with-ordering: never advertise.
+  }
+  // I == nullptr: some TTI/cost-model callers omit it. We cannot tell load
+  // from store or check volatility here, so stay exactly as strict as the
+  // I!=nullptr path on every check we CAN make (Ty/AS/alignment above) and
+  // do not relax further -- this intentionally may under-advertise legality
+  // for some pure-load cost queries, never over-advertise it for a store.
+
+  return true;
 }
 
 bool ARCTargetLowering::allowsMisalignedMemoryAccesses(

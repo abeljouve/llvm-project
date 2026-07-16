@@ -49,7 +49,7 @@ def MEMrs9 : Operand<iAny> {
 // Register base + register index for the scaled word load `ld.as` (reg+reg).
 def MEMrr : Operand<iAny> {
   let MIOperandInfo = (ops GPR32:$B, GPR32:$C);
-  let PrintMethod = "printMemOperandRI";
+  let PrintMethod = "printMemOperandRR";
   let EncoderMethod = "getMEMrrOpValue";
 }
 

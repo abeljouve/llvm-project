@@ -194,6 +194,10 @@ def FrameADDR_ri : ComplexPattern<i32, 2, "SelectFrameADDR_ri",
                                   [add, frameindex], []>;
 def AddrModeS9 : ComplexPattern<i32, 2, "SelectAddrModeS9", []>;
 // base + (index<<2), both registers, for the scaled word load `ld.as`.
+// WantsRoot: the matcher needs the root LoadSDNode itself (not just the
+// address) to reject volatile/atomic loads -- ld.as has no `.di`/ordering
+// variant, so a volatile/MMIO access must never be told this mode applies.
+let WantsRoot = 1 in
 def AddrModeAS : ComplexPattern<i32, 2, "SelectAddrModeAS", []>;
 def AddrModeImm : ComplexPattern<i32, 2, "SelectAddrModeImm", []>;
 def AddrModeFar : ComplexPattern<i32, 2, "SelectAddrModeFar", []>;

@@ -39,6 +39,7 @@ public:
 
 private:
   void printMemOperandRI(const MCInst *MI, unsigned OpNum, raw_ostream &O);
+  void printMemOperandRR(const MCInst *MI, unsigned OpNum, raw_ostream &O);
   void printOperand(const MCInst *MI, unsigned OpNum, raw_ostream &O);
   void printOperand(const MCInst *MI, uint64_t /*Address*/, unsigned OpNum,
                     raw_ostream &O) {

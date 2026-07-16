@@ -202,6 +202,20 @@ MachineInstr *ARCOptAddrMode::tryToCombine(MachineInstr &Ldst) {
   unsigned BasePos, OffsetPos;
 
   LLVM_DEBUG(dbgs() << "[ABAW] tryToCombine " << Ldst);
+
+  // FIRMWARE-SAFETY: never rebase, fuse, or relocate a volatile/atomic
+  // access. hasOrderedMemoryRef() covers volatile MMOs, non-unordered
+  // atomics, AND the no-MMO-info case (conservative). MMIO accesses
+  // (`.di`) are volatile at the IR/MMO level, so this alone is enough to
+  // keep every `.di` load/store out of the post-increment fold -- rebasing
+  // its address or moving it relative to neighboring code would change the
+  // MMIO access order the hardware sees, exactly the ordering hazard the
+  // dossier calls out.
+  if (Ldst.hasOrderedMemoryRef()) {
+    LLVM_DEBUG(dbgs() << "[ABAW] Volatile/atomic access, skip\n");
+    return nullptr;
+  }
+
   if (!AII->getBaseAndOffsetPosition(Ldst, BasePos, OffsetPos)) {
     LLVM_DEBUG(dbgs() << "[ABAW] Not a recognized load/store\n");
     return nullptr;
@@ -367,6 +381,14 @@ bool ARCOptAddrMode::canFixPastUses(const ArrayRef<MachineInstr *> &Uses,
   // [B,1]/[B,2] past a `+0xc` advance became [B,0xf]/[B,0xe].)
   int64_t IncrVal = Incr.getImm();
   for (MachineInstr *MI : Uses) {
+    // A volatile/atomic use of the shared base register must not have its
+    // base/displacement silently renumbered -- block the whole
+    // post-increment fold rather than touch it. (An ADD/SUB use of the base
+    // is never itself a memory access, so hasOrderedMemoryRef() is
+    // correctly false for it and this check only fires for the load/store
+    // uses in the array.)
+    if (MI->hasOrderedMemoryRef())
+      return false;
     int64_t Amount;
     unsigned BasePos, OffPos;
     if (isAddConstantOp(*MI, Amount)) {
@@ -432,6 +454,14 @@ bool ARCOptAddrMode::canHoistLoadStoreTo(MachineInstr *Ldst, MachineInstr *To) {
       continue;
     if (MI->mayStore() || MI->isCall() || MI->isInlineAsm() ||
         MI->hasUnmodeledSideEffects())
+      return false;
+    // Never hoist a load/store across an intervening volatile/atomic
+    // access of EITHER kind (load or store): two adjacent volatile MMIO
+    // loads, or a plain load hoisted across a volatile one, must not be
+    // reordered relative to each other. This is independent of the
+    // IsStore-vs-mayLoad check below, which only guards WAR/RAW hazards
+    // between ordinary memory ops.
+    if (MI->hasOrderedMemoryRef())
       return false;
     if (IsStore && MI->mayLoad())
       return false;
