@@ -90,6 +90,19 @@ defm : RemapAllTargetPseudoPointerOperands<GPR32>;
 
 def ARCInstrInfo : InstrInfo;
 
+//===----------------------------------------------------------------------===//
+// Scheduling models
+//===----------------------------------------------------------------------===//
+//
+// Must come after the instruction definitions: the model attaches itself with
+// InstRW blocks keyed by opcode name.
+
+include "ARCScheduleBCM55030.td"
+
+//===----------------------------------------------------------------------===//
+// Processors
+//===----------------------------------------------------------------------===//
+
 class Proc<string Name, list<SubtargetFeature> Features>
  : Processor<Name, NoItineraries, Features>;
 
@@ -102,7 +115,16 @@ def : Proc<"arc700eb", [FeatureARCompact, FeatureNORM, FeatureBigEndian]>;
 // name exists so future -mcpu=bcm55030 usage documents silicon intent, but
 // it must NOT gain FeatureMPY/FeatureSEXT/FeatureBitScan/FeatureSwape: none
 // of those are present on this silicon (see docs/notes/isa-characterization.md).
-def : Proc<"bcm55030", [FeatureARCompact, FeatureNORM, FeatureBigEndian]>;
+//
+// This is the ONLY processor with a scheduling model. BCM55030Model is a
+// per-clock characterization of one specific part, measured on that silicon;
+// the other CPUs above are generic profiles that were never measured, and
+// extending a calibrated model to them would be fabrication with a
+// calibrated-looking veneer. They keep NoItineraries, and ARCSubtarget's
+// enableMachineScheduler() gates on a model being present, so their codegen is
+// bit-for-bit unaffected by this file.
+def : ProcessorModel<"bcm55030", BCM55030Model,
+                     [FeatureARCompact, FeatureNORM, FeatureBigEndian]>;
 
 def ARC : Target {
   let InstructionSet = ARCInstrInfo;

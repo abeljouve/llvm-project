@@ -59,6 +59,22 @@ const SelectionDAGTargetInfo *ARCSubtarget::getSelectionDAGInfo() const {
   return TSInfo.get();
 }
 
+bool ARCSubtarget::enableMachineScheduler() const {
+  // True only for a CPU that actually carries an instruction-level scheduling
+  // model (hasInstrSchedModel() <=> the model has a SchedClassTable; a
+  // NoItineraries CPU gets NoSchedModel, whose table is null). See the header
+  // for why this is not simply `return true`.
+  return getSchedModel().hasInstrSchedModel();
+}
+
+bool ARCSubtarget::enableJoinGlobalCopies() const {
+  // Deliberately NOT the default (which mirrors enableMachineScheduler() and
+  // would silently turn the coalescer aggressive the moment the scheduler was
+  // switched on). Keeps the pre-scheduler behaviour so the scheduler's effect
+  // can be attributed on its own. See the header.
+  return false;
+}
+
 void ARCSubtarget::initLibcallLoweringInfo(LibcallLoweringInfo &Info) const {
   // For arceb (big-endian ARC), RuntimeLibcalls.td's isDefaultLibcallArch
   // predicate only covers Triple::arc (LE). This function populates the same
