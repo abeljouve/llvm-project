@@ -1488,33 +1488,30 @@ def : Pat<(truncstorei8 i32:$C, AddrModeImm:$addr),
 
 //===----------------------------------------------------------------------===//
 // ARCompact Zero-Overhead Loop pseudo instructions.
-// These are inserted by the ARCHardwareLoops pass and expanded later.
-// No TableGen predicate needed; the C++ pass checks isARCompact().
+//
+// The HWLOOP_SETUP / HWLOOP_SETUP_IMM / HWLOOP_END pseudos that used to live
+// here have been removed along with the formation and expansion passes that
+// produced and consumed them (see ARCPassConfig::addPreRegAlloc for why).
+//
+// They are deliberately NOT kept as scaffolding for a future rewrite: they
+// encoded a wrong model of the hazard and would mislead it.
+//
+//   * HWLOOP_SETUP_IMM declared `Size = 12` (MOV+NOP+LP) but its own
+//     expansion selected the 8-byte MOV_rlimm whenever the trip count did
+//     not fit in s12, making the real sequence 16 bytes. ARCBranchFinalize
+//     sizes branches across the pseudo using that number, one pass before
+//     the expansion made it false.
+//   * The expansion documented its NOP as "must have 1 instruction between
+//     LP_COUNT write and LP". The actual ISA rule is at least 4 instruction
+//     *words* fetched after the LP_COUNT write and through the final word of
+//     the first iteration -- a property of the whole window, not a fixed
+//     one-instruction gap, and one that is only checkable once instruction
+//     sizes are final (i.e. after 16-bit size reduction and delay-slot
+//     filling, both of which run later).
+//
+// A replacement pseudo has to carry the ordinary CFG and back-edge so a late
+// pass can commit to LP or fall back, so it will not be this shape anyway.
 //===----------------------------------------------------------------------===//
-
-let isNotDuplicable = 1 in {
-  // Pseudo for setting up a zero-overhead loop from a register trip count.
-  // Expands to: MOV LP_COUNT, $count; NOP; LP $loopend
-  def HWLOOP_SETUP : PseudoInstARC<(outs),
-      (ins GPR32:$count, i32imm:$loopend),
-      "# HWLOOP_SETUP $count, $loopend", []> {
-    let Size = 12; // MOV(4) + NOP(4) + LP(4)
-  }
-
-  // Pseudo for setting up a zero-overhead loop from an immediate trip count.
-  def HWLOOP_SETUP_IMM : PseudoInstARC<(outs),
-      (ins i32imm:$count, i32imm:$loopend),
-      "# HWLOOP_SETUP_IMM $count, $loopend", []> {
-    let Size = 12; // MOV(4) + NOP(4) + LP(4)
-  }
-
-  // End-of-loop marker. Emits no code; serves as the target label for LP.
-  // Placed at the first instruction after the loop body.
-  def HWLOOP_END : PseudoInstARC<(outs), (ins),
-      "# HWLOOP_END", []> {
-    let Size = 0;
-  }
-}
 
 def getPostIncOpcode : InstrMapping {
   let FilterClass = "ArcLdStRel";

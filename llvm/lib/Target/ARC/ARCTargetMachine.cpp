@@ -80,8 +80,6 @@ bool ARCPassConfig::addInstSelector() {
 
 void ARCPassConfig::addPreEmitPass() {
   addPass(createARCBranchFinalizePass());
-  // Expand HWLOOP_SETUP/HWLOOP_SETUP_IMM pseudos into MOV+NOP+LP sequence.
-  addPass(createARCExpandHWLoopsPass());
   // Replace 32-bit instructions with compact 16-bit equivalents when
   // optimizing for size (-Os/-Oz). ARCompact (ARC700) only.
   addPass(createARCSizeReductionPass());
@@ -92,14 +90,50 @@ void ARCPassConfig::addPreEmitPass() {
 void ARCPassConfig::addPreRegAlloc() {
     addPass(createARCExpandPseudosPass());
     addPass(createARCOptAddrMode());
-    // ARCHardwareLoopsPass is disabled: it runs after phi elimination and
-    // modifies the CFG (inserting HWLOOP_SETUP/HWLOOP_END), which corrupts
-    // live intervals and causes crashes in the greedy register allocator
-    // (SIGSEGV in VirtRegAuxInfo::isRematerializable, assertion failure
-    // in SplitKit::calcLiveBlockInfo). The pass needs to be rewritten to
-    // either run before phi elimination or properly update live intervals.
-    // TODO: Fix and re-enable hardware loops.
-    // addPass(createARCHardwareLoopsPass());
+    // No zero-overhead loop (LP) formation runs here. The ARCHardwareLoops
+    // pass that used to sit at this point has been REMOVED rather than left
+    // disabled, because its disable note mis-diagnosed the failure and sent
+    // every later reader after the wrong layer:
+    //
+    //   * It claimed the pass "runs after phi elimination". It does not --
+    //     this hook is ~pos 97 and phi elimination is pos 103.
+    //   * It claimed the pass "corrupts live intervals". It cannot --
+    //     LiveIntervals is not computed until pos 106, ten passes later.
+    //
+    // What actually happened: the pass emitted invalid MIR on the spot
+    // (`llc -run-pass=arc-hwloops -verify-machineinstrs` reported 6 errors
+    // on the first counted loop -- it deleted the latch->header edge while
+    // leaving the header PHIs naming the latch). LiveIntervals was then
+    // built from already-broken MIR and the allocator crashed downstream.
+    // The allocator SIGSEGV was a symptom, so "fix the live intervals" was
+    // never actionable and the pass stayed dead.
+    //
+    // It was not repairable: the trip count was an ad-hoc MI pattern match
+    // rather than SCEV, there was no zero-trip guard at all (a count of 0
+    // does not skip the body on this core -- it runs once), the ISA's
+    // >= 4 instruction *word* separation after an LP_COUNT write was
+    // approximated as an instruction tally behind a tuning knob, and block
+    // layout was queried ~50 passes before Block Placement decides it.
+    //
+    // Formation should be rebuilt on the generic llvm/lib/CodeGen/
+    // HardwareLoops.cpp IR pass (SCEV trip counts + a real zero-trip guard,
+    // as ARM/PPC use it) plus a late commit-or-fall-back step that runs
+    // AFTER size reduction and the delay-slot filler, where instruction
+    // sizes are final and the word-separation rule and LP's +/-4 KiB range
+    // can actually be checked.
+    //
+    // The LP *encoding* path is now correct and byte-verified against the
+    // reference ARCompact decoder (see
+    // llvm/test/CodeGen/ARC/arc700eb-lp-encoding.mir), so that rebuild
+    // starts from a working encoder rather than a silently wrong one.
+    //
+    // NOTE for whoever enables formation: this target's runtime interrupt
+    // entry code does not save LP_COUNT / LP_START / LP_END, and says so in
+    // its own source with the stated precondition that the compiler never
+    // emits zero-overhead loops. Emitting LP by default breaks that
+    // precondition silently. Formation must stay off by default until that
+    // entry code saves r60 + AUX 0x02/0x03, or every handler is proven
+    // LP-free.
 }
 
 MachineFunctionInfo *ARCTargetMachine::createMachineFunctionInfo(
@@ -116,8 +150,6 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeARCTarget() {
   initializeARCAsmPrinterPass(PR);
   initializeARCDAGToDAGISelLegacyPass(PR);
   initializeARCDelaySlotFillerPass(PR);
-  initializeARCExpandHWLoopsPass(PR);
-  initializeARCHardwareLoopsPass(PR);
   initializeARCSizeReductionPass(PR);
 }
 

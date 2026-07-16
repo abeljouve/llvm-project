@@ -15,11 +15,13 @@
 #include "MCTargetDesc/ARCMCTargetDesc.h"
 #include "llvm/MC/MCAsmBackend.h"
 #include "llvm/MC/MCAssembler.h"
+#include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCELFObjectWriter.h"
 #include "llvm/MC/MCObjectWriter.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/MCValue.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
@@ -76,6 +78,7 @@ MCFixupKindInfo ARCAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
     {"fixup_arc_s25w_pcrel",     0,    25,  0},
     {"fixup_arc_32_pcrel",       0,    32,  0},
     {"fixup_arc_s9h_pcrel",      0,    9,   0},
+    {"fixup_arc_s13_lp_pcrel",   0,    13,  0},
   };
   // clang-format on
   static_assert((std::size(Infos)) == ARC::NumTargetFixupKinds,
@@ -120,6 +123,16 @@ MCFixupKindInfo ARCAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
 //     raw = (disp >> 1) & 0xFF      // 8 usable bits (S[8:1])
 //     bits [23:17] = raw[6:0]       (S[7:1])
 //     bit [15]     = raw[7]         (S[8])
+//
+//   fixup_arc_s13_lp_pcrel (LP — 13-bit half-word signed loop end)
+//     raw = (disp >> 1) & 0xFFF     // 12 usable bits (S[12:1])
+//     bits [11:6]  = raw[5:0]       (S[6:1])
+//     bits [5:0]   = raw[11:6]      (S[12:7])
+//     This is the standard REG_S12IMM split (docs/isa 16-operand-formats):
+//     the LOW half of the field sits in the HIGH bit positions. Verified
+//     against the reference ARCompact decoder by a single-bit sweep of
+//     insn[11:0] (12/12) plus a displacement round-trip including both
+//     +/-4 KiB boundaries (19/19).
 static uint32_t scatterBranchFixup(unsigned Kind, uint64_t Value) {
   int64_t SDisp = static_cast<int64_t>(Value);
   switch (Kind) {
@@ -156,6 +169,12 @@ static uint32_t scatterBranchFixup(unsigned Kind, uint64_t Value) {
     uint32_t Hi1 = (S9 >> 8) & 0x1;    // S9[8]   → Inst[15]
     return (Lo7 << 17) | (Hi1 << 15);
   }
+  case ARC::fixup_arc_s13_lp_pcrel: {
+    uint32_t Raw = (static_cast<uint32_t>(SDisp >> 1)) & 0xFFF;
+    uint32_t Lo = Raw & 0x3F;          // field[5:0]  → Inst[11:6]
+    uint32_t Hi = (Raw >> 6) & 0x3F;   // field[11:6] → Inst[5:0]
+    return (Lo << 6) | Hi;
+  }
   default:
     llvm_unreachable("not a branch fixup");
   }
@@ -175,14 +194,30 @@ void ARCAsmBackend::applyFixup(const MCFragment &F, const MCFixup &Fixup,
   case ARC::fixup_arc_s21w_pcrel:
   case ARC::fixup_arc_s25h_pcrel:
   case ARC::fixup_arc_s25w_pcrel:
-  case ARC::fixup_arc_s9h_pcrel: {
+  case ARC::fixup_arc_s9h_pcrel:
+  case ARC::fixup_arc_s13_lp_pcrel: {
     // ARC PC-relative branches compute target = (PC & ~3) + offset. LLVM
     // passes Value = target - fixup_addr where fixup_addr is the exact
     // byte offset of the instruction. Compensate for the alignment-down
     // by adding (fixup_addr & 3) so the encoded displacement matches.
+    // LP shares this base: an `lp` at a 2-mod-4 address with field=6
+    // targets (PC & ~3) + 12, not PC + 12 — verified against the
+    // reference ARCompact decoder.
     uint64_t FixupOff = Asm->getFragmentOffset(F) + Fixup.getOffset();
     int64_t Adjusted = static_cast<int64_t>(Value) +
                        static_cast<int64_t>(FixupOff & 3);
+    // LP encodes a signed 12-bit half-word field, so it reaches only
+    // +/-4 KiB. Out of range must be a hard error: silently truncating
+    // the displacement would relocate the loop end and leave the loop
+    // executing the wrong instructions with no runtime signal.
+    if (Kind == ARC::fixup_arc_s13_lp_pcrel) {
+      if (Adjusted & 1)
+        Asm->getContext().reportError(
+            Fixup.getLoc(), "lp loop-end target must be 2-byte aligned");
+      else if (!isInt<13>(Adjusted))
+        Asm->getContext().reportError(
+            Fixup.getLoc(), "lp loop-end target out of range (+/-4 KiB)");
+    }
     if (!Adjusted)
       return;
     uint32_t Patch =

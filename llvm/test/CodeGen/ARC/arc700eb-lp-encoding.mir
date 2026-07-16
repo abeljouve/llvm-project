@@ -1,0 +1,145 @@
+# RUN: llc -mtriple=arceb -mcpu=arc700eb -start-before=arc-delay-slot-filler \
+# RUN:     -verify-machineinstrs -filetype=obj -o %t.o %s
+# RUN: llvm-readobj -x .text %t.o | FileCheck %s
+
+# Byte-exact encoding tests for the ARCompact zero-overhead loop setup, `lp`.
+#
+# These deliberately check BYTES, not asm strings. The predecessor of this file
+# (hwloop-expand.ll) asserted only that the text "lp @.LBB0_2" appeared, and it
+# would have passed against every broken encoding below -- the mnemonic and the
+# symbol name are correct in all of them; only the emitted word is wrong. An
+# `lp` that disassembles to garbage still prints as `lp @label`.
+#
+# THE BUG THIS PINS DOWN. `brtarget_s13` used to carry
+# EncoderMethod = "getBranchTargetS21HEncoding", i.e. the Bcc 21-bit encoder,
+# so every `lp` emitted a fixup_arc_s21h_pcrel whose scatter is
+# Insn |= (Lo << 17) | (Hi << 6). On an LP word bits [26:17] are NOT a
+# displacement field -- they are B[2:0], P[1:0] and sub-opcode[5:1] -- so the
+# displacement was OR-ed straight into the opcode, while the real s13 field at
+# bits [11:0] was never written and stayed 0. Two symptoms, one cause:
+#
+#   * disp 16 at PC 0 emitted 0x20B80000: sub-opcode 0x28 -> 0x38, an
+#     undecodable word that desynchronizes the whole instruction stream.
+#   * disp 32 at PC 0x14 emitted 0x20A80000: bit 21 was already set in the
+#     base opcode, so the OR was a no-op, the field stayed 0, and the loop
+#     targeted its own address.
+#
+# THE CORRECT LAYOUT is the standard REG_S12IMM split (docs/isa
+# 16-operand-formats): field = displacement >> 1 as a signed 12-bit value,
+# with field[5:0] in Inst[11:6] and field[11:6] in Inst[5:0]. The base is
+# (PC & ~3) + displacement, exactly as for Bcc. Both facts were established
+# by brute-forcing the reference ARCompact decoder (single-bit sweep of
+# Inst[11:0], 12/12; displacement round-trip incl. both +/-4 KiB boundaries,
+# 19/19), and every expected word below was confirmed to decode back to its
+# loop-end label under that decoder.
+
+--- |
+  define void @lp_fwd_16() { ret void }
+  define void @lp_fwd_32() { ret void }
+  define void @lp_unaligned_pc() { ret void }
+...
+---
+# LP at 0x00, loop end at 0x10 -> displacement 16 -> field 8 -> 0x20A80200.
+# Decodes as `lp 0x10`.
+#
+# The `b` terminating the body is not part of the loop shape; it is what
+# forces the loop-end label to be emitted at all. AsmPrinter suppresses the
+# label of a block that is only reachable by fallthrough
+# (shouldEmitLabelForBasicBlock -> isBlockOnlyReachableByFallthrough), and an
+# LP_END target is precisely such a block, so without either an explicit
+# branch naming it or a setLabelMustBeEmitted() call the `lp` above resolves
+# against an undefined temporary symbol and -filetype=obj fails outright.
+# Any future formation pass must force that label itself.
+name:            lp_fwd_16
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.1
+    liveins: $r0, $r1
+    ARC_LP_s13 %bb.2
+
+  bb.1:
+    successors: %bb.2
+    liveins: $r0, $r1
+    $r2 = ADD_rrr $r0, $r1
+    $r3 = ADD_rrr $r0, $r1
+    BR %bb.2
+
+  bb.2:
+    liveins: $r2
+    $r0 = ADD_rrr $r2, $r2
+...
+---
+# LP at 0x14, loop end at 0x34 -> displacement 32 -> field 16 -> 0x20A80400.
+#
+# This is the case that used to emit 0x20A80000 ("lp <its own address>"):
+# the S21H scatter for disp 32 is bit 21, which the LP base opcode already
+# has set, so the corruption was invisible in the opcode and simply left the
+# displacement at zero. A test that only checked the mnemonic saw nothing.
+name:            lp_fwd_32
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.1
+    liveins: $r0, $r1
+    ARC_LP_s13 %bb.2
+
+  bb.1:
+    successors: %bb.2
+    liveins: $r0, $r1
+    $r2 = ADD_rrr $r0, $r1
+    $r3 = ADD_rrr $r0, $r1
+    $r4 = ADD_rrr $r0, $r1
+    $r5 = ADD_rrr $r0, $r1
+    $r6 = ADD_rrr $r0, $r1
+    $r7 = ADD_rrr $r0, $r1
+    BR %bb.2
+
+  bb.2:
+    liveins: $r2
+    $r0 = ADD_rrr $r2, $r2
+...
+---
+# The `PC & ~3` base, isolated.
+#
+# A 2-byte mov_s puts the `lp` at 0x3A, i.e. 2-mod-4, and the loop end at
+# 0x4A. ARC computes the target from (PC & ~3) = 0x38, so the displacement is
+# 0x4A - 0x38 = 18 -> field 9 -> 0x20A80240.
+#
+# This discriminates the two candidate bases by BYTES rather than by argument:
+# had the base been PC itself, the displacement would be 0x4A - 0x3A = 16 and
+# the word would be 0x20A80200. Getting this wrong would misplace LP_END by
+# two bytes -- i.e. into the middle of the final instruction.
+name:            lp_unaligned_pc
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.1
+    liveins: $r0, $r1
+    $r0 = ARC_MOV_S_b_h $r1
+    ARC_LP_s13 %bb.2
+
+  bb.1:
+    successors: %bb.2
+    liveins: $r0, $r1
+    $r2 = ADD_rrr $r0, $r1
+    $r3 = ADD_rrr $r0, $r1
+    BR %bb.2
+
+  bb.2:
+    liveins: $r2
+    $r0 = ADD_rrr $r2, $r2
+...
+
+# lp_fwd_16 `lp` is the first word of .text.
+# CHECK: Hex dump of section '.text':
+# CHECK-NEXT: 0x00000000 20a80200
+
+# 0x10 is lp_fwd_16's loop-end (add %r0, %r2, %r2 = 0x22000080); lp_fwd_32's
+# `lp` follows immediately at 0x14.
+# CHECK-NEXT: 0x00000010 22000080 20a80400
+
+# 0x34 is lp_fwd_32's loop-end. lp_unaligned_pc then starts at 0x38 with the
+# 2-byte mov_s (0x7028), putting its `lp` (0x20a80240) at 0x3A -- straddling
+# the dump's word grouping, which is exactly the point.
+# CHECK: 0x00000030 20000047 22000080 702820a8 02402000

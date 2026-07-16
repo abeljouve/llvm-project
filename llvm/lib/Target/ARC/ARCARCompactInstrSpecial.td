@@ -375,15 +375,19 @@ def ARC_LP_s13 : ARCompactInst32_3op<0b00100, 0b101000, "lp",
   let hasSideEffects = 1;
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101010000;
+  // REG_S12IMM split (docs/isa 16-operand-formats): the LOW half of the
+  // signed field sits in the HIGH bit positions and vice versa. The field
+  // is the loop-end displacement from (PC & ~3) scaled by 2, so LP reaches
+  // +/-4 KiB. Verified byte-exact against the reference ARCompact decoder.
   bits<12> simm13_a16_20;
-  let Inst{11-6} = simm13_a16_20{11-6};
-  let Inst{5-0} = simm13_a16_20{5-0};
+  let Inst{11-6} = simm13_a16_20{5-0};
+  let Inst{5-0} = simm13_a16_20{11-6};
 }
 
 // lp<cc> u7 00100RRR111010000RRRuuuuuu1QQQQQ.
 def ARC_LP_u7_cc : ARCompactInst32_3op<0b00100, 0b101000, "lp",
-    (outs ), (ins u7imm_a16:$uimm7_a16_20),
-    "lp\t$uimm7_a16_20", []> {
+    (outs ), (ins u7imm_a16:$uimm7_a16_20, ccond:$cc),
+    "lp$cc\t$uimm7_a16_20", []> {
   // Opcode: 0x20E80020, Mask: 0xF8FF8020
   // Operands: UIMM7_A16_20
   // Flags: C_CC
@@ -391,13 +395,26 @@ def ARC_LP_u7_cc : ARCompactInst32_3op<0b00100, 0b101000, "lp",
   // >= 4 instruction *words* of separation after an LP_COUNT write). None of
   // LP_COUNT / LP_START / LP_END is modelled as a register here, so this is
   // the only thing keeping code-motion passes away from it.
+  //
+  // This is the CONDITIONAL setup form: when $cc is false the core branches
+  // past the loop to (PC & ~3) + u7 instead of arming it, which is the
+  // hardware's own zero-trip guard. $cc therefore MUST be encoded -- leaving
+  // Inst{4-0} unassigned silently pins every `lp<cc>` to AL (always), which
+  // arms the loop unconditionally and defeats the guard. The reference
+  // ARCompact decoder reads Inst{4-0} as the condition (0x20E80021 -> lp.eq,
+  // 0x20E80022 -> lp.ne), so it is a real field, not padding.
+  //
+  // $uimm7_a16_20 is the u7 branch-past displacement pre-scaled by 2
+  // (field = disp >> 1): 0x20E80420 decodes to a target of (PC & ~3) + 32.
   let hasSideEffects = 1;
+  let Uses = [STATUS32];
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b111010000;
   let Inst{5} = 1;
-  let isPredicable = 1;
   bits<6> uimm7_a16_20;
+  bits<5> cc;
   let Inst{11-6} = uimm7_a16_20;
+  let Inst{4-0} = cc;
 }
 
 // lr b,c 00100bbb001010100BBBCCCCCCRRRRRR.
