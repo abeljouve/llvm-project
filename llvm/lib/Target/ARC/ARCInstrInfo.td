@@ -832,9 +832,98 @@ def : Pat<(ARCtcreturn texternalsym:$dst), (TCB texternalsym:$dst)>;
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in
 // This is a specialized 2-byte instruction that doesn't generalize
 // to any larger 2-byte class, so go ahead and define it here.
+//
+// Uses = [BLINK]: the return reads the link register. It has no explicit
+// operands, so without this its dependence on BLINK is entirely unmodelled
+// and any pass that reorders code is free to clobber the return address --
+// e.g. sinking an epilogue `ld blink, [sp]` past it.
+let Uses = [BLINK] in
 def J_S_BLINK : InstARC<2, (outs), (ins), "j_s\t[%blink]", [(ret)]> {
   let Inst{15-0} = 0b0111111011100000;
 }
+
+// ---------------------------------------------------------------------------
+// Delayed (.d) twins of the code-generated transfers.
+//
+// ARC700 gives every branch / call / jump one architectural delay slot. The
+// mode is selected by the N bit, which for the branch formats is Inst{5}
+// (see `bit N; let Inst{5} = N;` in F32_BR / F32_BR1_BCC in
+// ARCInstrFormats.td) and for the jump formats is a distinct sub-opcode:
+//   N=0 (ND, the default the defs above select): the following instruction is
+//        nullified when the transfer is taken, and executes when it is not.
+//   N=1 (D): the following instruction always executes, on both paths.
+//
+// D-mode's "executes on both paths" is exactly what makes filling safe: the
+// filler only ever moves an instruction that already executed unconditionally
+// *before* the transfer, so its execution count is unchanged on either path.
+//
+// These forms are created exclusively by ARCDelaySlotFiller, and only once it
+// has a real instruction to put in the slot -- hence no pattern and
+// isCodeGenOnly. Selecting a .d form up front would commit to a slot blind,
+// before the passes that produce the fill candidate have even run.
+//
+// Every encoding below is byte-verified with the reference ARC disassembler
+// (llvm-objdump misdecodes big-endian ARC and must not be used):
+//   b        0x00010000 / b.d        0x00010020
+//   b.eq     0x00000001 / b.eq.d     0x00000021
+//   breq     0x08010000 / breq.d     0x08010020
+//   breq u6  0x08010010 / breq.d u6  0x08010030
+//   bl       0x08020000 / bl.d       0x08020020
+//   j [r0]   0x20200000 / j.d [r0]   0x20210000   (sub-opcode 0x20 -> 0x21)
+//   jl [r0]  0x20220000 / jl.d [r0]  0x20230000   (sub-opcode 0x22 -> 0x23)
+//   j_s [blink]  0x7EE0 / j_s.d [blink]  0x7FE0   (2 bytes; size-neutral)
+// ---------------------------------------------------------------------------
+let isCodeGenOnly = 1, hasDelaySlot = 1 in {
+
+let isBranch = 1, isTerminator = 1 in {
+  let isBarrier = 1 in
+  def BR_D : F32_BR0_UCOND_FAR<(outs), (ins btargetS25:$S25), "b.d\t$S25", []>
+  { let N = 1; }
+
+  let Uses = [STATUS32] in
+  def Bcc_D : F32_BR0_COND<(outs), (ins btargetS21:$S21, ccond:$cc),
+                           "b$cc.d\t$S21", []>
+  { let N = 1; }
+
+  def BRcc_rr_D : F32_BR1_BCC<(outs),
+                              (ins btargetS9:$S9, GPR32:$B, GPR32:$C,
+                                   brccond:$cc),
+                              "br$cc.d\t$B, $C, $S9", 0, []>
+  { let N = 1; }
+  def BRcc_ru6_D : F32_BR1_BCC<(outs),
+                               (ins btargetS9:$S9, GPR32:$B, immU6:$C,
+                                    brccond:$cc),
+                               "br$cc.d\t$B, $C, $S9", 1, []>
+  { let N = 1; }
+} // let isBranch, isTerminator
+
+let isBranch = 1, isTerminator = 1, isBarrier = 1, isIndirectBranch = 1 in
+def J_D : F32_DOP_RR<0b00100, 0b100001, 0, (outs), (ins GPR32:$C),
+                     "j.d\t[$C]", []>
+{ let A = 0; let B = 0; }
+
+let isCall = 1, isBarrier = 1, Defs = [BLINK], Uses = [SP] in {
+  def BL_D : F32_BR1_BL_UCOND_FAR<(outs), (ins calltargetS25:$S25),
+                                  "bl.d\t$S25", []>
+  { let N = 1; }
+
+  let isIndirectBranch = 1 in
+  def JL_D : F32_DOP_RR<0b00100, 0b100011, 0, (outs), (ins GPR32:$C),
+                        "jl.d\t[$C]", []>
+  { let A = 0; let B = 0; }
+} // let isCall
+
+let isCall = 1, isReturn = 1, isTerminator = 1, isBarrier = 1, Uses = [SP] in
+def TCB_D : F32_BR0_UCOND_FAR<(outs), (ins tcalltargetS25:$S25), "b.d\t$S25",
+                              []>
+{ let N = 1; }
+
+let isReturn = 1, isTerminator = 1, isBarrier = 1, Uses = [BLINK] in
+def J_S_BLINK_D : InstARC<2, (outs), (ins), "j_s.d\t[%blink]", []> {
+  let Inst{15-0} = 0b0111111111100000;
+}
+
+} // let isCodeGenOnly = 1, hasDelaySlot = 1
 
 //----------------------------------------------------------------------------
 // Compact stack-based operations.

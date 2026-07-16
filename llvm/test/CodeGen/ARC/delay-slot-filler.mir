@@ -1,46 +1,206 @@
-# RUN: llc -mtriple=arceb -mcpu=arc700eb -run-pass=arc-delay-slot-filler -o - %s | FileCheck %s
-# RUN: llc -mtriple=arc -mcpu=generic -run-pass=arc-delay-slot-filler -o - %s | FileCheck %s --check-prefix=ARCV2
+# RUN: llc -mtriple=arceb -mcpu=arc700eb -run-pass=arc-delay-slot-filler \
+# RUN:     -verify-machineinstrs -o - %s | FileCheck %s
+# RUN: llc -mtriple=arc -mcpu=generic -run-pass=arc-delay-slot-filler \
+# RUN:     -verify-machineinstrs -o - %s | FileCheck %s --check-prefix=ARCV2
 
-# Test that the ARC delay slot filler pass:
-# 1. Inserts NOPs for ARCompact branches with delay slots when no safe
-#    candidate is found
-# 2. Moves a safe instruction into the delay slot when one exists
-# 3. Is a no-op for ARCv2 subtargets
+# Positive tests for the ARCompact delay slot filler.
+#
+# The pass moves an instruction that already executed unconditionally before a
+# transfer into the transfer's delay slot, and only then converts the transfer
+# to its delayed (.d) twin. Both conversions are size-preserving, and D-mode
+# executes the slot on both the taken and the not-taken path, so the moved
+# instruction's execution count is unchanged.
+#
+# NOTE: this file previously asserted that the filler put a NOP (and an ADD)
+# into the slot of ARC_B_s25_d. That was testing a miscompile from two
+# directions at once: ARC_B_s25_d leaves the N bit (Inst{5}) unset, so it
+# encodes N=0 = a plain, non-delayed `b` -- and it is unconditional, hence
+# always taken, so the hardware would have nullified the "slot" instruction
+# every single time. The `_d` in its name is binutils' C_D class flag ("a .d
+# suffix is permitted"), not a delayed encoding.
 
----
-name:            test_delay_slot_nop
-tracksRegLiveness: true
-body:             |
-  ; CHECK-LABEL: name: test_delay_slot_nop
-  ; CHECK:      ARC_B_s25_d %bb.1 {
-  ; CHECK-NEXT:   ARC_NOP_0
-  ; CHECK-NEXT: }
-  ;
-  ; ARCV2-LABEL: name: test_delay_slot_nop
-  ; ARCV2:      ARC_B_s25_d %bb.1
-  ; ARCV2-NOT:  ARC_NOP_0
-  bb.0:
-    ARC_B_s25_d %bb.1
-
-  bb.1:
-    liveins: $r0
-    $r0 = ARC_ADD_a_b_c $r0, $r0, implicit-def $status32
+--- |
+  define void @fill_uncond_branch() { ret void }
+  define void @fill_cond_branch() { ret void }
+  define void @fill_return() { ret void }
+  define void @fill_return_value_into_own_slot() { ret void }
+  define void @fill_call_argument_into_own_slot() { ret void }
+  define void @fill_indirect_jump() { ret void }
+  define void @no_candidate_stays_plain() { ret void }
 ...
 
 ---
-name:            test_delay_slot_fill
+# An unconditional branch with a preceding, independent ALU op: the op moves
+# into the slot and `b` becomes `b.d` (Inst{5}: 0 -> 1, still 4 bytes).
+name:            fill_uncond_branch
 tracksRegLiveness: true
 body:             |
-  ; CHECK-LABEL: name: test_delay_slot_fill
-  ; CHECK:      ARC_B_s25_d %bb.1 {
-  ; CHECK-NEXT:   $r2 = ARC_ADD_a_b_c $r0, $r1, implicit-def $status32
+  ; CHECK-LABEL: name: fill_uncond_branch
+  ; CHECK:      BR_D %bb.1 {
+  ; CHECK-NEXT:   $r2 = ADD_rrr $r0, $r1
+  ; CHECK-NEXT: }
+  ;
+  ; The filler must not run at all on ARCv2, which has no delay slots.
+  ; ARCV2-LABEL: name: fill_uncond_branch
+  ; ARCV2-NOT:  BR_D
+  ; ARCV2-NOT:  ARC_NOP_0
+  bb.0:
+    successors: %bb.1(0x80000000)
+    liveins: $r0, $r1
+
+    $r2 = ADD_rrr $r0, $r1
+    BR %bb.1
+
+  bb.1:
+    liveins: $r2
+    $r0 = ADD_rrr $r2, $r2
+...
+
+---
+# A conditional branch. The CMP that produces the flags must stay put (it is
+# the branch's own STATUS32 input), so the independent ADD is chosen instead --
+# the filler skips over CMP and keeps scanning.
+name:            fill_cond_branch
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: fill_cond_branch
+  ; CHECK:      CMP_rr $r0, $r1, implicit-def $status32
+  ; CHECK-NEXT: Bcc_D %bb.1, 1, implicit $status32 {
+  ; CHECK-NEXT:   $r2 = ADD_rrr $r0, $r1
+  ; CHECK-NEXT: }
+  bb.0:
+    successors: %bb.1(0x40000000), %bb.2(0x40000000)
+    liveins: $r0, $r1
+
+    $r2 = ADD_rrr $r0, $r1
+    CMP_rr $r0, $r1, implicit-def $status32
+    Bcc %bb.1, 1, implicit $status32
+
+  bb.1:
+    liveins: $r2
+    $r0 = ADD_rrr $r2, $r2
+
+  bb.2:
+    liveins: $r2
+    $r1 = ADD_rrr $r2, $r2
+...
+
+---
+# The highest-value target: every function ends in a return, and the delayed
+# twin of the 2-byte `j_s [blink]` (0x7EE0) is the 2-byte `j_s.d [blink]`
+# (0x7FE0), so the conversion costs nothing in size.
+name:            fill_return
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: fill_return
+  ; CHECK:      J_S_BLINK_D implicit $blink {
+  ; CHECK-NEXT:   $r0 = ADD_rrr $r0, $r1
   ; CHECK-NEXT: }
   bb.0:
     liveins: $r0, $r1
-    $r2 = ARC_ADD_a_b_c $r0, $r1, implicit-def $status32
-    ARC_B_s25_d %bb.1
+
+    $r0 = ADD_rrr $r0, $r1
+    J_S_BLINK implicit $blink
+...
+
+---
+# Computing the return value in the return's own delay slot.
+#
+# This is where essentially all of the pass's value is (214 of 233 fills across
+# the ARC test corpus), and it only works because insertDefsUses ignores a
+# transfer's implicit ABI-marker uses. `implicit $r0` on a return keeps the
+# return value live; the jump does not read it (`j [blink]` reads BLINK and
+# nothing else), so its producer may be sunk. That is architecturally sound:
+# the slot retires before control reaches the caller, so $r0 holds the computed
+# value by the time the caller can observe it.
+#
+# The marker must then be DROPPED from the transfer, and this test pins that.
+# An MI bundle has parallel semantics -- the verifier merges a bundle's defs
+# into the live set only at visitMachineBundleAfter -- so a surviving
+# `implicit $r0` on the header would resolve against the value live *before*
+# the bundle and be reported as "Using an undefined physical register". Hence
+# the RUN line's -verify-machineinstrs is load-bearing here, and the CHECK
+# below deliberately spells the operand list out in full.
+name:            fill_return_value_into_own_slot
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: fill_return_value_into_own_slot
+  ; CHECK:      J_S_BLINK_D implicit $blink {
+  ; CHECK-NEXT:   $r0 = ADD_rrr $r0, $r1
+  ; CHECK-NEXT: }
+  ; CHECK-NOT:  implicit killed $r0
+  bb.0:
+    liveins: $r0, $r1
+
+    $r0 = ADD_rrr $r0, $r1
+    J_S_BLINK implicit $blink, implicit $r0
+...
+
+---
+# The same rule on the call side: a call's implicit argument-register uses are
+# markers too, so the instruction that sets up an argument may be sunk into the
+# call's own slot. It still retires before the callee starts, so $r0 holds the
+# argument on entry.
+#
+# BLINK is NOT dropped or ignored -- it is a real def of the call (the return
+# address) and is re-inserted by hand in insertDefsUses; see
+# call_blink_def_respected in arc700eb-delay-slot-hazards.mir.
+name:            fill_call_argument_into_own_slot
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: fill_call_argument_into_own_slot
+  ; CHECK:      BL_D @fill_call_argument_into_own_slot
+  ; CHECK-SAME: {
+  ; CHECK-NEXT:   $r0 = MOV_rs12 7
+  ; CHECK-NEXT: }
+  bb.0:
+    liveins: $sp
+
+    $r0 = MOV_rs12 7
+    BL @fill_call_argument_into_own_slot, csr_arc, implicit $r0, implicit-def dead $blink, implicit $sp, implicit-def $sp
+    J_S_BLINK implicit $blink
+...
+
+---
+# Indirect jump: `.d` is a distinct sub-opcode here (0x20200000 -> 0x20210000),
+# not the N bit. The ADD defines $r2, which the jump does not read, so it is a
+# legal slot occupant.
+name:            fill_indirect_jump
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: fill_indirect_jump
+  ; CHECK:      J_D $r1 {
+  ; CHECK-NEXT:   $r2 = ADD_rrr $r0, $r0
+  ; CHECK-NEXT: }
+  bb.0:
+    liveins: $r0, $r1
+
+    $r2 = ADD_rrr $r0, $r0
+    J $r1
+...
+
+---
+# Nothing available to move: the branch must be left exactly as it is.
+#
+# An unfilled slot has to cost nothing. The plain ND encoding already means
+# "nullify the next instruction when taken, execute it when not taken", which
+# is ordinary branch behaviour -- so there is nothing to emit. Converting to
+# .d and padding with a NOP (which a SPARC-shaped filler must do, because
+# SPARC's slot is mandatory) would cost 4 bytes and an extra issue slot on the
+# not-taken path for no gain.
+name:            no_candidate_stays_plain
+tracksRegLiveness: true
+body:             |
+  ; CHECK-LABEL: name: no_candidate_stays_plain
+  ; CHECK:      BR %bb.1
+  ; CHECK-NOT:  BR_D
+  ; CHECK-NOT:  ARC_NOP_0
+  bb.0:
+    successors: %bb.1(0x80000000)
+
+    BR %bb.1
 
   bb.1:
-    liveins: $r0, $r1, $r2
-    $r0 = ARC_ADD_a_b_c $r2, $r1, implicit-def $status32
+    liveins: $r0
+    $r0 = ADD_rrr $r0, $r0
 ...

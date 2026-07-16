@@ -1603,6 +1603,10 @@ def ARC_TRAP_S_u6 : ARCompactInst16_ALU<0b01111, "trap_s",
   // Opcode: 0x0000781E, Mask: 0x0000F81F
   // Operands: UIMM6_5_S
   // Flags: none
+  // Raises an exception: not an ALU op, despite inheriting from the 16-bit
+  // ALU base class (which hardcodes hasSideEffects = 0). Without this it is
+  // invisible to every scheduling / motion guard.
+  let hasSideEffects = 1;
   let Inst{15-11} = 0b01111;
   let Inst{4-0} = 0b11110;
   bits<6> uimm6_5_s;

@@ -64,7 +64,13 @@ define void @store_i32_align1(ptr %p, i32 %v) {
 ; CHECK: stb
 ; CHECK: stb
 ; CHECK-NOT: st{{[[:space:]]}}
-; CHECK: j_s
+; Anchored on the function end rather than on the return instruction: the
+; return's delay slot is a legal home for one of the byte stores, so `j_s.d`
+; can legitimately precede the last `stb`. Where the return lands is the delay
+; slot filler's business (see arc700eb-delay-slot-*.mir) -- all this test
+; asserts is that every access is byte-wide and no misaligned word store is
+; ever emitted.
+; CHECK: .Lfunc_end
   store i32 %v, ptr %p, align 1
   ret void
 }

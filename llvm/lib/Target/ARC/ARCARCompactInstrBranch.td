@@ -17,6 +17,19 @@
 let Predicates = [IsARCompact] in {
 
 // b<.d> s25 00000ssssssssss1SSSSSSSSSSNRtttt.
+// The `_d` suffix on the def names in this file renders binutils' C_D *class
+// flag* -- "a .d suffix is permitted on this mnemonic" -- NOT a delayed
+// encoding. Every C_D def below leaves the N bit (Inst{5}) unset, so it
+// encodes N=0 and assembles to a plain, non-delayed transfer; its AsmString
+// has no `.d` either. They therefore must NOT claim hasDelaySlot: that
+// property means "this encoding has a delay slot the hardware will honour",
+// and a filler acting on it would move an instruction into a slot the
+// hardware nullifies on the taken path. The C_DHARD defs (J / JL and the
+// 16-bit jumps) are different -- they encode .d in a distinct sub-opcode --
+// and do genuinely have a delay slot, so they keep hasDelaySlot.
+//
+// If this file is regenerated, the generator must not re-emit
+// `hasDelaySlot = 1` on a C_D def whose N bit is unset.
 def ARC_B_s25_d : ARCompactInstBranch<0b00000, "b",
     (outs ), (ins brtarget_s25:$simm25_a16_5),
     "b\t$simm25_a16_5", []> {
@@ -25,7 +38,6 @@ def ARC_B_s25_d : ARCompactInstBranch<0b00000, "b",
   // Flags: C_D
   let Inst{31-27} = 0b00000;
   let Inst{16} = 1;
-  let hasDelaySlot = 1;
   bits<20> simm25_a16_5;
   let Inst{26-17} = simm25_a16_5{19-10};
   let Inst{15-6} = simm25_a16_5{9-0};
@@ -40,7 +52,6 @@ def ARC_B_s21_cc_d : ARCompactInstBranch<0b00000, "b",
   // Flags: C_CC, C_D
   let Inst{31-27} = 0b00000;
   let Inst{16} = 0;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<20> simm21_a16_5;
   let Inst{26-17} = simm21_a16_5{19-10};
@@ -54,6 +65,15 @@ def ARC_BBIT0_b_c_s9_d : ARCompactInstSpecial<"bbit0",
   // Opcode: 0x0801000E, Mask: 0xF801001F
   // Operands: RB, RC, SIMM9_A16_8
   // Flags: C_D
+  // A real conditional branch: bit-test-and-branch, falls through when not
+  // taken. Without isBranch/isTerminator the MachineVerifier rejects any
+  // function ARCBranchFinalize::tryFuseBBIT touches ("MBB has unexpected
+  // successors which are not branch targets"), and every code-motion pass
+  // treats a live branch as an ordinary side-effect-free instruction it may
+  // freely reorder around. isBarrier stays 0 -- the not-taken path falls
+  // through.
+  let isBranch = 1;
+  let isTerminator = 1;
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b01110;
@@ -74,6 +94,15 @@ def ARC_BBIT0_b_u6_s9_d : ARCompactInstSpecial<"bbit0",
   // Opcode: 0x0801001E, Mask: 0xF801001F
   // Operands: RB, UIMM6_8, SIMM9_A16_8
   // Flags: C_D
+  // A real conditional branch: bit-test-and-branch, falls through when not
+  // taken. Without isBranch/isTerminator the MachineVerifier rejects any
+  // function ARCBranchFinalize::tryFuseBBIT touches ("MBB has unexpected
+  // successors which are not branch targets"), and every code-motion pass
+  // treats a live branch as an ordinary side-effect-free instruction it may
+  // freely reorder around. isBarrier stays 0 -- the not-taken path falls
+  // through.
+  let isBranch = 1;
+  let isTerminator = 1;
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b11110;
@@ -152,6 +181,15 @@ def ARC_BBIT1_b_c_s9_d : ARCompactInstSpecial<"bbit1",
   // Opcode: 0x0801000F, Mask: 0xF801001F
   // Operands: RB, RC, SIMM9_A16_8
   // Flags: C_D
+  // A real conditional branch: bit-test-and-branch, falls through when not
+  // taken. Without isBranch/isTerminator the MachineVerifier rejects any
+  // function ARCBranchFinalize::tryFuseBBIT touches ("MBB has unexpected
+  // successors which are not branch targets"), and every code-motion pass
+  // treats a live branch as an ordinary side-effect-free instruction it may
+  // freely reorder around. isBarrier stays 0 -- the not-taken path falls
+  // through.
+  let isBranch = 1;
+  let isTerminator = 1;
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b01111;
@@ -172,6 +210,15 @@ def ARC_BBIT1_b_u6_s9_d : ARCompactInstSpecial<"bbit1",
   // Opcode: 0x0801001F, Mask: 0xF801001F
   // Operands: RB, UIMM6_8, SIMM9_A16_8
   // Flags: C_D
+  // A real conditional branch: bit-test-and-branch, falls through when not
+  // taken. Without isBranch/isTerminator the MachineVerifier rejects any
+  // function ARCBranchFinalize::tryFuseBBIT touches ("MBB has unexpected
+  // successors which are not branch targets"), and every code-motion pass
+  // treats a live branch as an ordinary side-effect-free instruction it may
+  // freely reorder around. isBarrier stays 0 -- the not-taken path falls
+  // through.
+  let isBranch = 1;
+  let isTerminator = 1;
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b11111;
@@ -184,6 +231,67 @@ def ARC_BBIT1_b_u6_s9_d : ARCompactInstSpecial<"bbit1",
   bits<6> uimm6_8;
   let Inst{11-6} = uimm6_8;
 }
+
+// ---------------------------------------------------------------------------
+// Delayed (.d) twins of the two bit-test-and-branch forms ARCBranchFinalize's
+// tryFuseBBIT actually creates.
+//
+// NOTE ON THE `_d` SUFFIX ABOVE: it is NOT a delayed encoding. The generator
+// renders binutils' C_D *class flag* -- "a .d suffix is permitted here" --
+// into the def name, but leaves the N bit (Inst{5}) unset, so those defs
+// encode N=0 and assemble to a plain, non-delayed bbit. The generator's own
+// bit-string comment shows this: in
+//   bbit1<.d> b,u6,s9  00001bbbsssssss1SBBBuuuuuuN11111
+// the N sits at bit 5. That is why ARC_BBIT{0,1}_b_u6_s9_d correctly carry
+// hasDelaySlot = 0 and must keep it: they are the ND forms tryFuseBBIT emits.
+// Arming the filler on them would fill a slot the hardware nullifies on the
+// taken path. The genuinely delayed forms are the two defs below.
+//
+// Byte-verified with the reference ARC disassembler:
+//   bbit1 r0,0x0,. 0x0801001F / bbit1.d 0x0801003F
+//   bbit0 r0,0x0,. 0x0801001E / bbit0.d 0x0801003E
+// The first pair is exactly the shape the silicon delay-slot probe measured
+// (bit 5 the only difference), which found a filled slot costs 0 cycles.
+// ---------------------------------------------------------------------------
+let isCodeGenOnly = 1, hasDelaySlot = 1, isBranch = 1, isTerminator = 1 in {
+
+def ARC_BBIT0_b_u6_s9_delayed : ARCompactInstSpecial<"bbit0",
+    (outs ), (ins GPR32:$rb, u6imm:$uimm6_8, brtarget_s9:$simm9_a16_8),
+    "bbit0.d\t$rb, $uimm6_8, $simm9_a16_8", []> {
+  // Opcode: 0x0801003E, Mask: 0xF801003F
+  let Inst{31-27} = 0b00001;
+  let Inst{16} = 1;
+  let Inst{5} = 1;      // N = 1 -> D mode.
+  let Inst{4-0} = 0b11110;
+  bits<6> rb;
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> uimm6_8;
+  let Inst{11-6} = uimm6_8;
+}
+
+def ARC_BBIT1_b_u6_s9_delayed : ARCompactInstSpecial<"bbit1",
+    (outs ), (ins GPR32:$rb, u6imm:$uimm6_8, brtarget_s9:$simm9_a16_8),
+    "bbit1.d\t$rb, $uimm6_8, $simm9_a16_8", []> {
+  // Opcode: 0x0801003F, Mask: 0xF801003F
+  let Inst{31-27} = 0b00001;
+  let Inst{16} = 1;
+  let Inst{5} = 1;      // N = 1 -> D mode.
+  let Inst{4-0} = 0b11111;
+  bits<6> rb;
+  let Inst{26-24} = rb{2-0};
+  let Inst{14-12} = rb{5-3};
+  bits<8> simm9_a16_8;
+  let Inst{23-17} = simm9_a16_8{7-1};
+  let Inst{15} = simm9_a16_8{0};
+  bits<6> uimm6_8;
+  let Inst{11-6} = uimm6_8;
+}
+
+} // let isCodeGenOnly, hasDelaySlot, isBranch, isTerminator
 
 // bbit1 b,limm,s9 00001bbbsssssss1SBBB111110001111.
 def ARC_BBIT1_b_limm_s9 : ARCompactInstSpecial<"bbit1",
@@ -252,7 +360,6 @@ def ARC_BL_s25_d : ARCompactInstBranch<0b00001, "bl",
   // Flags: C_D
   let Inst{31-27} = 0b00001;
   let Inst{17-16} = 0b10;
-  let hasDelaySlot = 1;
   bits<19> simm25_a32_5;
   let Inst{26-18} = simm25_a32_5{18-10};
   let Inst{15-6} = simm25_a32_5{9-0};
@@ -267,7 +374,6 @@ def ARC_BL_s21_cc_d : ARCompactInstBranch<0b00001, "bl",
   // Flags: C_CC, C_D
   let Inst{31-27} = 0b00001;
   let Inst{17-16} = 0b00;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<19> simm21_a32_5;
   let Inst{26-18} = simm21_a32_5{18-10};
@@ -284,7 +390,6 @@ def ARC_BREQ_b_c_s9_eq_d : ARCompactInstBranch<0b00001, "breq",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b00000;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
@@ -306,7 +411,6 @@ def ARC_BREQ_b_u6_s9_eq_d : ARCompactInstBranch<0b00001, "breq",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b10000;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
@@ -375,7 +479,6 @@ def ARC_BRGE_b_c_s9_ge_d : ARCompactInstBranch<0b00001, "brge",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b00011;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
@@ -397,7 +500,6 @@ def ARC_BRGE_b_u6_s9_ge_d : ARCompactInstBranch<0b00001, "brge",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b10011;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
@@ -466,7 +568,6 @@ def ARC_BRHS_b_c_s9_hs_d : ARCompactInstBranch<0b00001, "brhs",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b00101;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
@@ -488,7 +589,6 @@ def ARC_BRHS_b_u6_s9_hs_d : ARCompactInstBranch<0b00001, "brhs",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b10101;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
@@ -557,7 +657,6 @@ def ARC_BRLO_b_c_s9_lo_d : ARCompactInstBranch<0b00001, "brlo",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b00100;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
@@ -579,7 +678,6 @@ def ARC_BRLO_b_u6_s9_lo_d : ARCompactInstBranch<0b00001, "brlo",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b10100;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
@@ -648,7 +746,6 @@ def ARC_BRLT_b_c_s9_lt_d : ARCompactInstBranch<0b00001, "brlt",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b00010;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
@@ -670,7 +767,6 @@ def ARC_BRLT_b_u6_s9_lt_d : ARCompactInstBranch<0b00001, "brlt",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b10010;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
@@ -739,7 +835,6 @@ def ARC_BRNE_b_c_s9_ne_d : ARCompactInstBranch<0b00001, "brne",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b00001;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
@@ -761,7 +856,6 @@ def ARC_BRNE_b_u6_s9_ne_d : ARCompactInstBranch<0b00001, "brne",
   let Inst{31-27} = 0b00001;
   let Inst{16} = 1;
   let Inst{4-0} = 0b10001;
-  let hasDelaySlot = 1;
   let isPredicable = 1;
   bits<6> rb;
   let Inst{26-24} = rb{2-0};
