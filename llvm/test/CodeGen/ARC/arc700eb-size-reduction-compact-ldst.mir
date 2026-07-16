@@ -1,26 +1,38 @@
 # RUN: llc -mtriple=arceb -mcpu=arc700eb -mattr=+arcompact -run-pass=arc-size-reduction -verify-machineinstrs -o - %s | FileCheck %s
 
-# Dossier 05 step 5: MIR-level regression coverage for the general
-# register-relative + immediate-offset compact 16-bit load/store reductions
-# (SP-relative was already covered by dossier 04's own MIR test; this file
-# is scoped to the NEW general-GPR_S-base word/byte/half forms).
+# MIR-level regression coverage for the immediate-offset compact 16-bit
+# load/store reductions.
 #
-# Two classes of underlying bug had to be fixed before any of this could
+# Dossier 05 step 5 added the general register-relative word/byte/half forms
+# (SP-relative word was dossier 04). Dossier 05's remaining work then added
+# the sign-extending half-word load (LDH_X_rs9 -> ldw_s.x, major 0x13) and
+# the SP-relative BYTE forms (LDB_rs9/STB_rs9 with base SP -> SP_LDB_S /
+# SP_STB_S), each covered in its own labelled section at the end of this file.
+#
+# Three classes of underlying bug had to be fixed before any of this could
 # work at all (see ARCARCompactInstr16.td for the byte-verified evidence):
-#   1. ARC_LD_S_c_b_u7 / ARC_LDB_S_c_b_u5 / ARC_LDW_S_c_b_u6 had their
-#      outs/ins DAG roles swapped (destination bound to the BASE bitfield,
-#      base bound to the DEST bitfield) -- a silent register-swap
-#      miscompile the generator introduced.
+#   1. ARC_LD_S_c_b_u7 / ARC_LDB_S_c_b_u5 / ARC_LDW_S_c_b_u6 (and
+#      ARC_LDW_S_c_b_u6_v1) had their outs/ins DAG roles swapped (destination
+#      bound to the BASE bitfield, base bound to the DEST bitfield) -- a
+#      silent register-swap miscompile the generator introduced.
 #   2. Every compact 16-bit load/store descriptor in ARCARCompactInstr16.td
 #      (and the pre-existing SP_LD_S/SP_ST_S) never declared mayLoad/
 #      mayStore, so MachineVerifier's per-MMO check aborted the instant a
 #      MachineMemOperand was attached to a reduced instruction.
+#   3. ARC_LDW_S_c_b_u6_v1 additionally had NO bit bindings at all, so the MC
+#      encoder emitted a fixed 0x9800 regardless of operands.
 #
-# Each boundary test below pins down the OFFSET SCALING hazard explicitly:
-# the general-base word/half forms encode a PRE-DIVIDED value (scale 4 / 2
-# respectively), unlike the raw-byte-offset SP forms -- an off-by-the-scale
-# bug here would be silent effective-address corruption on real hardware
-# (the workshop's SILENT UNALIGNED RULE), not a fault.
+# Each boundary test below pins down the OFFSET SCALING hazard explicitly --
+# the three conventions in play genuinely disagree, and every disagreement is
+# silent (the target clears low address bits instead of faulting; the encoder
+# masks out-of-range fields instead of diagnosing):
+#   * general-base word/half: PRE-DIVIDED encoded value (scale 4 / 2).
+#   * general-base byte: UNSCALED, any offset in [0,31].
+#   * SP-relative (word AND byte alike): RAW byte offset passed through, but
+#     4-ALIGNED and <= 124, because the td class does the >>2 itself and the
+#     SP format's U7 field is 4-scaled for every one of its sub-opcodes --
+#     including the byte ones, where the alignment is a pure encoding
+#     artefact rather than an access-width requirement.
 
 --- |
   ; ARCSizeReduction only fires when the function is optsize/minsize -- every
@@ -44,6 +56,21 @@
   define void @test_ldh_over_range() #0 { ret void }
   define void @test_ldh_odd_offset() #0 { ret void }
   define void @test_sth_general_base() #0 { ret void }
+  define void @test_ldhx_zero() #0 { ret void }
+  define void @test_ldhx_max() #0 { ret void }
+  define void @test_ldhx_over_range() #0 { ret void }
+  define void @test_ldhx_odd_offset() #0 { ret void }
+  define void @test_ldhx_nongprs_base() #0 { ret void }
+  define void @test_ldhx_nongprs_dest() #0 { ret void }
+  define void @test_ldhx_di_unaffected() #0 { ret void }
+  define void @test_ldb_sp_base_zero() #0 { ret void }
+  define void @test_ldb_sp_base_max() #0 { ret void }
+  define void @test_ldb_sp_base_over_range() #0 { ret void }
+  define void @test_ldb_sp_base_misaligned() #0 { ret void }
+  define void @test_ldb_sp_base_nongprs_dest() #0 { ret void }
+  define void @test_stb_sp_base() #0 { ret void }
+  define void @test_stb_sp_base_misaligned() #0 { ret void }
+  define void @test_ldb_general_base_unscaled_unaffected() #0 { ret void }
 
   attributes #0 = { minsize optsize }
 ...
@@ -384,5 +411,332 @@ body:             |
     ; CHECK-LABEL: name: test_sth_general_base
     ; CHECK: ARC_STW_S_c_b_u6 killed $r2, killed $r1, 3
     STH_rs9 killed $r2, killed $r1, 6 :: (store (s16))
+    J_S_BLINK implicit $blink
+...
+
+# ---------------------------------------------------------------------------
+# Sign-extending half-word load (LDH_X_rs9 -> ldw_s.x c,[b,u6], major 0x13).
+#
+# LDW_S.X differs from LDW_S only in the sign-extension of the loaded value,
+# exactly as LDH_X_rs9 differs from LDH_rs9, so this shares the half-word
+# dedicated path: same 2-scale, same [0,62] range, same GPR_S gating. The
+# narrow descriptor ARC_LDW_S_c_b_u6_v1 previously had NO bit bindings at all
+# and encoded a fixed 0x9800 (`ldw.x r0,[r0,0x0]`) regardless of operands, plus
+# a destination/base def-use swap -- both repaired in ARCARCompactInstr16.td
+# (byte-verified 0x9943 -> `ldw.x r2,[r1,0x6]`).
+# ---------------------------------------------------------------------------
+
+---
+name:            test_ldhx_zero
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; CHECK-LABEL: name: test_ldhx_zero
+    ; CHECK: $r0 = ARC_LDW_S_c_b_u6_v1 killed $r1, 0
+    $r0 = LDH_X_rs9 killed $r1, 0 :: (load (s16))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldhx_max
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Boundary: max in-range byte offset 62 (== 31*2, top of the 5-bit
+    ; encoded field). Encoded immediate must be the PRE-DIVIDED value 31,
+    ; not the raw byte offset 62 -- passing the raw offset would double the
+    ; effective address, and the target silently clears low address bits
+    ; instead of faulting.
+    ; CHECK-LABEL: name: test_ldhx_max
+    ; CHECK: $r0 = ARC_LDW_S_c_b_u6_v1 killed $r1, 31
+    $r0 = LDH_X_rs9 killed $r1, 62 :: (load (s16))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldhx_over_range
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Boundary: 64 is 2-byte-aligned but exceeds the 5-bit encoded field's
+    ; range (64/2 = 32 > 31) -- must NOT reduce.
+    ; CHECK-LABEL: name: test_ldhx_over_range
+    ; CHECK: $r0 = LDH_X_rs9 killed $r1, 64
+    ; CHECK-NOT: ARC_LDW_S_c_b_u6_v1
+    $r0 = LDH_X_rs9 killed $r1, 64 :: (load (s16))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldhx_odd_offset
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Offset 3 is in-range but not 2-byte-aligned -- must NOT reduce
+    ; (natural-alignment gate for the half-word form).
+    ; CHECK-LABEL: name: test_ldhx_odd_offset
+    ; CHECK: $r0 = LDH_X_rs9 killed $r1, 3
+    ; CHECK-NOT: ARC_LDW_S_c_b_u6_v1
+    $r0 = LDH_X_rs9 killed $r1, 3 :: (load (s16))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldhx_nongprs_base
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r4
+
+    ; Base register $r4 is not in GPR_S = {r0-r3, r12-r15} -- must NOT
+    ; reduce. The compact 3-bit field only maps the 8 GPR_S registers
+    ; correctly, so an out-of-class base would silently encode a different
+    ; register.
+    ; CHECK-LABEL: name: test_ldhx_nongprs_base
+    ; CHECK: $r0 = LDH_X_rs9 killed $r4, 6
+    ; CHECK-NOT: ARC_LDW_S_c_b_u6_v1
+    $r0 = LDH_X_rs9 killed $r4, 6 :: (load (s16))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldhx_nongprs_dest
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Dest register $r4 is not in GPR_S -- must NOT reduce even though the
+    ; base ($r1) is compact-eligible.
+    ; CHECK-LABEL: name: test_ldhx_nongprs_dest
+    ; CHECK: $r4 = LDH_X_rs9 killed $r1, 6
+    ; CHECK-NOT: ARC_LDW_S_c_b_u6_v1
+    $r4 = LDH_X_rs9 killed $r1, 6 :: (load (s16))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldhx_di_unaffected
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; The uncached `.di` sign-extending half-word load is a DISTINCT opcode
+    ; (LDH_X_DI_rs9) and is deliberately absent from the ReduceTable: an
+    ; uncached register access must never be reduced into a cached compact
+    ; form. Everything else here is reducible (GPR_S base+dest, aligned
+    ; in-range offset), so this pins the opcode gate specifically.
+    ; CHECK-LABEL: name: test_ldhx_di_unaffected
+    ; CHECK: $r0 = LDH_X_DI_rs9 killed $r1, 6
+    ; CHECK-NOT: ARC_LDW_S_c_b_u6_v1
+    $r0 = LDH_X_DI_rs9 killed $r1, 6 :: (volatile load (s16))
+    J_S_BLINK implicit $blink
+...
+
+# ---------------------------------------------------------------------------
+# SP-relative byte load/store (LDB_rs9/STB_rs9 with base SP -> SP_LDB_S /
+# SP_STB_S).
+#
+# MIND THE SCALING ASYMMETRY: unlike the general-base u5 byte form (unscaled,
+# any offset in [0,31]), the SP format's U7 field is 4-SCALED even for byte
+# access -- Table 76 specifies "actual offset is U7 = u[4:0] << 2" for ALL of
+# its sub-opcodes, including i=0x01 (LDB_S) and i=0x03 (STB_S). So an SP byte
+# offset must be a multiple of 4 in [0,124]. The td class F16_SP_OPS_u7_aligned
+# performs the >>2 itself (`let fieldU = u7{6-2}`), so the pass passes the RAW
+# byte offset. Byte-verified: 0xC523 -> `ldb r13,[sp,0xC]` (encoded field 3 ->
+# byte offset 12), 0xC53F -> `ldb r13,[sp,0x7C]` (max 124).
+#
+# The gates below are the ONLY guard: immU<7>'s PatLeaf predicate is ISel-only
+# and does not constrain a post-RA BuildMI, and GPR32Reduced is an
+# `Operand<iAny>` rather than a RegisterClass, so MachineVerifier performs no
+# class check. The MC encoder silently masks bad operands -- offset 128 wraps
+# to 0 (a different stack slot), offset 13 encodes as 12, and a non-GPR_S value
+# register silently becomes r12.
+# ---------------------------------------------------------------------------
+
+---
+name:            test_ldb_sp_base_zero
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $sp
+
+    ; SP base, offset 0: reduces to SP_LDB_S carrying the RAW byte offset,
+    ; with SP modeled as an implicit use.
+    ; CHECK-LABEL: name: test_ldb_sp_base_zero
+    ; CHECK: $r0 = SP_LDB_S 0, implicit $sp
+    $r0 = LDB_rs9 $sp, 0 :: (load (s8))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldb_sp_base_max
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $sp
+
+    ; Boundary: max in-range byte offset 124 (== 31*4, top of the 5-bit
+    ; encoded field). The RAW byte offset 124 is passed through -- the td
+    ; class does the >>2. Note this offset is far outside the general-base
+    ; byte form's u5 [0,31] range: the two byte targets genuinely differ.
+    ; CHECK-LABEL: name: test_ldb_sp_base_max
+    ; CHECK: $r0 = SP_LDB_S 124, implicit $sp
+    $r0 = LDB_rs9 $sp, 124 :: (load (s8))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldb_sp_base_over_range
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $sp
+
+    ; Boundary: 128 is 4-byte-aligned but exceeds the field (128/4 = 32 >
+    ; 31) -- must NOT reduce. This is the worst-case silent bug: the encoder
+    ; would wrap it to offset 0, reading a completely different stack slot.
+    ; CHECK-LABEL: name: test_ldb_sp_base_over_range
+    ; CHECK: $r0 = LDB_rs9 $sp, 128
+    ; CHECK-NOT: SP_LDB_S
+    $r0 = LDB_rs9 $sp, 128 :: (load (s8))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldb_sp_base_misaligned
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $sp
+
+    ; Offset 13 is in-range but not 4-byte-aligned. A byte access needs no
+    ; alignment of its own -- this gate exists purely because the SP format's
+    ; U7 field cannot represent a non-4-aligned offset. Must NOT reduce; the
+    ; encoder would silently drop the low 2 bits and address byte 12.
+    ; CHECK-LABEL: name: test_ldb_sp_base_misaligned
+    ; CHECK: $r0 = LDB_rs9 $sp, 13
+    ; CHECK-NOT: SP_LDB_S
+    $r0 = LDB_rs9 $sp, 13 :: (load (s8))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldb_sp_base_nongprs_dest
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $sp
+
+    ; Dest register $r4 is not in GPR_S -- must NOT reduce. The compact 3-bit
+    ; b3 field would silently encode r12 (4 & 7 = 4 -> the compact code for
+    ; r12), a wrong-register miscompile with no diagnostic: GPR32Reduced is an
+    ; `Operand<iAny>`, not a RegisterClass, so nothing else catches it.
+    ; CHECK-LABEL: name: test_ldb_sp_base_nongprs_dest
+    ; CHECK: $r4 = LDB_rs9 $sp, 12
+    ; CHECK-NOT: SP_LDB_S
+    $r4 = LDB_rs9 $sp, 12 :: (load (s8))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_stb_sp_base
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $sp, $r2
+
+    ; Store counterpart: the value register is a USE (not a def), so it must
+    ; keep its kill flag rather than gain a Define.
+    ; CHECK-LABEL: name: test_stb_sp_base
+    ; CHECK: SP_STB_S killed $r2, 12, implicit $sp
+    STB_rs9 killed $r2, $sp, 12 :: (store (s8))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_stb_sp_base_misaligned
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $sp, $r2
+
+    ; Same 4-alignment gate on the store side -- must NOT reduce.
+    ; CHECK-LABEL: name: test_stb_sp_base_misaligned
+    ; CHECK: STB_rs9 killed $r2, $sp, 15
+    ; CHECK-NOT: SP_STB_S
+    STB_rs9 killed $r2, $sp, 15 :: (store (s8))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldb_general_base_unscaled_unaffected
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Regression check for the scaling asymmetry: adding the SP branch (whose
+    ; offset must be 4-aligned) must NOT leak a 4-alignment requirement into
+    ; the general-base byte path, which is UNSCALED and encodes any offset in
+    ; [0,31] directly. Offset 13 is deliberately non-4-aligned and must still
+    ; reduce, with the raw value 13 preserved.
+    ; CHECK-LABEL: name: test_ldb_general_base_unscaled_unaffected
+    ; CHECK: $r0 = ARC_LDB_S_c_b_u5 killed $r1, 13
+    $r0 = LDB_rs9 killed $r1, 13 :: (load (s8))
     J_S_BLINK implicit $blink
 ...

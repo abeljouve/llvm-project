@@ -20,6 +20,16 @@
 // gen_tablegen.py would silently drop these fixes unless the generator
 // itself is corrected first.
 //
+// Dossier 05 remaining work adds two more hand-patched descriptors to that
+// list -- keep them in mind when touching the generator:
+//   * ARC_LDW_S_c_b_u6_v1 (major 0x13, LDW_S.X): had NO bit bindings at all
+//     (encoded the fixed word 0x9800 regardless of operands), a
+//     destination/base def-use swap, and the wrong mnemonic; also no longer
+//     isCodeGenOnly (0x13 is a distinct instruction from 0x12, not a
+//     duplicate encoding variant).
+//   * ARC_MOV_S_h_b (major 0x0E, sub-opcode i=0x03, MOV_S H <- B): had the
+//     destination and source operand roles inverted.
+//
 //===----------------------------------------------------------------------===//
 
 // 99 instruction variants
@@ -992,15 +1002,55 @@ def ARC_LDW_S_c_b_u6 : ARCompactInst16_LS<0b10010, "ldw_s",
 }
 
 // ldw_sZZ_H.X c,b,u6 10011bbbcccuuuuu.
-def ARC_LDW_S_c_b_u6_v1 : ARCompactInst16_LS<0b10011, "ldw_s",
-    (outs GPR_S:$rb_s), (ins GPR_S:$rc_s, u6imm_a16:$uimm6_a16_11_s),
-    "ldw_s\t$rc_s, [$rb_s, $uimm6_a16_11_s]", []> {
+//
+// Manual fix (dossier 05 remaining work) -- three bugs, all repaired here:
+//
+// 1. NO BIT BINDINGS. The generator emitted only `let Inst{15-11}`, leaving
+//    rb_s / rc_s / uimm6_a16_11_s unbound, so the MC encoder produced the
+//    FIXED word 0x9800 (= `ldw.x r0,[r0,0x0]`) for every operand set --
+//    a silent wrong-address/wrong-register miscompile had anything selected
+//    it. Same bug class as the register-count shift v1 variants
+//    (ARC_ASL_S_b_c_v1 / ARC_ASR_S_b_c_v1 / ARC_LSR_S_b_c_v1) repaired
+//    earlier in this file.
+// 2. DEF/USE SWAP. The true destination is $rc_s (bits[7:5]), not $rb_s
+//    (bits[10:8], the base) -- same bug class as the sibling
+//    ARC_LDW_S_c_b_u6 above. This def's OWN AsmString already reads
+//    `$rc_s, [$rb_s, ...]`, contradicting the generated outs/ins DAG.
+// 3. MNEMONIC. Major 0x13 is `LDW_S.X` (sign-extending), a DISTINCT
+//    instruction from major 0x12's zero-extending `LDW_S` -- not a
+//    "duplicate encoding variant" as the generator's comment claimed.
+//    Printing a signed load as plain `ldw_s` is an audit hazard, so the
+//    mnemonic is corrected to `ldw_s.x` and isCodeGenOnly dropped (grep
+//    confirms this is the only def claiming Inst{15-11}=0b10011 in the
+//    ARCompact16 decoder namespace, so exposing it is conflict-free).
+//
+// docs/isa/15-encoding-16bit.md Table 74: | 0x13 | LDW_S.X | C <- MEM[B +
+// U6].WX |, syntax `LDW_S.X C, [B, U6] ; U6 must be 16-bit aligned`.
+// Byte-verified with the authoritative BE-ARC disassembler:
+//   0x9940 (rb_s=1, rc_s=2, u6enc=0)  -> `ldw.x r2, [r1, 0x0]`
+//   0x9943 (rb_s=1, rc_s=2, u6enc=3)  -> `ldw.x r2, [r1, 0x6]`
+//   0x995F (rb_s=1, rc_s=2, u6enc=31) -> `ldw.x r2, [r1, 0x3E]`  (max)
+//   0x9143 (major 0x12 control)       -> `ldw   r2, [r1, 0x6]`
+// dest=r2=rc_s and base=r1=rb_s confirmed by holding one field fixed and
+// varying the other; 0x6 = 3*2 confirms the encoded field is PRE-DIVIDED by
+// the half-word scale (u6imm_a16 is a bare Operand<i32> with no PatLeaf and
+// no forced-zero bit-slice trick, so the operand lands straight in the
+// 5-bit field). ARCSizeReduction must therefore pass `Off >> 1`, NOT the raw
+// byte offset. mayLoad is inherited from the enclosing `let mayLoad = 1`
+// block -- no per-def setting needed.
+def ARC_LDW_S_c_b_u6_v1 : ARCompactInst16_LS<0b10011, "ldw_s.x",
+    (outs GPR_S:$rc_s), (ins GPR_S:$rb_s, u6imm_a16:$uimm6_a16_11_s),
+    "ldw_s.x\t$rc_s, [$rb_s, $uimm6_a16_11_s]", []> {
   // Opcode: 0x00009800, Mask: 0x0000F800
   // Operands: RC_S, BRAKET, RB_S, UIMM6_A16_11_S, BRAKETdup
   // Flags: C_XHARD, C_ZZ_H
   let Inst{15-11} = 0b10011;
-  // Duplicate encoding variant.
-  let isCodeGenOnly = 1;
+  bits<3> rb_s;
+  let Inst{10-8} = rb_s;
+  bits<3> rc_s;
+  let Inst{7-5} = rc_s;
+  bits<5> uimm6_a16_11_s;
+  let Inst{4-0} = uimm6_a16_11_s;
 }
 
 // ldw_s R0,GP,s10 1100110sssssssss.
@@ -1170,9 +1220,33 @@ def ARC_MOV_S_b_h : ARCompactInst16_ALU<0b01110, "mov_s",
 
 // mov_s h,b 01110bbbhhh11HHH.
 //
-// Manual fix: same h-field scatter bug as ARC_MOV_S_b_h above.
+// Manual fix 1: same h-field scatter bug as ARC_MOV_S_b_h above.
+//
+// Manual fix 2 (dossier 05 remaining work): operand-as-def swap. Sub-opcode
+// i=0x03 is `MOV_S H <- B` per docs/isa/15-encoding-16bit.md Table 70 -- the
+// DESTINATION is the high register H ($r6h), and the SOURCE is B ($rb_s).
+// The generator emitted `(outs GPR_S:$rb_s), (ins GPR32:$r6h)`, declaring the
+// source as the def and the destination as a use -- exactly inverted, and
+// contradicted by this def's OWN AsmString (`mov_s\t$r6h, $rb_s`, dest first)
+// and by the generator's own `// Operands: R6H, RB_S` metadata line below,
+// which already lists R6H as operand 0. Contrast the sibling ARC_MOV_S_b_h
+// (i=0x01, `B <- H`), whose (outs $rb_s) IS correct -- do not "fix" it by
+// symmetry; it is on the live MOV_rr reduction path.
+// Byte-verified with the authoritative BE-ARC disassembler:
+//   0x74A9 (i=0b01, b=r12, h=r13) -> `mov r12, r13`  (dest = B field)
+//   0x74B9 (i=0b11, b=r12, h=r13) -> `mov r13, r12`  (dest = H field)
+//   0x741D (i=0b11, b=r12, h=r40) -> `mov r40, r12`  (H reaches r0-r63)
+// Encoding is byte-identical before/after: `bits<3> rb_s` / `bits<6> r6h`
+// bind to instruction bits by NAME, not by operand position, so swapping the
+// outs/ins DAG roles changes only the MachineInstr/MCInst def-vs-use roles.
+// The printed text is likewise unchanged (the AsmString resolves operands by
+// name). NOTE for any future wiring of this def to a reduction: Table 70
+// states that i=0x03 with H=0x3F (PCL/r63) raises an Instruction Error
+// exception on ARC 700, and H=r62 means LIMM -- gate `RC != ARC::R62 &&
+// RC != ARC::R63` explicitly rather than relying on GPR32's AltOrder to keep
+// the allocator away from them.
 def ARC_MOV_S_h_b : ARCompactInst16_ALU<0b01110, "mov_s",
-    (outs GPR_S:$rb_s), (ins GPR32:$r6h),
+    (outs GPR32:$r6h), (ins GPR_S:$rb_s),
     "mov_s\t$r6h, $rb_s", []> {
   // Opcode: 0x00007018, Mask: 0x0000F818
   // Operands: R6H, RB_S
