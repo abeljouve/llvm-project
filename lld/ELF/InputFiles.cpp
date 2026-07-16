@@ -17,9 +17,12 @@
 #include "SyntheticSections.h"
 #include "Target.h"
 #include "lld/Common/DWARF.h"
+#include "lld/Common/TargetOptionsCommandFlags.h"
 #include "llvm/ADT/CachedHashString.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/LTO/LTO.h"
+#include "llvm/MC/MCSubtargetInfo.h"
+#include "llvm/MC/TargetRegistry.h"
 #include "llvm/Object/IRObjectFile.h"
 #include "llvm/Support/AArch64AttributeParser.h"
 #include "llvm/Support/ARMAttributeParser.h"
@@ -29,6 +32,8 @@
 #include "llvm/Support/Path.h"
 #include "llvm/Support/TimeProfiler.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/TargetParser/SubtargetFeature.h"
+#include <memory>
 #include <optional>
 
 using namespace llvm;
@@ -1746,6 +1751,52 @@ static ELFKind getBitcodeELFKind(const Triple &t) {
   return t.isArch64Bit() ? ELF64BEKind : ELF32BEKind;
 }
 
+// ARC is unusual in that one triple covers two ELF machine types:
+// EM_ARC_COMPACT for the ARCompact ISA (ARC600/ARC700) and EM_ARC_COMPACT2 for
+// ARCv2. The code generator picks between them from the "arcompact" subtarget
+// feature, so unlike every other case in getBitcodeMachineKind below, the
+// triple on its own does not determine what an LTO-compiled bitcode input will
+// come out as.
+//
+// Derive the answer from exactly the inputs the LTO backend builds its
+// TargetMachine from -- the triple, --plugin-opt=mcpu= and -mllvm -mattr= --
+// and let the target's own subtarget table decide what those imply instead of
+// hardcoding a CPU-name list here. createTargetMachine() in
+// llvm/lib/LTO/LTOBackend.cpp composes those three the same way, so this stays
+// equal to the e_machine that LTO actually emits by construction, and a genuine
+// ISA mismatch against a regular ELF input is still reported.
+//
+// Per-function "target-features" attributes are deliberately not consulted:
+// they do not reach the LTO TargetMachine either, so a module recording
+// ARCompact only there is still emitted as ARCv2 at the MC layer. Such a link
+// needs --plugin-opt=mcpu= (or -mllvm -mattr=+arcompact) to become ARCompact,
+// and that is visible here.
+static uint16_t getARCBitcodeMachineKind(Ctx &ctx, StringRef path,
+                                         const Triple &t) {
+  std::string err;
+  const llvm::Target *target = TargetRegistry::lookupTarget(t, err);
+  if (!target) {
+    ErrAlways(ctx) << path << ": could not infer e_machine from bitcode target "
+                   << "triple " << t.str() << ": " << err;
+    return EM_NONE;
+  }
+
+  SubtargetFeatures features;
+  features.getDefaultSubtargetFeatures(t);
+  for (const std::string &attr : lld::getMAttrs())
+    features.AddFeature(attr);
+
+  std::unique_ptr<MCSubtargetInfo> sti(
+      target->createMCSubtargetInfo(t, lld::getCPUStr(), features.getString()));
+  if (!sti) {
+    ErrAlways(ctx) << path << ": could not infer e_machine from bitcode target "
+                   << "triple " << t.str()
+                   << ": target has no subtarget information";
+    return EM_NONE;
+  }
+  return sti->checkFeatures("+arcompact") ? EM_ARC_COMPACT : EM_ARC_COMPACT2;
+}
+
 static uint16_t getBitcodeMachineKind(Ctx &ctx, StringRef path,
                                       const Triple &t) {
   switch (t.getArch()) {
@@ -1757,13 +1808,7 @@ static uint16_t getBitcodeMachineKind(Ctx &ctx, StringRef path,
     return EM_AMDGPU;
   case Triple::arc:
   case Triple::arceb:
-    // The ARC MC backend emits EM_ARC_COMPACT2 by default (its AsmBackend only
-    // selects EM_ARC_COMPACT when the subtarget CPU starts with "arc700", and
-    // no CPU is passed by default). Match native output so LTO-generated
-    // objects link cleanly against regular .o files. If the default CPU ever
-    // changes to arc700, this must change to match — ideally by reading the
-    // bitcode module's "target-cpu" attribute instead of hardcoding.
-    return EM_ARC_COMPACT2;
+    return getARCBitcodeMachineKind(ctx, path, t);
   case Triple::arm:
   case Triple::armeb:
   case Triple::thumb:

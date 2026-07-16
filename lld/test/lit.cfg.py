@@ -87,6 +87,7 @@ llvm_config.feature_config(
             {
                 "AArch64": "aarch64",
                 "AMDGPU": "amdgpu",
+                "ARC": "arc",
                 "ARM": "arm",
                 "AVR": "avr",
                 "Hexagon": "hexagon",
