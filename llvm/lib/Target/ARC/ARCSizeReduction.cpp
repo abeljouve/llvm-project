@@ -151,10 +151,38 @@ static const ReduceEntry ReduceTable[] = {
   //   ST_rs9: ST_rs9 $val, $base, imm    -> op[0]=val(use), [1]=base, [2]=imm
   // When the base is SP, the value/dest reg is in GPR_S, and the byte offset
   // fits the 4-byte-aligned u7 field [0,124], reduce to the 2-byte
-  // SP_LD_S / SP_ST_S (ld_s/st_s b3,[%sp,u7]). Handled by a dedicated path in
-  // tryReduce (SP base + offset checks).
+  // SP_LD_S / SP_ST_S (ld_s/st_s b3,[%sp,u7]). When the base is any other
+  // GPR_S register (not SP), reduce instead to the general-base compact
+  // forms ARC_LD_S_c_b_u7 / ARC_ST_S_c_b_u7 (ld_s/st_s c,[b,u7]). Both paths
+  // share the dedicated `if (Entry.WideOpc == ARC::LD_rs9 || ...)` block in
+  // tryReduce below (SP-vs-general dispatch happens there, not via a second
+  // ReduceTable row -- the reduction loop `break`s after the first row
+  // matching a given WideOpc, so a duplicate LD_rs9/ST_rs9 row would be
+  // unreachable).
   { ARC::LD_rs9,        ARC::SP_LD_S,             1, false },
   { ARC::ST_rs9,        ARC::SP_ST_S,             1, false },
+
+  // General-base byte load/store, any offset (unscaled -- byte access is its
+  // own alignment unit). ISel layout identical to LD_rs9/ST_rs9 above:
+  //   LDB_rs9: $dst = LDB_rs9 $base, imm -> op[0]=dst(def), [1]=base, [2]=imm
+  //   STB_rs9: STB_rs9 $val, $base, imm  -> op[0]=val(use), [1]=base, [2]=imm
+  // Reduce to ARC_LDB_S_c_b_u5 / ARC_STB_S_c_b_u5 (ldb_s/stb_s c,[b,u5]) when
+  // base+value/dest are both GPR_S and offset fits u5 [0,31] unscaled.
+  // Handled by a dedicated path in tryReduce. Deliberately excludes
+  // LDB_X_rs9 (sign-extending) -- there is no safe compact target for it.
+  { ARC::LDB_rs9,       ARC::ARC_LDB_S_c_b_u5,    1, false },
+  { ARC::STB_rs9,       ARC::ARC_STB_S_c_b_u5,    1, false },
+
+  // General-base half-word load/store, scale 2. Same ISel layout as above.
+  // Reduce to ARC_LDW_S_c_b_u6 / ARC_STW_S_c_b_u6 (ldw_s/stw_s c,[b,u6])
+  // when base+value/dest are both GPR_S, the offset is 2-byte-aligned, and
+  // the aligned offset fits the 5-bit encoded field [0,31] (byte offset
+  // [0,62]). Handled by a dedicated path in tryReduce. Deliberately
+  // excludes LDH_X_rs9 (sign-extending) -- the would-be compact target
+  // (LDW_S_c_b_u6_v1, opcode 0x13) is a dead unbound stub (see
+  // ARCARCompactInstr16.td), out of scope this cut.
+  { ARC::LDH_rs9,       ARC::ARC_LDW_S_c_b_u6,    1, false },
+  { ARC::STH_rs9,       ARC::ARC_STW_S_c_b_u6,    1, false },
 
   // 1-operand (dest+src both in GPR_S): NOT_S, NEG_S
   { ARC::ARC_NOT_b_c,   ARC::ARC_NOT_S_b_c,        2, false },
@@ -454,12 +482,26 @@ bool ARCSizeReduction::tryReduce(MachineBasicBlock &MBB,
     return true;
   }
 
-  // Dedicated path: SP-relative word load/store -> 2-byte SP_LD_S / SP_ST_S.
+  // Dedicated path: word load/store -> 2-byte SP_LD_S/SP_ST_S (SP base) or
+  // ARC_LD_S_c_b_u7/ARC_ST_S_c_b_u7 (general GPR_S base).
   //   LD_rs9: op[0]=dst(def),  op[1]=base(use), op[2]=imm offset
   //   ST_rs9: op[0]=val(use),  op[1]=base(use), op[2]=imm offset
-  // Reduce only when base == SP, the value/dest reg is in GPR_S, and the byte
-  // offset fits the 4-byte-aligned u7 field [0,124]. The compact forms encode
-  // [%sp, u7]; SP is implicit.
+  // When base == SP: reduce to SP_LD_S/SP_ST_S when the value/dest reg is in
+  // GPR_S and the byte offset fits the 4-byte-aligned u7 field [0,124]. The
+  // compact SP forms encode [%sp, u7] with SP implicit and the RAW byte
+  // offset (the td forces the low 2 bits to 0 itself -- see
+  // F16_SP_LD/F16_SP_ST in ARCInstrInfo.td), so `.addImm(Off)` is correct.
+  // When base is any OTHER register: reduce to ARC_LD_S_c_b_u7/
+  // ARC_ST_S_c_b_u7 when base AND value/dest are both in GPR_S and the byte
+  // offset fits the same 4-byte-aligned range [0,124]. Unlike the SP forms,
+  // ARC_LD_S_c_b_u7/ARC_ST_S_c_b_u7's immediate field is the PRE-DIVIDED
+  // encoded value (bits<5> uimm7_a32_11_s with no forced-zero bit-slice
+  // trick -- byte-verified: encoded field 3 round-trips to printed byte
+  // offset 0xC = 3*4), so the general-base path must pass `.addImm(Off >>
+  // 2)`, NOT the raw byte offset -- passing the raw offset here would be
+  // off by the scale factor and silently corrupt the effective address
+  // (the workshop's SILENT UNALIGNED RULE hazard: HW clears the low address
+  // bits instead of faulting).
   if (Entry.WideOpc == ARC::LD_rs9 || Entry.WideOpc == ARC::ST_rs9) {
     if (NumOps < 3)
       return false;
@@ -472,31 +514,175 @@ bool ARCSizeReduction::tryReduce(MachineBasicBlock &MBB,
     Register RVal = OpVal.getReg();
     Register RBase = OpBase.getReg();
     int64_t Off = OpOff.getImm();
-    // Base must be SP; value/dest reg in the compact set; offset 4-byte-aligned
-    // within [0,124].
-    if (RBase != ARC::SP || !isGPR_S(RVal, TRI) || Off < 0 || Off > 124 ||
+
+    if (RBase == ARC::SP) {
+      // SP-relative: value/dest reg in the compact set; offset
+      // 4-byte-aligned within [0,124].
+      if (!isGPR_S(RVal, TRI) || Off < 0 || Off > 124 || (Off & 0x3) != 0)
+        return false;
+
+      LLVM_DEBUG(dbgs() << "  Reducing " << Old << " to 16-bit (SP_"
+                        << (IsLoad ? "LD" : "ST") << "_S)\n");
+
+      MachineInstrBuilder MIB;
+      if (IsLoad) {
+        // SP_LD_S: (outs GPR32Reduced:$b3), (ins immU<7>:$u7)  -- ld_s b3,[%sp,u7]
+        MIB = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(ARC::SP_LD_S))
+                  .addReg(RVal, getDefRegState(true) |
+                                    getDeadRegState(OpVal.isDead()))
+                  .addImm(Off);
+      } else {
+        // SP_ST_S: (outs), (ins GPR32Reduced:$b3, immU<7>:$u7) -- st_s b3,[%sp,u7]
+        MIB = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(ARC::SP_ST_S))
+                  .addReg(RVal, getKillRegState(OpVal.isKill()))
+                  .addImm(Off);
+      }
+      // SP is implicit in the compact form -- model the SP use for liveness.
+      MIB.addReg(ARC::SP, RegState::Implicit);
+      // Carry over the memory operand so alias analysis / scheduling stay correct.
+      for (const MachineMemOperand *MMO : Old.memoperands())
+        MIB.addMemOperand(const_cast<MachineMemOperand *>(MMO));
+
+      MI->eraseFromParent();
+      ++NumReduced;
+      return true;
+    }
+
+    // General GPR_S base (not SP): base and value/dest both must be in
+    // GPR_S; offset 4-byte-aligned within [0,124], encoded pre-divided by 4.
+    if (!isGPR_S(RBase, TRI) || !isGPR_S(RVal, TRI) || Off < 0 || Off > 124 ||
         (Off & 0x3) != 0)
       return false;
 
-    LLVM_DEBUG(dbgs() << "  Reducing " << Old << " to 16-bit (SP_"
-                      << (IsLoad ? "LD" : "ST") << "_S)\n");
+    LLVM_DEBUG(dbgs() << "  Reducing " << Old << " to 16-bit (ARC_"
+                      << (IsLoad ? "LD" : "ST") << "_S_c_b_u7)\n");
 
     MachineInstrBuilder MIB;
     if (IsLoad) {
-      // SP_LD_S: (outs GPR32Reduced:$b3), (ins immU<7>:$u7)  -- ld_s b3,[%sp,u7]
-      MIB = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(ARC::SP_LD_S))
+      // ARC_LD_S_c_b_u7: (outs GPR_S:$rc_s), (ins GPR_S:$rb_s, u7imm_a32) --
+      // ld_s c,[b,u7].
+      MIB = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(ARC::ARC_LD_S_c_b_u7))
                 .addReg(RVal, getDefRegState(true) |
                                   getDeadRegState(OpVal.isDead()))
+                .addReg(RBase, getKillRegState(OpBase.isKill()))
+                .addImm(Off >> 2);
+    } else {
+      // ARC_ST_S_c_b_u7: (outs), (ins GPR_S:$rc_s, GPR_S:$rb_s, u7imm_a32) --
+      // st_s c,[b,u7].
+      MIB = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(ARC::ARC_ST_S_c_b_u7))
+                .addReg(RVal, getKillRegState(OpVal.isKill()))
+                .addReg(RBase, getKillRegState(OpBase.isKill()))
+                .addImm(Off >> 2);
+    }
+    // Carry over the memory operand so alias analysis / scheduling stay correct.
+    for (const MachineMemOperand *MMO : Old.memoperands())
+      MIB.addMemOperand(const_cast<MachineMemOperand *>(MMO));
+
+    MI->eraseFromParent();
+    ++NumReduced;
+    return true;
+  }
+
+  // Dedicated path: general-base byte load/store -> 2-byte ARC_LDB_S_c_b_u5 /
+  // ARC_STB_S_c_b_u5. Same operand layout as LD_rs9/ST_rs9 above:
+  //   LDB_rs9: op[0]=dst(def), op[1]=base(use), op[2]=imm offset
+  //   STB_rs9: op[0]=val(use), op[1]=base(use), op[2]=imm offset
+  // Byte access has no scale (its own alignment unit): the compact u5 field
+  // carries the RAW byte offset directly (bits<5> uimm5_11_s, no shift).
+  // Reduce only when base and value/dest are both GPR_S and the offset fits
+  // u5 unsigned [0,31].
+  if (Entry.WideOpc == ARC::LDB_rs9 || Entry.WideOpc == ARC::STB_rs9) {
+    if (NumOps < 3)
+      return false;
+    const bool IsLoad = (Entry.WideOpc == ARC::LDB_rs9);
+    const MachineOperand &OpVal = Old.getOperand(0);
+    const MachineOperand &OpBase = Old.getOperand(1);
+    const MachineOperand &OpOff = Old.getOperand(2);
+    if (!OpVal.isReg() || !OpBase.isReg() || !OpOff.isImm())
+      return false;
+    Register RVal = OpVal.getReg();
+    Register RBase = OpBase.getReg();
+    int64_t Off = OpOff.getImm();
+    if (!isGPR_S(RBase, TRI) || !isGPR_S(RVal, TRI) || Off < 0 || Off > 31)
+      return false;
+
+    LLVM_DEBUG(dbgs() << "  Reducing " << Old << " to 16-bit (ARC_"
+                      << (IsLoad ? "LDB" : "STB") << "_S_c_b_u5)\n");
+
+    MachineInstrBuilder MIB;
+    if (IsLoad) {
+      // ARC_LDB_S_c_b_u5: (outs GPR_S:$rc_s), (ins GPR_S:$rb_s, u5imm) --
+      // ldb_s c,[b,u5].
+      MIB = BuildMI(MBB, MI, MI->getDebugLoc(),
+                    TII->get(ARC::ARC_LDB_S_c_b_u5))
+                .addReg(RVal, getDefRegState(true) |
+                                  getDeadRegState(OpVal.isDead()))
+                .addReg(RBase, getKillRegState(OpBase.isKill()))
                 .addImm(Off);
     } else {
-      // SP_ST_S: (outs), (ins GPR32Reduced:$b3, immU<7>:$u7) -- st_s b3,[%sp,u7]
-      MIB = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(ARC::SP_ST_S))
+      // ARC_STB_S_c_b_u5: (outs), (ins GPR_S:$rc_s, GPR_S:$rb_s, u5imm) --
+      // stb_s c,[b,u5].
+      MIB = BuildMI(MBB, MI, MI->getDebugLoc(),
+                    TII->get(ARC::ARC_STB_S_c_b_u5))
                 .addReg(RVal, getKillRegState(OpVal.isKill()))
+                .addReg(RBase, getKillRegState(OpBase.isKill()))
                 .addImm(Off);
     }
-    // SP is implicit in the compact form -- model the SP use for liveness.
-    MIB.addReg(ARC::SP, RegState::Implicit);
-    // Carry over the memory operand so alias analysis / scheduling stay correct.
+    for (const MachineMemOperand *MMO : Old.memoperands())
+      MIB.addMemOperand(const_cast<MachineMemOperand *>(MMO));
+
+    MI->eraseFromParent();
+    ++NumReduced;
+    return true;
+  }
+
+  // Dedicated path: general-base half-word load/store -> 2-byte
+  // ARC_LDW_S_c_b_u6 / ARC_STW_S_c_b_u6. Same operand layout as above:
+  //   LDH_rs9: op[0]=dst(def), op[1]=base(use), op[2]=imm offset
+  //   STH_rs9: op[0]=val(use), op[1]=base(use), op[2]=imm offset
+  // The compact u6 field is a 5-bit PRE-DIVIDED-by-2 encoded value (bits<5>
+  // uimm6_a16_11_s, no forced-zero trick) -- byte-verified: encoded field 3
+  // round-trips to printed byte offset 0x6 = 3*2. Reduce only when base and
+  // value/dest are both GPR_S and the offset is 2-byte-aligned within
+  // [0,62]; encode `.addImm(Off >> 1)`.
+  if (Entry.WideOpc == ARC::LDH_rs9 || Entry.WideOpc == ARC::STH_rs9) {
+    if (NumOps < 3)
+      return false;
+    const bool IsLoad = (Entry.WideOpc == ARC::LDH_rs9);
+    const MachineOperand &OpVal = Old.getOperand(0);
+    const MachineOperand &OpBase = Old.getOperand(1);
+    const MachineOperand &OpOff = Old.getOperand(2);
+    if (!OpVal.isReg() || !OpBase.isReg() || !OpOff.isImm())
+      return false;
+    Register RVal = OpVal.getReg();
+    Register RBase = OpBase.getReg();
+    int64_t Off = OpOff.getImm();
+    if (!isGPR_S(RBase, TRI) || !isGPR_S(RVal, TRI) || Off < 0 || Off > 62 ||
+        (Off & 0x1) != 0)
+      return false;
+
+    LLVM_DEBUG(dbgs() << "  Reducing " << Old << " to 16-bit (ARC_"
+                      << (IsLoad ? "LDW" : "STW") << "_S_c_b_u6)\n");
+
+    MachineInstrBuilder MIB;
+    if (IsLoad) {
+      // ARC_LDW_S_c_b_u6: (outs GPR_S:$rc_s), (ins GPR_S:$rb_s, u6imm_a16) --
+      // ldw_s c,[b,u6].
+      MIB = BuildMI(MBB, MI, MI->getDebugLoc(),
+                    TII->get(ARC::ARC_LDW_S_c_b_u6))
+                .addReg(RVal, getDefRegState(true) |
+                                  getDeadRegState(OpVal.isDead()))
+                .addReg(RBase, getKillRegState(OpBase.isKill()))
+                .addImm(Off >> 1);
+    } else {
+      // ARC_STW_S_c_b_u6: (outs), (ins GPR_S:$rc_s, GPR_S:$rb_s, u6imm_a16) --
+      // stw_s c,[b,u6].
+      MIB = BuildMI(MBB, MI, MI->getDebugLoc(),
+                    TII->get(ARC::ARC_STW_S_c_b_u6))
+                .addReg(RVal, getKillRegState(OpVal.isKill()))
+                .addReg(RBase, getKillRegState(OpBase.isKill()))
+                .addImm(Off >> 1);
+    }
     for (const MachineMemOperand *MMO : Old.memoperands())
       MIB.addMemOperand(const_cast<MachineMemOperand *>(MMO));
 

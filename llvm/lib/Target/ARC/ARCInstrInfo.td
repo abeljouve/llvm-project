@@ -861,10 +861,25 @@ def SP_ADD_S : F16_SP_OPS_u7_aligned<0b100,
                 (outs GPR32Reduced:$b3), (ins immU<7>:$u7),
                 "add_s\t$b3, %sp, $u7">;
 
+// Manual fix (dossier 05 step 5): F16_SP_LD/F16_SP_ST (like every compact
+// 16-bit load/store descriptor in ARCARCompactInstr16.td) never declared
+// mayLoad/mayStore, so they silently inherited InstARC's mayLoad=0/
+// mayStore=0 default. This was invisible until ARCSizeReduction attached a
+// MachineMemOperand to the reduced instruction for MMO preservation: the
+// MachineVerifier's per-MMO check (`Op->isLoad() && !MI->mayLoad()` /
+// `Op->isStore() && !MI->mayStore()`) then aborts codegen. Reproduced on
+// this already-committed (dossier 04) SP-relative path via a trivial
+// alloca+load/store at -Os/-Oz through `llc -verify-machineinstrs` --
+// proves the bug predates this session and was never exercised end-to-end
+// before now. Pure metadata fix, no bit-encoding change.
+let mayLoad = 1 in {
 def SP_LD_S : F16_SP_LD<0b000, "ld_s">;
 def SP_LDB_S : F16_SP_LD<0b001, "ldb_s">;
+}
+let mayStore = 1 in {
 def SP_ST_S : F16_SP_ST<0b010, "st_s">;
 def SP_STB_S : F16_SP_ST<0b011, "stb_s">;
+}
 
 def LEAVE_S : F16_SP_OPS<0b110,
   (outs), (ins immU<7>:$u7), "leave_s\t$u7"> {
@@ -1136,35 +1151,24 @@ def CMP_S_u7 :
   F16_OP_U7<0b1, !strconcat("cmp_s", "\t$b, $u7")>;
 
 //----------------------------------------------------------------------------
-// Compact Load/Store instructions with offset.
-//----------------------------------------------------------------------------
-def LD_S_OFF :
-  F16_LD_ST_WORD_OFF<0x10, (outs GPR32:$c), (ins GPR32:$b, immU<7>:$off),
-  "ld_s">;
-
-def LDB_S_OFF :
-  F16_LD_ST_BYTE_OFF<0x11, (outs GPR32:$c), (ins GPR32:$b, immU<5>:$off),
-  "ldb_s">;
-
-class F16_LDH_OFF<bits<5> opc, string asmstr> :
-  F16_LD_ST_HALF_OFF<opc, (outs GPR32:$c), (ins GPR32:$b, immU<6>:$off),
-  asmstr>;
-
-def LDH_S_OFF : F16_LDH_OFF<0x12, "ldh_s">;
-def LDH_S_X_OFF : F16_LDH_OFF<0x13, "ldh_s.x">;
-
-def ST_S_OFF :
-  F16_LD_ST_WORD_OFF<0x14, (outs), (ins GPR32:$c, GPR32:$b, immU<7>:$off),
-  "st_s">;
-
-def STB_S_OFF :
-  F16_LD_ST_BYTE_OFF<0x15, (outs), (ins GPR32:$c, GPR32:$b, immU<5>:$off),
-  "stb_s">;
-
-def STH_S_OFF :
-  F16_LD_ST_HALF_OFF<0x16, (outs), (ins GPR32:$c, GPR32:$b, immU<6>:$off),
-  "sth_s">;
-
+// Compact Load/Store instructions with offset -- QUARANTINED (dossier 05
+// step 5). LD_S_OFF/LDB_S_OFF/LDH_S_OFF/LDH_S_X_OFF/ST_S_OFF/STB_S_OFF/
+// STH_S_OFF used to live here, built from F16_LD_ST_OFF/_WORD_OFF/_HALF_OFF/
+// _BYTE_OFF in ARCInstrFormats.td. They claimed the identical 16-bit
+// encoding space (opcodes 0x10-0x16) as ARCARCompactInstr16.td's
+// ARC_LD_S_c_b_u7 / ARC_LDB_S_c_b_u5 / ARC_LDW_S_c_b_u6 / ARC_ST_S_c_b_u7 /
+// ARC_STB_S_c_b_u5 / ARC_STW_S_c_b_u6 family but used unconstrained
+// `GPR32:$b/$c` operand types over raw 3-bit fields (bits<3> b; bits<3> c;)
+// instead of the true GPR_S register class -- a silent-aliasing risk if
+// ever reached (e.g. R4's low-3-bit-truncated encoding collides with R12's
+// compact-field encoding), since only C++-side isGPR_S() gating (not the
+// MachineVerifier) would have caught a misuse. Confirmed dead at removal
+// time: no Pattern, no ReduceTable reference, no test coverage, and not
+// reachable from the hand-written AsmParser dispatch table (see
+// toolchain/llvm/CLAUDE.md) -- the only references were TableGen-generated
+// disassembler/encoder tables. The live, GPR_S-correct family in
+// ARCARCompactInstr16.td is the one wired into ARCSizeReduction's
+// ReduceTable below.
 //----------------------------------------------------------------------------
 // General compact instructions.
 //----------------------------------------------------------------------------

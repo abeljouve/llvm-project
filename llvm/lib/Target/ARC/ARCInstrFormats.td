@@ -847,39 +847,13 @@ class F16_GEN_ZOP<bits<3> i, string asmstr> :
   let b = i;
 }
 
-// Compact Load/Store with Offset Format.
-class F16_LD_ST_OFF<bits<5> opc, dag outs, dag ins, string asmstr> :
-  InstARC<2, outs, ins, !strconcat(asmstr, "\t$c, [$b, $off]"), []> {
-
-  bits<3> b;
-  bits<3> c;
-  let Inst{15-11} = opc;
-  let Inst{10-8} = b;
-  let Inst{7-5} = c;
-}
-
-class F16_LD_ST_WORD_OFF<bits<5> opc, dag outs, dag ins, string asmstr> :
-  F16_LD_ST_OFF<opc, outs, ins, asmstr> {
-
-  bits<7> off;
-  let Inst{4-0} = off{6-2};
-  let off{1-0} = 0b00;
-}
-
-class F16_LD_ST_HALF_OFF<bits<5> opc, dag outs, dag ins, string asmstr> :
-  F16_LD_ST_OFF<opc, outs, ins, asmstr> {
-
-  bits<6> off;
-  let Inst{4-0} = off{5-1};
-  let off{0} = 0b0;
-}
-
-class F16_LD_ST_BYTE_OFF<bits<5> opc, dag outs, dag ins, string asmstr> :
-  F16_LD_ST_OFF<opc, outs, ins, asmstr> {
-
-  bits<5> off;
-  let Inst{4-0} = off;
-}
+// Compact Load/Store with Offset Format -- QUARANTINED (dossier 05 step 5).
+// F16_LD_ST_OFF/_WORD_OFF/_HALF_OFF/_BYTE_OFF used to live here; removed
+// together with their only consumers (LD_S_OFF/LDB_S_OFF/LDH_S_OFF/
+// LDH_S_X_OFF/ST_S_OFF/STB_S_OFF/STH_S_OFF in ARCInstrInfo.td). See the
+// quarantine comment at that former call site for the full rationale
+// (GPR32-typed operand over a 3-bit field, duplicate encoding space vs.
+// ARCARCompactInstr16.td's GPR_S-correct family, zero live references).
 
 // Shift/Subtract/Bit Immediate.
 // |10|9|8|7|6|5|4|3|2|1|0|

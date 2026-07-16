@@ -1,0 +1,388 @@
+# RUN: llc -mtriple=arceb -mcpu=arc700eb -mattr=+arcompact -run-pass=arc-size-reduction -verify-machineinstrs -o - %s | FileCheck %s
+
+# Dossier 05 step 5: MIR-level regression coverage for the general
+# register-relative + immediate-offset compact 16-bit load/store reductions
+# (SP-relative was already covered by dossier 04's own MIR test; this file
+# is scoped to the NEW general-GPR_S-base word/byte/half forms).
+#
+# Two classes of underlying bug had to be fixed before any of this could
+# work at all (see ARCARCompactInstr16.td for the byte-verified evidence):
+#   1. ARC_LD_S_c_b_u7 / ARC_LDB_S_c_b_u5 / ARC_LDW_S_c_b_u6 had their
+#      outs/ins DAG roles swapped (destination bound to the BASE bitfield,
+#      base bound to the DEST bitfield) -- a silent register-swap
+#      miscompile the generator introduced.
+#   2. Every compact 16-bit load/store descriptor in ARCARCompactInstr16.td
+#      (and the pre-existing SP_LD_S/SP_ST_S) never declared mayLoad/
+#      mayStore, so MachineVerifier's per-MMO check aborted the instant a
+#      MachineMemOperand was attached to a reduced instruction.
+#
+# Each boundary test below pins down the OFFSET SCALING hazard explicitly:
+# the general-base word/half forms encode a PRE-DIVIDED value (scale 4 / 2
+# respectively), unlike the raw-byte-offset SP forms -- an off-by-the-scale
+# bug here would be silent effective-address corruption on real hardware
+# (the workshop's SILENT UNALIGNED RULE), not a fault.
+
+--- |
+  ; ARCSizeReduction only fires when the function is optsize/minsize -- every
+  ; stub function below needs the attribute or the pass bails out before
+  ; looking at a single instruction.
+  define void @test_ld_word_zero() #0 { ret void }
+  define void @test_ld_word_max() #0 { ret void }
+  define void @test_ld_word_over_range() #0 { ret void }
+  define void @test_ld_word_misaligned() #0 { ret void }
+  define void @test_ld_word_nongprs_base() #0 { ret void }
+  define void @test_ld_word_nongprs_dest() #0 { ret void }
+  define void @test_st_word_general_base() #0 { ret void }
+  define void @test_ld_word_sp_base_unaffected() #0 { ret void }
+  define void @test_ld_word_volatile_reduces() #0 { ret void }
+  define void @test_ldb_zero() #0 { ret void }
+  define void @test_ldb_max() #0 { ret void }
+  define void @test_ldb_over_range() #0 { ret void }
+  define void @test_stb_general_base() #0 { ret void }
+  define void @test_ldh_zero() #0 { ret void }
+  define void @test_ldh_max() #0 { ret void }
+  define void @test_ldh_over_range() #0 { ret void }
+  define void @test_ldh_odd_offset() #0 { ret void }
+  define void @test_sth_general_base() #0 { ret void }
+
+  attributes #0 = { minsize optsize }
+...
+
+---
+name:            test_ld_word_zero
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Zero-offset [rb] compact load is just Off==0 within the immediate-
+    ; offset encoding -- no separate opcode or ReduceTable entry needed.
+    ; CHECK-LABEL: name: test_ld_word_zero
+    ; CHECK: $r0 = ARC_LD_S_c_b_u7 killed $r1, 0
+    $r0 = LD_rs9 killed $r1, 0 :: (load (s32))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ld_word_max
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Boundary: max in-range byte offset 124 (== 31*4, the top of the
+    ; 5-bit encoded field). Encoded immediate must be the PRE-DIVIDED
+    ; value 31, not the raw byte offset 124 -- byte-verified against the
+    ; authoritative disassembler (0x815F -> `ld r2,[r1,0x7C]`).
+    ; CHECK-LABEL: name: test_ld_word_max
+    ; CHECK: $r0 = ARC_LD_S_c_b_u7 killed $r1, 31
+    $r0 = LD_rs9 killed $r1, 124 :: (load (s32))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ld_word_over_range
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Boundary: 128 is 4-byte-aligned but exceeds the 5-bit encoded field's
+    ; range (128/4 = 32 > 31) -- must NOT reduce; the wide LD_rs9 stays.
+    ; CHECK-LABEL: name: test_ld_word_over_range
+    ; CHECK: $r0 = LD_rs9 killed $r1, 128
+    ; CHECK-NOT: ARC_LD_S_c_b_u7
+    $r0 = LD_rs9 killed $r1, 128 :: (load (s32))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ld_word_misaligned
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Offset 6 is in-range but not 4-byte-aligned -- must NOT reduce
+    ; (natural-alignment gate; never right-shift-and-truncate a
+    ; non-exactly-divisible offset, that would be the SILENT UNALIGNED
+    ; RULE hazard).
+    ; CHECK-LABEL: name: test_ld_word_misaligned
+    ; CHECK: $r0 = LD_rs9 killed $r1, 6
+    ; CHECK-NOT: ARC_LD_S_c_b_u7
+    $r0 = LD_rs9 killed $r1, 6 :: (load (s32))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ld_word_nongprs_base
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r4
+
+    ; Base register $r4 is not in GPR_S = {r0-r3, r12-r15} -- must NOT
+    ; reduce; a fixed short-form base must never silently constrain an
+    ; allocated register.
+    ; CHECK-LABEL: name: test_ld_word_nongprs_base
+    ; CHECK: $r0 = LD_rs9 killed $r4, 8
+    ; CHECK-NOT: ARC_LD_S_c_b_u7
+    $r0 = LD_rs9 killed $r4, 8 :: (load (s32))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ld_word_nongprs_dest
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Dest register $r4 is not in GPR_S -- must NOT reduce even though the
+    ; base ($r1) is compact-eligible.
+    ; CHECK-LABEL: name: test_ld_word_nongprs_dest
+    ; CHECK: $r4 = LD_rs9 killed $r1, 8
+    ; CHECK-NOT: ARC_LD_S_c_b_u7
+    $r4 = LD_rs9 killed $r1, 8 :: (load (s32))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_st_word_general_base
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    ; Store mirrors the load path: value first, base second in the
+    ; compact ins list (ARC_ST_S_c_b_u7: (ins rc_s, rb_s, u7)), matching
+    ; the wide ST_rs9's (val, base, imm) operand order.
+    ; CHECK-LABEL: name: test_st_word_general_base
+    ; CHECK: ARC_ST_S_c_b_u7 killed $r2, killed $r1, 5
+    ST_rs9 killed $r2, killed $r1, 20 :: (store (s32))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ld_word_sp_base_unaffected
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $sp
+
+    ; Regression check: refactoring the dedicated LD_rs9/ST_rs9 block to
+    ; add the general-base else-branch must not disturb the existing
+    ; SP-relative path (dossier 04) -- SP base still goes to SP_LD_S with
+    ; the RAW (unscaled) byte offset, SP modeled as an implicit use.
+    ; CHECK-LABEL: name: test_ld_word_sp_base_unaffected
+    ; CHECK: $r0 = SP_LD_S 12, implicit $sp
+    $r0 = LD_rs9 $sp, 12 :: (load (s32))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ld_word_volatile_reduces
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; A volatile (but non-`.di`) load is safe to reduce: LD_rs9 is never
+    ; the distinct `.di`/uncached opcode (that's LD_DI_rs9, generated by a
+    ; separate `foreach di = [NoCC, UncachedCC]` instantiation and never
+    ; matched by this ReduceTable row), and the MachineMemOperand -- the
+    ; sole carrier of the `volatile` bit downstream -- is forwarded
+    ; unchanged onto the narrow instruction, so ordering/reorder-freeness
+    ; is preserved identically. Confirms MMO preservation (volatility
+    ; flag) survives the rebuild.
+    ; CHECK-LABEL: name: test_ld_word_volatile_reduces
+    ; CHECK: $r0 = ARC_LD_S_c_b_u7 killed $r1, 3 :: (volatile load (s32))
+    $r0 = LD_rs9 killed $r1, 12 :: (volatile load (s32))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldb_zero
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Byte access is unscaled (its own alignment unit): the compact u5
+    ; field carries the RAW byte offset directly, no shift.
+    ; CHECK-LABEL: name: test_ldb_zero
+    ; CHECK: $r0 = ARC_LDB_S_c_b_u5 killed $r1, 0
+    $r0 = LDB_rs9 killed $r1, 0 :: (load (s8))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldb_max
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Boundary: max in-range unscaled offset 31 (top of the 5-bit field).
+    ; CHECK-LABEL: name: test_ldb_max
+    ; CHECK: $r0 = ARC_LDB_S_c_b_u5 killed $r1, 31
+    $r0 = LDB_rs9 killed $r1, 31 :: (load (s8))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldb_over_range
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Boundary: 32 exceeds the unscaled 5-bit field's range -- must NOT
+    ; reduce.
+    ; CHECK-LABEL: name: test_ldb_over_range
+    ; CHECK: $r0 = LDB_rs9 killed $r1, 32
+    ; CHECK-NOT: ARC_LDB_S_c_b_u5
+    $r0 = LDB_rs9 killed $r1, 32 :: (load (s8))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_stb_general_base
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    ; CHECK-LABEL: name: test_stb_general_base
+    ; CHECK: ARC_STB_S_c_b_u5 killed $r2, killed $r1, 5
+    STB_rs9 killed $r2, killed $r1, 5 :: (store (s8))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldh_zero
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; CHECK-LABEL: name: test_ldh_zero
+    ; CHECK: $r0 = ARC_LDW_S_c_b_u6 killed $r1, 0
+    $r0 = LDH_rs9 killed $r1, 0 :: (load (s16))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldh_max
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Boundary: max in-range byte offset 62 (== 31*2, top of the 5-bit
+    ; encoded field). Encoded immediate must be the PRE-DIVIDED value 31,
+    ; not the raw byte offset 62.
+    ; CHECK-LABEL: name: test_ldh_max
+    ; CHECK: $r0 = ARC_LDW_S_c_b_u6 killed $r1, 31
+    $r0 = LDH_rs9 killed $r1, 62 :: (load (s16))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldh_over_range
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Boundary: 64 is 2-byte-aligned but exceeds the 5-bit encoded field's
+    ; range (64/2 = 32 > 31) -- must NOT reduce.
+    ; CHECK-LABEL: name: test_ldh_over_range
+    ; CHECK: $r0 = LDH_rs9 killed $r1, 64
+    ; CHECK-NOT: ARC_LDW_S_c_b_u6
+    $r0 = LDH_rs9 killed $r1, 64 :: (load (s16))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_ldh_odd_offset
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    ; Offset 3 is in-range but not 2-byte-aligned -- must NOT reduce
+    ; (natural-alignment gate for the half-word form).
+    ; CHECK-LABEL: name: test_ldh_odd_offset
+    ; CHECK: $r0 = LDH_rs9 killed $r1, 3
+    ; CHECK-NOT: ARC_LDW_S_c_b_u6
+    $r0 = LDH_rs9 killed $r1, 3 :: (load (s16))
+    J_S_BLINK implicit $blink
+...
+
+---
+name:            test_sth_general_base
+tracksRegLiveness: true
+noPhis:           true
+isSSA:            false
+noVRegs:          true
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    ; CHECK-LABEL: name: test_sth_general_base
+    ; CHECK: ARC_STW_S_c_b_u6 killed $r2, killed $r1, 3
+    STH_rs9 killed $r2, killed $r1, 6 :: (store (s16))
+    J_S_BLINK implicit $blink
+...

@@ -12,8 +12,10 @@
 //
 // Manual overrides: the generator mis-translated a handful of descriptors
 // -- the "High Register" h-field scatter (ADD_S/MOV_S/CMP_S b,h forms), the
-// compare-as-definition operand shape (CMP_S), and the register-count shift
-// v1 variants -- each hand-patched below with a comment explaining the bug
+// compare-as-definition operand shape (CMP_S), the register-count shift
+// v1 variants, and (dossier 05 step 5) the destination/base def-use swap on
+// the general-base immediate-offset loads (LD_S_c_b_u7 / LDB_S_c_b_u5 /
+// LDW_S_c_b_u6) -- each hand-patched below with a comment explaining the bug
 // and citing the encoding evidence that pinned it down. Regenerating from
 // gen_tablegen.py would silently drop these fixes unless the generator
 // itself is corrected first.
@@ -861,6 +863,24 @@ def ARC_J_S_blink_d : ARCompactInst16_ALU<0b01111, "j_s",
   let isCodeGenOnly = 1;
 }
 
+// Manual fix (dossier 05 step 5): ARCompactInst16_LS's class comment claims
+// "mayLoad/mayStore set per-instruction in the individual defs" but NONE of
+// the defs below ever did -- every ARC_LD*_S_*/ARC_ST*_S_* instruction in
+// this file inherited mayLoad=0/mayStore=0 from InstARC's default. This is
+// silent until a reduction attaches a MachineMemOperand to the narrow
+// instruction (as ARCSizeReduction now does for MMO preservation): the
+// MachineVerifier's "for (MachineMemOperand *Op : MI->memoperands()) if
+// (Op->isLoad() && !MI->mayLoad()) report(...)" check then fires and
+// aborts codegen. Reproduced pre-fix by compiling a real (non-SP) word
+// load through -O2/-Os -verify-machineinstrs once ARC_LD_S_c_b_u7 became
+// reachable via ReduceTable -- and independently on the ALREADY-COMMITTED
+// SP_LD_S/SP_ST_S path (dossier 04) via a trivial alloca+load at optsize,
+// proving this bug predates this session and was never exercised by a
+// full llc -verify-machineinstrs run before now. Wrapping the whole
+// LD-shaped def block in `let mayLoad = 1` (mirrors SP_LD_S/SP_LDB_S's own
+// fix in ARCInstrInfo.td below). Pure metadata -- no bit-encoding change.
+let mayLoad = 1 in {
+
 // ldb_s a,b,c 01100bbbccc01aaa.
 def ARC_LDB_S_ra_s_b_c : ARCompactInst16_LS<0b01100, "ldb_s",
     (outs GPR_S:$ra_s), (ins GPR_S:$rb_s, GPR_S:$rc_s),
@@ -879,8 +899,19 @@ def ARC_LDB_S_ra_s_b_c : ARCompactInst16_LS<0b01100, "ldb_s",
 }
 
 // ldb_s c,b,u5 10001bbbcccuuuuu.
+//
+// Manual fix: def/use swap, same bug class as steps 1-3's operand-as-def
+// fixes. The generator bound the OUTS DAG to $rb_s (bits[10:8], the BASE
+// field) when the true destination is $rc_s (bits[7:5]) per
+// docs/isa/20-full-instruction-table.md:344 (`LDB_S C <- MEM[B+U5].B`).
+// BuildMI following the old operand-list order would have scattered the
+// destination register's encoding into the base bitfield and vice versa --
+// a silent swapped-register miscompile. Byte-verified against the
+// authoritative disassembler: encoding 0x8945 (rb_s=1, rc_s=2, u5=5) decodes
+// to `ldb r2,[r1,0x5]` (dest=r2=rc_s field, base=r1=rb_s field). Bit
+// bindings below are unchanged -- only the outs/ins DAG role swapped.
 def ARC_LDB_S_c_b_u5 : ARCompactInst16_LS<0b10001, "ldb_s",
-    (outs GPR_S:$rb_s), (ins GPR_S:$rc_s, u5imm:$uimm5_11_s),
+    (outs GPR_S:$rc_s), (ins GPR_S:$rb_s, u5imm:$uimm5_11_s),
     "ldb_s\t$rc_s, [$rb_s, $uimm5_11_s]", []> {
   // Opcode: 0x00008800, Mask: 0x0000F800
   // Operands: RC_S, BRAKET, RB_S, UIMM5_11_S, BRAKETdup
@@ -937,8 +968,16 @@ def ARC_LDW_S_ra_s_b_c : ARCompactInst16_LS<0b01100, "ldw_s",
 }
 
 // ldw_sZZ_H c,b,u6 10010bbbcccuuuuu.
+//
+// Manual fix: same def/use swap bug as ARC_LDB_S_c_b_u5 above. True
+// destination is $rc_s (bits[7:5]) per
+// docs/isa/20-full-instruction-table.md:345 (`LDW_S C <- MEM[B+U6].W`), not
+// $rb_s (bits[10:8], the base). Byte-verified: encoding 0x9143 (rb_s=1,
+// rc_s=2, u6enc=3) decodes to `ldw r2,[r1,0x6]` (dest=r2=rc_s, base=r1=rb_s,
+// 0x6 = 3*2 confirms the encoded field is pre-divided by the half-word
+// scale). Bit bindings unchanged -- only the outs/ins DAG role swapped.
 def ARC_LDW_S_c_b_u6 : ARCompactInst16_LS<0b10010, "ldw_s",
-    (outs GPR_S:$rb_s), (ins GPR_S:$rc_s, u6imm_a16:$uimm6_a16_11_s),
+    (outs GPR_S:$rc_s), (ins GPR_S:$rb_s, u6imm_a16:$uimm6_a16_11_s),
     "ldw_s\t$rc_s, [$rb_s, $uimm6_a16_11_s]", []> {
   // Opcode: 0x00009000, Mask: 0x0000F800
   // Operands: RC_S, BRAKET, RB_S, UIMM6_A16_11_S, BRAKETdup
@@ -1007,8 +1046,18 @@ def ARC_LD_S_b_sp_u7 : ARCompactInst16_LS<0b11000, "ld_s",
 }
 
 // ld_s c,b,u7 10000bbbcccuuuuu.
+//
+// Manual fix: same def/use swap bug as ARC_LDB_S_c_b_u5 /
+// ARC_LDW_S_c_b_u6 above. True destination is $rc_s (bits[7:5]) per
+// docs/isa/20-full-instruction-table.md:343 (`LD_S C <- MEM[B+U7].L`), not
+// $rb_s (bits[10:8], the base). Byte-verified: encoding 0x8143 (rb_s=1,
+// rc_s=2, u7enc=3) decodes to `ld r2,[r1,0xC]` (dest=r2=rc_s, base=r1=rb_s,
+// 0xC = 3*4 confirms the word scale); boundary-checked the encoded field
+// 0..31 -> byte offset 0x0..0x7C (0..124) via 0x8140 -> `ld r2,[r1,0x0]`
+// and 0x815F -> `ld r2,[r1,0x7C]`. Bit bindings unchanged -- only the
+// outs/ins DAG role swapped.
 def ARC_LD_S_c_b_u7 : ARCompactInst16_LS<0b10000, "ld_s",
-    (outs GPR_S:$rb_s), (ins GPR_S:$rc_s, u7imm_a32:$uimm7_a32_11_s),
+    (outs GPR_S:$rc_s), (ins GPR_S:$rb_s, u7imm_a32:$uimm7_a32_11_s),
     "ld_s\t$rc_s, [$rb_s, $uimm7_a32_11_s]", []> {
   // Opcode: 0x00008000, Mask: 0x0000F800
   // Operands: RC_S, BRAKET, RB_S, UIMM7_A32_11_S, BRAKETdup
@@ -1045,6 +1094,8 @@ def ARC_LD_S_r0_gp_s11 : ARCompactInst16_LS<0b11001, "ld_s",
   // Operand(s) gp_s need custom disassembler.
   let isCodeGenOnly = 1;
 }
+
+} // let mayLoad = 1
 
 // lsr_s b,c 01111bbbccc11101.
 def ARC_LSR_S_b_c : ARCompactInst16_ALU<0b01111, "lsr_s",
@@ -1313,6 +1364,12 @@ def ARC_SEXW_S_b_c : ARCompactInst16_ALU<0b01111, "sexw_s",
   let Inst{7-5} = rc_s;
 }
 
+// Manual fix (dossier 05 step 5): same missing-mayStore bug as the LD-shaped
+// block above -- see the `let mayLoad = 1 in {` comment near
+// ARC_LDB_S_ra_s_b_c for the full evidence trail. Wrapping the ST-shaped
+// def block in `let mayStore = 1`; pure metadata, no bit-encoding change.
+let mayStore = 1 in {
+
 // stb_s c,b,u5 10101bbbcccuuuuu.
 def ARC_STB_S_c_b_u5 : ARCompactInst16_LS<0b10101, "stb_s",
     (outs ), (ins GPR_S:$rc_s, GPR_S:$rb_s, u5imm:$uimm5_11_s),
@@ -1386,6 +1443,8 @@ def ARC_ST_S_c_b_u7 : ARCompactInst16_LS<0b10100, "st_s",
   bits<5> uimm7_a32_11_s;
   let Inst{4-0} = uimm7_a32_11_s;
 }
+
+} // let mayStore = 1
 
 // sub_s b,b,c 01111bbbccc00010.
 def ARC_SUB_S_b_c : ARCompactInst16_ALU<0b01111, "sub_s",
