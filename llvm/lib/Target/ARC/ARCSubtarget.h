@@ -124,6 +124,36 @@ public:
   /// Populate soft-float and integer libcall mappings for arceb targets
   /// (the RuntimeLibcalls.td predicate only covers Triple::arc LE by default).
   void initLibcallLoweringInfo(LibcallLoweringInfo &Info) const override;
+
+  /// Run the MachineScheduler, but only where we have a calibrated model to
+  /// schedule with. A dependent load-use costs 10 clocks against a 2-slot
+  /// issue occupancy and there is no D-cache, so every load pays it in full --
+  /// hiding that latency is worth real cycles, but only a subtarget carrying
+  /// an instruction-level model knows a load is expensive in the first place.
+  ///
+  /// Gating on hasInstrSchedModel() keeps this true for exactly the CPUs that
+  /// define a SchedMachineModel (today: bcm55030) and false for the generic /
+  /// arc700 / arc700eb profiles, which still use NoItineraries. Scheduling
+  /// those blind would change their codegen on the strength of a model
+  /// measured on a different part. The gate is self-maintaining: it follows
+  /// the .td rather than duplicating a CPU-name list here.
+  bool enableMachineScheduler() const override;
+
+  /// Pin global-copy joining to its pre-existing (false) behaviour.
+  ///
+  /// TargetSubtargetInfo::enableJoinGlobalCopies() defaults to returning
+  /// enableMachineScheduler(), so turning the scheduler on would ALSO make the
+  /// register coalescer aggressive about global copies -- a second, unrelated
+  /// codegen change riding in on the first. The measurement that motivated the
+  /// scheduler was taken with -enable-misched=true, which does NOT flip the
+  /// coalescer, so bundling them would mean shipping something other than what
+  /// was measured and would leave any regression unattributable between the
+  /// two.
+  ///
+  /// This is not a claim that global-copy joining is bad here -- it is
+  /// untested. Evaluate it on its own, with its own measurement, and delete
+  /// this override if it wins.
+  bool enableJoinGlobalCopies() const override;
 };
 
 } // end namespace llvm
