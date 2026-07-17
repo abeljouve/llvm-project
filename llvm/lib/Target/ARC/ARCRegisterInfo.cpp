@@ -279,6 +279,16 @@ BitVector ARCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   Reserved.set(ARC::BLINK);
   Reserved.set(ARC::FP);
 
+  // r60 doubles as the zero-overhead-loop counter LP_COUNT. When LP formation
+  // is enabled, ARCLowOverheadLoops writes `mov lp_count, count` (a def of r60)
+  // in a loop preheader post-RA; the counter is then owned by the hardware
+  // loop engine and must not alias any allocated value. Reserve r60 so the
+  // allocator never places a live value there. Only when the flag is on: with
+  // it off, no LP is emitted and r60 stays an ordinary allocatable GPR (no
+  // codegen change).
+  if (ARCEnableHardwareLoops())
+    Reserved.set(ARC::R60);
+
   return Reserved;
 }
 

@@ -248,6 +248,26 @@ public:
     return getIntImmCost(Imm, Ty, CostKind);
   }
 
+  // -----------------------------------------------------------------------
+  // Zero-overhead hardware-loop (LP) profitability.
+  //
+  // Enables the generic llvm/lib/CodeGen/HardwareLoops.cpp IR pass for a
+  // counted loop the pass has proven with SCEV. Gated behind the off-by-default
+  // -arc-hardware-loops flag; see ARCTargetTransformInfo.cpp for the full
+  // profitability bar and ARCEnableHardwareLoops() / ARCTargetMachine.cpp for
+  // why it must stay off by default (interrupt trampolines do not preserve
+  // LP_COUNT / LP_START / LP_END).
+  bool isHardwareLoopProfitable(Loop *L, ScalarEvolution &SE,
+                                AssumptionCache &AC, TargetLibraryInfo *LibInfo,
+                                HardwareLoopInfo &HWLoopInfo) const override;
+
+  // True if I is expected to lower to a bl (an ordinary call, an integer
+  // multiply/divide libcall, a soft-float op, or a 64-bit-int libcall on
+  // arc700). Such loops are rejected: LP_COUNT liveness across a call is
+  // uncharacterized on this silicon and the interrupt-safety story (§4.4) is
+  // not yet discharged for callees.
+  bool maybeLoweredToCall(Instruction &I) const;
+
   InstructionCost
   getIntImmCostIntrin(Intrinsic::ID IID, unsigned Idx, const APInt &Imm,
                       Type *Ty, TTI::TargetCostKind CostKind) const override {

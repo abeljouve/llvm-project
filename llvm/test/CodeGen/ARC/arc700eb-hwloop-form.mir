@@ -1,0 +1,65 @@
+# RUN: llc -mtriple=arceb -mcpu=arc700eb -arc-hardware-loops \
+# RUN:     -run-pass=arc-lowoverhead-loops -verify-machineinstrs %s -o - \
+# RUN:   | FileCheck %s
+
+# ARCLowOverheadLoops commits a verifiable single-block self-loop to `lp`.
+#
+# Input is the ordinary countdown loop the generic HardwareLoops pass leaves
+# after ISel + RA: HWLOOP_START in the preheader defines the counter, HWLOOP_DEC
+# decrements it in the body, and an in-range `brne count, 0, body` is the
+# back-branch. The pass replaces this with:
+#   cmp   $r1, 0            ; guard flag
+#   mov   lp_count($r60)    ; LP_COUNT write
+#   nop x2                  ; >=4 fetch-word separation (1-word body: 2 + lp + 1)
+#   lp.ne @exit            ; arm if count!=0 else skip to exit
+# and deletes the decrement and the back-branch so the body falls through to the
+# exit, hardware-looping to itself.
+#
+# The 1-instruction (one 32-bit word) body needs padWords = 3 - 1 = 2, and the
+# `lp` displacement to the exit works out to 8 bytes -> field 4 (byte-verified
+# in arc700eb-hwloop-u7-encoding.mir as 0x20e80122).
+
+--- |
+  define void @form(i32 %n) { ret void }
+...
+---
+name:            form
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.1
+    liveins: $r0, $r1
+    $r2 = HWLOOP_START $r1
+
+  bb.1:
+    successors: %bb.1, %bb.2
+    liveins: $r0, $r1, $r2
+    $r0 = ADD_rrr $r0, $r0
+    $r2 = HWLOOP_DEC $r2, 1
+    BRcc_ru6 %bb.1, $r2, 0, 1
+
+  bb.2:
+    liveins: $r0
+    $r0 = ADD_rrr $r0, $r0
+...
+
+# CHECK-LABEL: name: form
+
+# Preheader: guard compare, LP_COUNT write, exactly two separation NOPs, lp.ne.
+# CHECK:      bb.0:
+# CHECK:        CMP_ru6 $r1, 0
+# CHECK-NEXT:   $r60 = MOV_rr $r1
+# CHECK-NEXT:   ARC_NOP_0
+# CHECK-NEXT:   ARC_NOP_0
+# CHECK-NEXT:   ARC_LP_u7_cc 4, 2
+
+# The setup pseudo is gone.
+# CHECK-NOT:    HWLOOP_START
+
+# Body: no more decrement pseudo, no back-branch; it falls through to the exit.
+# CHECK:      bb.1:
+# CHECK:        $r0 = ADD_rrr $r0, $r0
+# CHECK-NOT:    HWLOOP_DEC
+# CHECK-NOT:    BRcc_ru6
+
+# CHECK:      bb.2:

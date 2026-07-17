@@ -278,6 +278,39 @@ void ARCDAGToDAGISel::Select(SDNode *N) {
                        CurDAG->getTargetConstant(CVal, SDLoc(N), MVT::i32)));
     return;
   }
+  case ISD::INTRINSIC_W_CHAIN: {
+    // Zero-overhead loop formation contract (see ARCLowOverheadLoops.cpp and
+    // ARCTargetTransformInfo.cpp). The generic HardwareLoops pass emits these
+    // two chained intrinsics into a loop it has proven counted; select them to
+    // the HWLOOP_START / HWLOOP_DEC pseudos, carrying the chain through
+    // explicitly. Operand 0 is the chain, operand 1 the intrinsic id.
+    unsigned IID = N->getConstantOperandVal(1);
+    SDLoc DL(N);
+    if (IID == Intrinsic::start_loop_iterations) {
+      // (chain, id, count) -> HWLOOP_START count : (i32, chain)
+      SDValue Chain = N->getOperand(0);
+      SDValue Count = N->getOperand(2);
+      SDValue Ops[] = {Count, Chain};
+      ReplaceNode(N, CurDAG->getMachineNode(ARC::HWLOOP_START, DL, MVT::i32,
+                                            MVT::Other, Ops));
+      return;
+    }
+    if (IID == Intrinsic::loop_decrement_reg) {
+      // (chain, id, src, dec) -> HWLOOP_DEC src, dec : (i32, chain). The
+      // decrement is the loop-invariant constant HardwareLoopInfo.LoopDecrement
+      // (always 1 here); materialize it as the i32imm operand.
+      SDValue Chain = N->getOperand(0);
+      SDValue Src = N->getOperand(2);
+      auto *DecC = cast<ConstantSDNode>(N->getOperand(3));
+      SDValue Dec =
+          CurDAG->getTargetConstant(DecC->getSExtValue(), DL, MVT::i32);
+      SDValue Ops[] = {Src, Dec, Chain};
+      ReplaceNode(N, CurDAG->getMachineNode(ARC::HWLOOP_DEC, DL, MVT::i32,
+                                            MVT::Other, Ops));
+      return;
+    }
+    break;
+  }
   }
   SelectCode(N);
 }

@@ -1,0 +1,49 @@
+# RUN: llc -mtriple=arceb -mcpu=arc700eb -start-before=arc-delay-slot-filler \
+# RUN:     -verify-machineinstrs -filetype=obj -o %t.o %s
+# RUN: llvm-readobj -x .text %t.o | FileCheck %s
+
+# Byte-exact encoding test for the CONDITIONAL zero-overhead loop setup,
+# `lp<cc> u7`, which ARCLowOverheadLoops emits to fold the loop setup and the
+# zero-trip guard into one instruction (arm when count != 0, branch past the
+# loop to LP_END when count == 0).
+#
+# Unlike ARC_LP_s13, the u7 form carries the skip/loop-end displacement as an
+# IMMEDIATE field (Inst{11-6}, pre-scaled: field = disp >> 1), not a relocated
+# label, so the emitted word is fixed regardless of address. The condition sits
+# in Inst{4-0}. Every word below was confirmed to decode back under the
+# reference ARCompact decoder:
+#   0x20e80122 -> lp.ne (PC&~3)+8    (field 4, cc NE = 0x2)
+#   0x20e80022 -> lp.ne (PC&~3)+0    (field 0)
+#   0x20e80021 -> lp.eq (PC&~3)+0    (field 0, cc EQ = 0x1)
+#   0x20e80420 -> lp    (PC&~3)+32   (field 16, cc AL = 0x0)
+# so a wrong field position or a dropped condition bit is caught as a byte diff,
+# not hidden behind a correct-looking `lp` mnemonic.
+
+--- |
+  define void @lp_u7_ne() { ret void }
+  define void @lp_u7_variants() { ret void }
+...
+---
+# tracksRegLiveness is deliberately omitted: these are position-independent
+# encoding checks and the `implicit $status32` use has no producer here.
+name:            lp_u7_ne
+body:             |
+  bb.0:
+    ARC_LP_u7_cc 4, 2, implicit $status32
+    ARC_NOP_0
+...
+---
+name:            lp_u7_variants
+body:             |
+  bb.0:
+    ARC_LP_u7_cc 0, 2, implicit $status32
+    ARC_LP_u7_cc 0, 1, implicit $status32
+    ARC_LP_u7_cc 16, 0, implicit $status32
+    ARC_NOP_0
+...
+
+# lp_u7_ne is the first word of .text, then its nop; lp_u7_variants follows
+# (lp.ne+0, lp.eq+0, lp+32, then a nop). llvm-readobj groups 16 bytes per line.
+# CHECK: Hex dump of section '.text':
+# CHECK-NEXT: 0x00000000 20e80122 264a7000 20e80022 20e80021
+# CHECK-NEXT: 0x00000010 20e80420 264a7000

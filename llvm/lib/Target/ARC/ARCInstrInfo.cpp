@@ -600,6 +600,16 @@ bool ARCInstrInfo::hasUnmodeledARCompactSideEffects(const MachineInstr &MI) {
   // express, so the only safe rule is not to move across it.
   case ARC::ARC_LP_s13:
   case ARC::ARC_LP_u7_cc:
+  // Zero-overhead loop formation pseudos (ARCLowOverheadLoops). They must be
+  // immovable barriers so the delay-slot filler cannot raid the setup window or
+  // sink the decrement into the back-branch's slot before the >=4-word
+  // separation is measured; the decrement sitting immovable right before the
+  // back-branch is also what keeps that branch a plain (non-delayed) BRcc the
+  // finalize pass can recognize. Redundant with their explicit
+  // `let hasSideEffects = 1`, listed here for the same defensive reason as the
+  // LP setup forms above.
+  case ARC::HWLOOP_START:
+  case ARC::HWLOOP_DEC:
   // Traps.
   case ARC::ARC_TRAP0_0:
   case ARC::ARC_TRAP_S_u6:

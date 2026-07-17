@@ -1,0 +1,51 @@
+# RUN: llc -mtriple=arceb -mcpu=arc700eb -arc-hardware-loops \
+# RUN:     -run-pass=arc-lowoverhead-loops -verify-machineinstrs %s -o - \
+# RUN:   | FileCheck %s
+
+# A loop that must NOT be committed to `lp` falls back to a correct ordinary
+# countdown loop -- never a silent miscompile.
+#
+# Here the counter register $r2 is live-out of the body (listed live-in to the
+# exit bb.2), so committing to `lp` -- which deletes every def/use of $r2 and
+# hands the count to the LP_COUNT hardware -- would drop a value the exit still
+# needs. The pass detects this and reverts: HWLOOP_START expands to the ordinary
+# `mov`, HWLOOP_DEC to `sub $r2, $r2, 1`, and the original `brne` back-branch is
+# left in place. No `lp` is emitted.
+
+--- |
+  define i32 @revert_counter_live(i32 %n) { ret i32 0 }
+...
+---
+name:            revert_counter_live
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.1
+    liveins: $r0, $r1
+    $r2 = HWLOOP_START $r1
+
+  bb.1:
+    successors: %bb.1, %bb.2
+    liveins: $r0, $r1, $r2
+    $r0 = ADD_rrr $r0, $r0
+    $r2 = HWLOOP_DEC $r2, 1
+    BRcc_ru6 %bb.1, $r2, 0, 1
+
+  bb.2:
+    liveins: $r0, $r2
+    $r0 = ADD_rrr $r0, $r2
+...
+
+# CHECK-LABEL: name: revert_counter_live
+# The setup pseudo becomes an ordinary move of the trip count into the counter.
+# CHECK:      bb.0:
+# CHECK:        $r2 = MOV_rr $r1
+# CHECK-NOT:    ARC_LP_u7_cc
+# CHECK-NOT:    HWLOOP_START
+
+# The body keeps its explicit decrement and back-branch.
+# CHECK:      bb.1:
+# CHECK:        $r2 = SUB_rru6 $r2, 1
+# CHECK:        BRcc_ru6 %bb.1, $r2, 0, 1
+# CHECK-NOT:    HWLOOP_DEC
+# CHECK-NOT:    ARC_LP_u7_cc

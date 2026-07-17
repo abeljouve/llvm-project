@@ -1678,6 +1678,55 @@ def : Pat<(truncstorei8 i32:$C, AddrModeImm:$addr),
 //
 // A replacement pseudo has to carry the ordinary CFG and back-edge so a late
 // pass can commit to LP or fall back, so it will not be this shape anyway.
+//
+// That replacement now exists. The generic llvm/lib/CodeGen/HardwareLoops.cpp
+// IR pass -- driven by ARCTTIImpl::isHardwareLoopProfitable and gated behind
+// the off-by-default -arc-hardware-loops flag -- proves the trip count with
+// SCEV and rewrites a counted loop into
+//   preheader:  %c = llvm.start.loop.iterations.i32(%count)
+//   header:     %p = phi [%c, preheader], [%d, latch]
+//   latch:      %d = llvm.loop.decrement.reg.i32(%p, 1); br (%d != 0), header
+// i.e. a completely ordinary countdown loop with an explicit counter register
+// and a real conditional back-branch. The two intrinsics select to the two
+// pseudos below; everything else (the phi, the compare, the branch) is
+// ordinary ARC codegen. ARCLowOverheadLoops (last pass in addPreEmitPass,
+// where instruction sizes are finally fixed) then either commits the loop to
+// `lp` -- deleting the counter/compare/back-branch and emitting
+// `mov lp_count,%count` + word-separation padding + `lp @end` in the
+// preheader, with a zero-trip guard -- or, if any silicon precondition fails
+// (>=4 fetch WORDS after the LP_COUNT write, LP's +/-4 KiB s13 reach, or the
+// required preheader/body/exit block adjacency), leaves the loop alone by
+// expanding these two pseudos back into the ordinary `mov` / `sub`. Because
+// the fallback is a correct ordinary loop, an unconvertible loop is never a
+// miscompile, only a missed optimization.
+//
+// Keeping the pseudos opaque (hasSideEffects, isNotDuplicable) is what stops
+// scheduling / size-reduction / the delay-slot filler from perturbing the
+// setup window before ARCLowOverheadLoops can measure the >=4-word separation
+// with final sizes -- the same discipline ARC_LP_s13 already relies on in
+// hasUnmodeledARCompactSideEffects. Size = 4 matches their ordinary-loop
+// expansion (one `mov` / one `sub`) so branch range estimates stay honest
+// while they exist.
+// Selected manually from llvm.start.loop.iterations / llvm.loop.decrement.reg
+// in ARCISelDAGToDAG.cpp (Select's INTRINSIC_W_CHAIN case), rather than via a
+// TableGen intrinsic pattern: the two-operand loop.decrement.reg has no
+// in-tree direct-pattern precedent (ARM custom-selects it), so hand selection
+// keeps the chain wiring explicit and certain. Empty patterns here.
+let hasSideEffects = 1, isNotDuplicable = 1 in {
+def HWLOOP_START : PseudoInstARC<(outs GPR32:$dst), (ins GPR32:$count),
+    "# hwloop start $dst, $count", []> {
+  // 4 bytes: the ordinary-loop fall-back expands this to one `mov`. (Size must
+  // be set in the def body to override InstARC's Size = sz parameter, exactly
+  // as BRcc_rr_p sets Size = 8.)
+  let Size = 4;
+}
+
+def HWLOOP_DEC : PseudoInstARC<(outs GPR32:$dst), (ins GPR32:$src, i32imm:$dec),
+    "# hwloop dec $dst, $src, $dec", []> {
+  // 4 bytes: the ordinary-loop fall-back expands this to one `sub`.
+  let Size = 4;
+}
+}
 //===----------------------------------------------------------------------===//
 
 def getPostIncOpcode : InstrMapping {
