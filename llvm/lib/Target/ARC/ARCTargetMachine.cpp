@@ -14,6 +14,7 @@
 #include "ARCMachineFunctionInfo.h"
 #include "ARCTargetTransformInfo.h"
 #include "TargetInfo/ARCTargetInfo.h"
+#include "llvm/CodeGen/MachineScheduler.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
@@ -65,6 +66,25 @@ public:
 
 TargetPassConfig *ARCTargetMachine::createPassConfig(PassManagerBase &PM) {
   return new ARCPassConfig(*this, PM);
+}
+
+ScheduleDAGInstrs *
+ARCTargetMachine::createMachineScheduler(MachineSchedContext *C) const {
+  // Standard converging pre-RA scheduler (the pass that already runs for
+  // bcm55030 via ARCSubtarget::enableMachineScheduler, which is gated on a
+  // real instruction-scheduling model being present). Attach the load-cluster
+  // mutation so neighbouring loads off the same base are grouped and the
+  // scheduler can fill each load's 10-cycle shadow with the other independent
+  // loads (dossier 20). ReorderWhileClustering=false keeps clustered ops in
+  // their original program order -- the conservative choice, and on this core
+  // the volatile/MMIO ordering guarantee already lives in ARCInstrInfo's
+  // getMemOperandsWithOffsetWidth (ordered accesses are never candidates).
+  // No store-cluster mutation: stores are posted / write-buffered here, so
+  // grouping them buys nothing.
+  ScheduleDAGMILive *DAG = createSchedLive<GenericScheduler>(C);
+  DAG->addMutation(createLoadClusterDAGMutation(
+      DAG->TII, DAG->TRI, /*ReorderWhileClustering=*/false));
+  return DAG;
 }
 
 void ARCPassConfig::addIRPasses() {

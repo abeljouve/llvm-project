@@ -20,6 +20,8 @@
 namespace llvm {
 
 class TargetPassConfig;
+struct MachineSchedContext;
+class ScheduleDAGInstrs;
 
 class ARCTargetMachine : public CodeGenTargetMachineImpl {
   std::unique_ptr<TargetLoweringObjectFile> TLOF;
@@ -40,6 +42,14 @@ public:
 
   // Pass Pipeline Configuration
   TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
+
+  // Build the pre-RA machine scheduler and attach the load-cluster mutation
+  // (dossier 20 -- load-use latency hiding). Without this override the target
+  // gets the default scheduler with no mutations, so the ARCInstrInfo
+  // getMemOperandsWithOffsetWidth / shouldClusterMemOps hooks are never
+  // consulted and the loads are never grouped.
+  ScheduleDAGInstrs *
+  createMachineScheduler(MachineSchedContext *C) const override;
 
   TargetTransformInfo getTargetTransformInfo(const Function &F) const override;
   TargetLoweringObjectFile *getObjFileLowering() const override {

@@ -105,6 +105,29 @@ public:
                                         unsigned &BasePos,
                                         unsigned &OffsetPos) const override;
 
+  /// Describe the base register, byte offset and access width of a scalar
+  /// load/store so the machine scheduler's load-cluster mutation can group
+  /// neighbouring accesses (dossier 20 -- load-use latency hiding). Only the
+  /// base+immediate-offset forms qualify; volatile / atomic / ordered accesses
+  /// are refused outright (hasOrderedMemoryRef), which is what keeps every
+  /// MMIO `.di` access out of the cluster candidate list and preserves the
+  /// hardware-visible access order (the same discipline ARCOptAddrMode applies).
+  bool getMemOperandsWithOffsetWidth(
+      const MachineInstr &MI, SmallVectorImpl<const MachineOperand *> &BaseOps,
+      int64_t &Offset, bool &OffsetIsScalable, LocationSize &Width,
+      const TargetRegisterInfo *TRI) const override;
+
+  /// Return true if two memory ops (already described by
+  /// getMemOperandsWithOffsetWidth) should be scheduled adjacently: same base
+  /// pointer, a bounded cluster size, and a bounded byte span. Redundantly
+  /// refuses ordered accesses as belt-and-suspenders.
+  bool shouldClusterMemOps(ArrayRef<const MachineOperand *> BaseOps1,
+                           int64_t Offset1, bool OffsetIsScalable1,
+                           ArrayRef<const MachineOperand *> BaseOps2,
+                           int64_t Offset2, bool OffsetIsScalable2,
+                           unsigned ClusterSize,
+                           unsigned NumBytes) const override;
+
   // Emit code before MBBI to load immediate value into physical register Reg.
   // Returns an iterator to the new instruction.
   MachineBasicBlock::iterator loadImmediate(MachineBasicBlock &MBB,

@@ -16,9 +16,11 @@
 #include "ARCMachineFunctionInfo.h"
 #include "ARCSubtarget.h"
 #include "MCTargetDesc/ARCInfo.h"
+#include "llvm/Analysis/ValueTracking.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineMemOperand.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/Debug.h"
 
@@ -615,4 +617,153 @@ bool ARCInstrInfo::hasUnmodeledARCompactSideEffects(const MachineInstr &MI) {
   case ARC::ARC_TRAP_S_u6:
     return true;
   }
+}
+
+// True for the scalar load/store opcodes that carry a base register plus a
+// small signed immediate byte offset (the rs9 form) or a base register plus a
+// 32-bit LIMM byte offset (the rlimm form). Deliberately EXCLUDES:
+//   * the _limm absolute forms (two immediate sub-operands, no base register --
+//     they have nothing to cluster against and would fail the isReg() check
+//     below anyway);
+//   * the post-/pre-increment (.ab/.aw) forms, which MUTATE the base register,
+//     so reordering or grouping them changes the addresses the later accesses
+//     compute;
+//   * the scaled reg+reg LD_AS_rr form (no immediate offset to compare).
+static bool isClusterableMemOpcode(unsigned Opc) {
+  switch (Opc) {
+  default:
+    return false;
+  // Word / byte / halfword loads, zero- and sign-extending, base+rs9 and
+  // base+rlimm. (The uncached `.di` variants are intentionally absent: those
+  // are MMIO and are also refused by hasOrderedMemoryRef, but keeping them out
+  // of the recognised set makes the MMIO exclusion independent of MMO flags.)
+  case ARC::LD_rs9:
+  case ARC::LD_rlimm:
+  case ARC::LDB_rs9:
+  case ARC::LDB_rlimm:
+  case ARC::LDB_X_rs9:
+  case ARC::LDB_X_rlimm:
+  case ARC::LDH_rs9:
+  case ARC::LDH_rlimm:
+  case ARC::LDH_X_rs9:
+  case ARC::LDH_X_rlimm:
+  // Word / byte / halfword stores, base+rs9. (Stores are posted / write-
+  // buffered on this core, so only the load-cluster mutation is registered;
+  // recognising the store forms here is harmless and keeps the base-pointer
+  // reasoning uniform.)
+  case ARC::ST_rs9:
+  case ARC::STB_rs9:
+  case ARC::STH_rs9:
+    return true;
+  }
+}
+
+bool ARCInstrInfo::getMemOperandsWithOffsetWidth(
+    const MachineInstr &LdSt, SmallVectorImpl<const MachineOperand *> &BaseOps,
+    int64_t &Offset, bool &OffsetIsScalable, LocationSize &Width,
+    const TargetRegisterInfo *TRI) const {
+  if (!LdSt.mayLoadOrStore())
+    return false;
+
+  // FIRMWARE-SAFETY: never describe a volatile / atomic / ordered access to the
+  // scheduler's load-cluster mutation. hasOrderedMemoryRef() is true for a
+  // volatile MMO, for any non-unordered atomic, AND conservatively when the
+  // instruction carries no MMO info. MMIO `.di` loads/stores are volatile at
+  // the IR/MMO level, so this single guard keeps every volatile/MMIO access out
+  // of the cluster candidate list entirely -- it is never a cluster candidate,
+  // never reordered, never rebased. This is the exact predicate and discipline
+  // ARCOptAddrMode.cpp already applies before folding a post-increment, and it
+  // preserves the hardware-visible MMIO access order the peripherals contract
+  // on.
+  if (LdSt.hasOrderedMemoryRef())
+    return false;
+
+  if (!isClusterableMemOpcode(LdSt.getOpcode()))
+    return false;
+
+  // For every recognised form the operands are [value, base, offset]: the
+  // load's def or the store's source value at operand 0, the base register at
+  // operand 1, the byte offset at operand 2. Require a real base register (a
+  // stack frame index also qualifies -- spill/reload traffic clusters too) and
+  // an immediate offset; this is where the _limm absolute forms would drop out
+  // were they ever recognised.
+  const MachineOperand &Base = LdSt.getOperand(1);
+  const MachineOperand &Off = LdSt.getOperand(2);
+  if ((!Base.isReg() && !Base.isFI()) || !Off.isImm())
+    return false;
+
+  // Need the access width for the scheduler's byte-span accounting.
+  if (!LdSt.hasOneMemOperand())
+    return false;
+
+  OffsetIsScalable = false;
+  Width = (*LdSt.memoperands_begin())->getSize();
+  Offset = Off.getImm();
+  BaseOps.push_back(&Base);
+  return true;
+}
+
+// Two memory ops share a base pointer if their base operands are identical, or
+// (as a fallback) if their single MachineMemOperands trace back to the same
+// underlying IR object in the same address space. Mirrors the RISC-V helper of
+// the same name.
+static bool memOpsHaveSameBasePtr(const MachineInstr &MI1,
+                                  ArrayRef<const MachineOperand *> BaseOps1,
+                                  const MachineInstr &MI2,
+                                  ArrayRef<const MachineOperand *> BaseOps2) {
+  if (BaseOps1.front()->isIdenticalTo(*BaseOps2.front()))
+    return true;
+
+  if (!MI1.hasOneMemOperand() || !MI2.hasOneMemOperand())
+    return false;
+
+  auto *MO1 = *MI1.memoperands_begin();
+  auto *MO2 = *MI2.memoperands_begin();
+  if (MO1->getAddrSpace() != MO2->getAddrSpace())
+    return false;
+
+  const Value *Base1 = MO1->getValue();
+  const Value *Base2 = MO2->getValue();
+  if (!Base1 || !Base2)
+    return false;
+  Base1 = getUnderlyingObject(Base1);
+  Base2 = getUnderlyingObject(Base2);
+
+  if (isa<UndefValue>(Base1) || isa<UndefValue>(Base2))
+    return false;
+
+  return Base1 == Base2;
+}
+
+bool ARCInstrInfo::shouldClusterMemOps(
+    ArrayRef<const MachineOperand *> BaseOps1, int64_t Offset1,
+    bool OffsetIsScalable1, ArrayRef<const MachineOperand *> BaseOps2,
+    int64_t Offset2, bool OffsetIsScalable2, unsigned ClusterSize,
+    unsigned NumBytes) const {
+  // Both operand lists must be non-empty and describe the same base pointer.
+  if (BaseOps1.empty() || BaseOps2.empty())
+    return false;
+
+  const MachineInstr &FirstLdSt = *BaseOps1.front()->getParent();
+  const MachineInstr &SecondLdSt = *BaseOps2.front()->getParent();
+
+  // FIRMWARE-SAFETY (belt-and-suspenders): getMemOperandsWithOffsetWidth
+  // already refuses ordered accesses, so neither instruction here should be
+  // volatile/atomic/MMIO -- but re-check, so that no future path into this hook
+  // can ever cluster (and thereby reorder) a volatile/MMIO access. Same
+  // ARCOptAddrMode.cpp discipline.
+  if (FirstLdSt.hasOrderedMemoryRef() || SecondLdSt.hasOrderedMemoryRef())
+    return false;
+
+  if (!memOpsHaveSameBasePtr(FirstLdSt, BaseOps1, SecondLdSt, BaseOps2))
+    return false;
+
+  // Register-pressure bound. The D-cache is disabled in the shipping config, so
+  // there is no cache line to reason about; the caps instead keep the set of
+  // simultaneously-live load temps small (dossier 20). ClusterSize is limited
+  // to 4 -- the default partial-unroll factor -- and the byte span between the
+  // two accesses is bounded so only genuine neighbours group (a shared base
+  // with far-apart offsets would extend live ranges for no throughput gain).
+  const int64_t ClusterMaxSpan = 64;
+  return ClusterSize <= 4 && std::abs(Offset1 - Offset2) < ClusterMaxSpan;
 }

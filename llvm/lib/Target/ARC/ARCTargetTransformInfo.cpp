@@ -30,6 +30,7 @@
 #include "llvm/CodeGenTypes/MachineValueType.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/Function.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instructions.h"
@@ -202,4 +203,56 @@ bool ARCTTIImpl::isHardwareLoopProfitable(Loop *L, ScalarEvolution &SE,
   HWLoopInfo.CountType = Type::getInt32Ty(C);
   HWLoopInfo.LoopDecrement = ConstantInt::get(HWLoopInfo.CountType, 1);
   return true;
+}
+
+void ARCTTIImpl::getUnrollingPreferences(
+    Loop *L, ScalarEvolution &SE, TTI::UnrollingPreferences &UP,
+    OptimizationRemarkEmitter *ORE) const {
+  // Size builds must not grow: at -Os/-Oz the goal is smaller .text, and
+  // unrolling only ever adds instructions. Zero the size-mode thresholds and
+  // leave the flags off so a MinSize/OptSize function keeps its rolled loop.
+  UP.OptSizeThreshold = 0;
+  UP.PartialOptSizeThreshold = 0;
+  if (L->getHeader()->getParent()->hasOptSize())
+    return;
+
+  // Enable partial (compile-time-known trip count) and runtime (unknown trip
+  // count `n`) unrolling with a scalar remainder loop. The reduction that
+  // motivates this -- `for (i) s += a[i]` with an unknown `n` -- takes the
+  // runtime path.
+  UP.Partial = true;
+  UP.Runtime = true;
+  UP.AllowRemainder = true;
+  // Do not unroll the remainder loop itself: it runs at most Count-1 times, so
+  // unrolling it only adds code for no steady-state benefit.
+  UP.UnrollRemainder = false;
+
+  // Default unroll factor = 4.
+  //
+  // Dossier 20: steady-state throughput of the clustered reduction follows
+  // cyc/elem = 2 + 9/k (k = unroll factor). The load-latency saturation point
+  // is k = ceil(LoadLatency / load-ReleaseAtCycles) = ceil(10/2) = 5 -- five
+  // independent 2-slot loads fill one load's 10-clock shadow. Returns diminish
+  // sharply past there (k=4 is 2.6x, k=8 only 3.5x), so 4 is the pressure-cheap
+  // default and is the value used by BOTH code paths:
+  //   * the partial path (known trip count) reads UP.Count;
+  //   * the runtime path (unknown trip count) ignores UP.Count -- the unroller
+  //     resets it to 0 and then reads UP.DefaultUnrollRuntimeCount instead --
+  //     so that field must be set to the same 4 or the runtime reduction would
+  //     silently fall back to the generic default.
+  UP.Count = 4;
+  UP.DefaultUnrollRuntimeCount = 4;
+
+  // Hard register-pressure cap. This is the load-bearing bound, not the cost
+  // threshold: on this core the D-cache is disabled and a spill is an uncached
+  // 10-clock load, so an unroll factor that spills makes the loop SLOWER. The
+  // realistic single-accumulator clustered reduction has peak pressure
+  // ~= k load temps + accumulator + pointer + counter ~= k + 3; the empirical
+  // spill cliff on this backend (26 allocatable GPRs: R0..R24 and R30) is at 22
+  // simultaneously-live temps. MaxCount = 8 -> peak ~11, less than half the
+  // allocatable file and far under the cliff, so spills stay at 0 with
+  // comfortable headroom for the enclosing function's own registers. The
+  // generic LoopUnroll pass does not model register pressure itself, so this
+  // cap is the only thing bounding it.
+  UP.MaxCount = 8;
 }

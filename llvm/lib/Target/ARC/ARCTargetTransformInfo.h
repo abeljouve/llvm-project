@@ -261,6 +261,24 @@ public:
                                 AssumptionCache &AC, TargetLibraryInfo *LibInfo,
                                 HardwareLoopInfo &HWLoopInfo) const override;
 
+  // -----------------------------------------------------------------------
+  // Loop-unrolling preferences (dossier 20 -- load-use latency hiding).
+  //
+  // The dominant speed lever on this core: a dependent load-use costs 10
+  // clocks against a 2-slot load issue occupancy, and the D-cache is disabled
+  // in the shipping config so every load pays it. A textbook integer reduction
+  // is bound by its own recurrence. Partial/runtime unrolling gives the
+  // scheduler independent loads to overlap in each load's 10-cycle shadow; the
+  // load-cluster mutation (ARCTargetMachine::createMachineScheduler) then keeps
+  // those loads live simultaneously so the allocator does not collapse them.
+  //
+  // The factor is bounded by REGISTER PRESSURE, not by the cost threshold
+  // alone: a spill on this core is an uncached 10-clock load and would defeat
+  // the purpose. UP.MaxCount is the hard pressure cap.
+  void getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
+                               TTI::UnrollingPreferences &UP,
+                               OptimizationRemarkEmitter *ORE) const override;
+
   // True if I is expected to lower to a bl (an ordinary call, an integer
   // multiply/divide libcall, a soft-float op, or a 64-bit-int libcall on
   // arc700). Such loops are rejected: LP_COUNT liveness across a call is
