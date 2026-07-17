@@ -1,0 +1,54 @@
+# RUN: llc -mtriple=arceb -mcpu=arc700eb -arc-hardware-loops \
+# RUN:     -run-pass=arc-lowoverhead-loops -verify-machineinstrs %s -o - \
+# RUN:   | FileCheck %s
+
+# The >=4-fetch-WORD LP_COUNT setup separation, counted AFTER 16-bit reduction.
+#
+# This is the case the deleted pass got wrong: it padded from a fixed machine-
+# instruction count, so a body that 16-bit size-reduction shrank could fall
+# below the four-fetch-word window silently. ARCLowOverheadLoops runs LAST, when
+# sizes are final, and counts ONLY 32-bit body instructions as guaranteed fetch
+# words -- a 16-bit compact instruction contributes zero. So it over-pads rather
+# than under-pads.
+#
+# The body here is two COMPACT (16-bit) moves, i.e. exactly what a 2x 32-bit
+# body looks like after size reduction. A naive "2 machine instructions -> 1 NOP
+# is enough" rule would leave the window at (1 NOP + lp + ~1 fetch word) < 4. The
+# pass instead computes reliableBodyWords = 0 and emits padWords = 3 - 0 = 3, so
+# the guaranteed window is (3 NOPs + lp word) = 4 even before the compact body is
+# counted. That is the invariant this test pins: THREE NOPs, not one.
+
+--- |
+  define void @padding(i32 %n) { ret void }
+...
+---
+name:            padding
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.1
+    liveins: $r0, $r1, $r3
+    $r2 = HWLOOP_START $r1
+
+  bb.1:
+    successors: %bb.1, %bb.2
+    liveins: $r0, $r1, $r2, $r3
+    $r0 = ARC_MOV_S_b_h $r0
+    $r3 = ARC_MOV_S_b_h $r3
+    $r2 = HWLOOP_DEC $r2, 1
+    BRcc_ru6 %bb.1, $r2, 0, 1
+
+  bb.2:
+    liveins: $r0
+    $r0 = ADD_rrr $r0, $r0
+...
+
+# CHECK-LABEL: name: padding
+# CHECK:      bb.0:
+# CHECK:        CMP_ru6 $r1, 0
+# CHECK-NEXT:   $r60 = MOV_rr $r1
+# CHECK-NEXT:   ARC_NOP_0
+# CHECK-NEXT:   ARC_NOP_0
+# CHECK-NEXT:   ARC_NOP_0
+# CHECK-NEXT:   ARC_LP_u7_cc {{[0-9]+}}, 2
+# CHECK-NOT:    ARC_NOP_0

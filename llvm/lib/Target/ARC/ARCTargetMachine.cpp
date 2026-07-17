@@ -71,6 +71,17 @@ void ARCPassConfig::addIRPasses() {
   addPass(createAtomicExpandLegacyPass());
 
   TargetPassConfig::addIRPasses();
+
+  // Zero-overhead (LP) hardware-loop formation, gated OFF by default (see
+  // ARCTargetTransformInfo.cpp and the note in addPreEmitPass below). The
+  // generic pass proves the trip count with SCEV and emits the
+  // start.loop.iterations / loop.decrement.reg contract; ARCLowOverheadLoops
+  // (addPreEmitPass) later commits it to `lp` or reverts to an ordinary loop.
+  // Placed after the base IR passes, mirroring ARM. Adding it is cheap when the
+  // flag is off -- ARCTTIImpl::isHardwareLoopProfitable returns false and it
+  // converts nothing.
+  if (ARCEnableHardwareLoops())
+    addPass(createHardwareLoopsLegacyPass());
 }
 
 bool ARCPassConfig::addInstSelector() {
@@ -85,6 +96,24 @@ void ARCPassConfig::addPreEmitPass() {
   addPass(createARCSizeReductionPass());
   // Delay slot filler runs after branch finalization, only for ARCompact.
   addPass(createARCDelaySlotFillerPass());
+
+  // Zero-overhead loop finalize MUST be last: it is the only point where
+  // instruction sizes are final, so it is the only point where the ISA's
+  // >=4-instruction-WORD LP_COUNT setup separation and the `lp` +/-4 KiB reach
+  // can be checked against the real layout (the deleted pass got this wrong by
+  // deciding padding ~50 passes before block placement). It commits a proven
+  // counted loop to `lp` -- with a zero-trip guard folded into the conditional
+  // `lp<cc>` form and word-separation padding -- or reverts it to an ordinary
+  // countdown loop. Gated OFF by default: the target's interrupt entry code
+  // does not save LP_COUNT / LP_START / LP_END (r60 + AUX 0x02/0x03), so
+  // emitting LP unconditionally would let an LP-using handler silently corrupt
+  // a foreground loop it interrupts. Turning -arc-hardware-loops on is only
+  // safe once every interrupt trampoline preserves those three, OR every
+  // handler is proven LP-free (docs/notes/isa-characterization.md 4.4). That
+  // code lives in the separate firmware repo, so the backend ships gated and
+  // the firmware flips it on.
+  if (ARCEnableHardwareLoops())
+    addPass(createARCLowOverheadLoopsPass());
 }
 
 void ARCPassConfig::addPreRegAlloc() {
@@ -115,17 +144,19 @@ void ARCPassConfig::addPreRegAlloc() {
     // approximated as an instruction tally behind a tuning knob, and block
     // layout was queried ~50 passes before Block Placement decides it.
     //
-    // Formation should be rebuilt on the generic llvm/lib/CodeGen/
-    // HardwareLoops.cpp IR pass (SCEV trip counts + a real zero-trip guard,
-    // as ARM/PPC use it) plus a late commit-or-fall-back step that runs
-    // AFTER size reduction and the delay-slot filler, where instruction
-    // sizes are final and the word-separation rule and LP's +/-4 KiB range
-    // can actually be checked.
+    // Formation has since been rebuilt exactly this way and does NOT run
+    // here: it is the generic llvm/lib/CodeGen/HardwareLoops.cpp IR pass
+    // (SCEV trip counts; added in addIRPasses, ARM/PPC-style) driven by
+    // ARCTTIImpl::isHardwareLoopProfitable, plus ARCLowOverheadLoops as the
+    // late commit-or-fall-back step (added LAST in addPreEmitPass, after size
+    // reduction and the delay-slot filler, where sizes are final and the
+    // word-separation rule and LP's +/-4 KiB range can actually be checked).
+    // Both are gated behind the off-by-default -arc-hardware-loops flag.
     //
-    // The LP *encoding* path is now correct and byte-verified against the
+    // The LP *encoding* path is correct and byte-verified against the
     // reference ARCompact decoder (see
     // llvm/test/CodeGen/ARC/arc700eb-lp-encoding.mir), so that rebuild
-    // starts from a working encoder rather than a silently wrong one.
+    // started from a working encoder rather than a silently wrong one.
     //
     // NOTE for whoever enables formation: this target's runtime interrupt
     // entry code does not save LP_COUNT / LP_START / LP_END, and says so in
@@ -151,6 +182,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeARCTarget() {
   initializeARCDAGToDAGISelLegacyPass(PR);
   initializeARCDelaySlotFillerPass(PR);
   initializeARCSizeReductionPass(PR);
+  initializeARCLowOverheadLoopsPass(PR);
 }
 
 TargetTransformInfo

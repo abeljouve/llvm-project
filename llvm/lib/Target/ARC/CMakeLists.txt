@@ -24,6 +24,7 @@ add_llvm_target(ARCCodeGen
   ARCInstrInfo.cpp
   ARCISelDAGToDAG.cpp
   ARCISelLowering.cpp
+  ARCLowOverheadLoops.cpp
   ARCMachineFunctionInfo.cpp
   ARCMCInstLower.cpp
   ARCOptAddrMode.cpp
@@ -32,6 +33,7 @@ add_llvm_target(ARCCodeGen
   ARCSizeReduction.cpp
   ARCSubtarget.cpp
   ARCTargetMachine.cpp
+  ARCTargetTransformInfo.cpp
 
   LINK_COMPONENTS
   ARCDesc

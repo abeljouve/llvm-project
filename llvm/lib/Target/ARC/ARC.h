@@ -29,10 +29,20 @@ FunctionPass *createARCOptAddrMode();
 FunctionPass *createARCBranchFinalizePass();
 FunctionPass *createARCDelaySlotFillerPass();
 FunctionPass *createARCSizeReductionPass();
+FunctionPass *createARCLowOverheadLoopsPass();
 void initializeARCAsmPrinterPass(PassRegistry &);
 void initializeARCDAGToDAGISelLegacyPass(PassRegistry &);
 void initializeARCDelaySlotFillerPass(PassRegistry &);
 void initializeARCSizeReductionPass(PassRegistry &);
+void initializeARCLowOverheadLoopsPass(PassRegistry &);
+
+/// Whether zero-overhead hardware-loop (LP) formation is enabled. Reflects the
+/// hidden -arc-hardware-loops command-line flag, which defaults to OFF: the
+/// runtime interrupt entry code on the intended target does not save/restore
+/// LP_COUNT / LP_START / LP_END, so emitting LP by default would silently
+/// corrupt a foreground loop interrupted by an LP-using handler. See
+/// ARCTargetMachine.cpp and docs/notes/isa-characterization.md 4.4.
+bool ARCEnableHardwareLoops();
 
 } // end namespace llvm
 
