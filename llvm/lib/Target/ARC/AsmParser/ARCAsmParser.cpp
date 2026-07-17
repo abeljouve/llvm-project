@@ -323,6 +323,11 @@ static MCRegister matchRegisterName(StringRef Name) {
       .Case("blink", ARC::BLINK)
       .Case("ilink", ARC::ILINK)
       .Case("pcl", ARC::R63)
+      // r60 doubles as the zero-overhead-loop counter LP_COUNT. Accept the
+      // architectural alias `lp_count` as a destination/source name so
+      // `mov lp_count, rN` assembles (the 32-bit GEN4 MOV form; the loop
+      // counter is a plain GPR32 for MOV purposes).
+      .Case("lp_count", ARC::R60)
       .Default(MCRegister());
 }
 
