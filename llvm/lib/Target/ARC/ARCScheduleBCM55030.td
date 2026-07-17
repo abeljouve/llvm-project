@@ -310,9 +310,19 @@ def BCM55030WrSt : SchedWriteRes<[BCM55030LSU]> {
 //
 // So: all six widths are consistent with the same ~10-clock latency inside a
 // +-0.6 clk/load placement band. ONE load latency for all widths and both cache
-// modes. These writes are kept distinct only so that a future
-// placement-controlled experiment has somewhere to land without touching the
-// plain load/store writes -- not because a difference is known.
+// modes.
+//
+// Evaluated to a close (2026-07-16): a per-width / .di stage-2 refinement is not
+// merely unsupported by this run, it is UNACTIONABLE. The whole spread is
+// <= 0.63 clk/load, and SchedMachineModel latencies are INTEGERS -- a sub-clock
+// per-width delta rounds to the same Latency = 10 and cannot produce a different
+// WriteRes. Even a future placement-controlled experiment could at best confirm
+// the physics-predicted null: the D-cache is disabled (DC_CTRL = 0xC3), so a
+// cached load and an uncached (.di) load both hit uncached SRAM with no
+// cache-participation difference to create a latency delta, and width extraction
+// is folded into the load-format stage. It could not change an integer latency.
+// So these two writes are kept distinct only as harmless identical placeholders
+// -- do NOT split their numbers.
 def BCM55030WrLdDI : SchedWriteRes<[BCM55030LSU]> {
   let Latency = 10;
   let ReleaseAtCycles = [2];
