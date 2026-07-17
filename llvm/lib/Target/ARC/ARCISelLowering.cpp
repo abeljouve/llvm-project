@@ -145,6 +145,10 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   // LowerUADDO/LowerUSUBO's own Custom-lowering ever run, so it can
   // intercept the raw generic ISD::UADDO/USUBO overflow result before the
   // value-materializing fallback path is even constructed.
+  // ISD::BRCOND is ALSO where dossier 23 Phase 1's i64 compare-and-branch
+  // fusion (performSetccCarryBrCombine) lands -- same registration, different
+  // shape and a different combine round. See its declaration in
+  // ARCISelLowering.h and the double-try in PerformDAGCombine below.
   setTargetDAGCombine(ISD::BRCOND);
   setTargetDAGCombine(ISD::SELECT);
 
@@ -175,6 +179,19 @@ ARCTargetLowering::ARCTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::ADDE, MVT::i32, Legal);
   setOperationAction(ISD::SUBC, MVT::i32, Legal);
   setOperationAction(ISD::SUBE, MVT::i32, Legal);
+
+  // 64-bit relational compares -- dossier 23 Phase 1, see
+  // docs/llvm-arc700-optimizations/23-conditional-compare-chaining.md and the
+  // LowerSETCCCARRY declaration in ARCISelLowering.h.
+  //
+  // MUST come after the blanket `Expand` loop above (which would otherwise
+  // overwrite it) and belongs beside ADDC/ADDE/SUBC/SUBE: those four are the
+  // sibling flag-chain actions, and they are exactly what makes an i64 add/sub
+  // select as `add.f`/`adc.f` and `sub.f`/`sbc.f` today. This action is the
+  // i64 *compare* half of the same story -- it makes LegalizeIntegerTypes.cpp
+  // expand an i64 `<`/`>=`/`>`/`<=` to USUBO + SETCCCARRY, which
+  // LowerSETCCCARRY below folds onto that same `sbc.f`.
+  setOperationAction(ISD::SETCCCARRY, MVT::i32, Custom);
 
   // Need barrel shifter.
   setOperationAction(ISD::SHL, MVT::i32, Legal);
@@ -761,6 +778,255 @@ SDValue ARCTargetLowering::LowerSSUBO(SDValue Op, SelectionDAG &DAG) const {
   SDValue B = Op.getOperand(1);
   return DAG.getNode(ARCISD::SSUBO, dl, DAG.getVTList(MVT::i32, MVT::i32), A,
                      B);
+}
+
+//===----------------------------------------------------------------------===//
+//  64-bit relational compare via SETCCCARRY -- dossier 23 Phase 1.
+//  docs/llvm-arc700-optimizations/23-conditional-compare-chaining.md
+//
+//  CARRY POLARITY. Everything below hangs off ONE silicon fact, stated here
+//  once and derived nowhere else. This ARC700 sets C = BORROW after SUB / CMP
+//  / SBC (x86-style, NOT ARM-style):
+//
+//      a <u b   =>  C = 1  =>  ARCCC::LO (0x05)
+//      a >=u b  =>  C = 0  =>  ARCCC::HS (0x06)
+//
+//  Cross-checked against three independent sources before a single suffix was
+//  written: (1) the ARCompact ISA Programmer's Reference Ch.8 condition-code
+//  table -- "CS, C, LO | Carry set, lower than (unsigned) | C | 0x05" and
+//  "CC, NC, HS | Carry clear, higher or same (unsigned) | /C | 0x06" --
+//  mirrored at docs/isa/06-condition-codes.md Table 85; (2)
+//  docs/notes/isa-characterization.md section 5.4; (3) the emulator's ALU
+//  model, `AluOp::Sub | AluOp::Cmp => // ARC convention: C = borrow (C=1 when
+//  A < B unsigned)`. It is further corroborated by code this backend ALREADY
+//  ships onto silicon: ARCExpandPseudos.cpp's expandUSUBO selects the borrow
+//  (`a <u b`) with ARCCC::LO, and ARCCC::LO == 0x5 / ARCCC::HS == 0x6 in
+//  ARCInfo.h line up with Table 85 exactly.
+//
+//  Dossier 23's own prose asserts the OPPOSITE ("C=1 == NO borrow, ARM-style")
+//  and is self-contradictory (its worked example emits the correct `b.lo` while
+//  annotating it with the inverted rule); dossiers 18/19/24 repeat the same
+//  inversion. Derive every LO/HS/CS/CC suffix from `a<b => C=1` above -- never
+//  from a dossier example. A polarity slip here inverts every unsigned i64
+//  comparison silently.
+//===----------------------------------------------------------------------===//
+
+// Recognize the low-half borrow producer of an expanded 64-bit compare and
+// report the two i32 values it compares.
+//
+// LegalizeIntegerTypes.cpp's IntegerExpandSetCCOperands builds the carry
+// operand of its SETCCCARRY as `USUBO(ALo, BLo).1` -- a freshly created node
+// whose borrow-out is exactly `ALo <u BLo`, i.e. precisely the C flag a plain
+// `cmp ALo, BLo` leaves behind (CMP and SUB are flag-identical: ISA Table 29
+// gives `SUB: A <- B - C` and `CMP: B - C`, and the emulator computes both in
+// a single `AluOp::Sub | AluOp::Cmp` arm). Recovering (ALo, BLo) here lets the
+// caller re-emit that borrow as a `cmp` and feed it straight into `sbc.f`,
+// which is the entire win: no 0/1 boolean is ever materialized for the low
+// half.
+//
+// This is a shape match, and it deliberately does not assume it will succeed.
+// The carry is NOT always an ISD::USUBO: ExpandIntOp_SETCCCARRY (the i128 and
+// wider path) builds its SETCCCARRY with an ISD::USUBO_CARRY carry instead,
+// and SelectionDAG CSE can hand back a pre-existing node. Both ISD::USUBO and
+// ARCISD::USUBO are accepted -- the latter defensively, in case a future
+// legalization order lowers the operand before its user -- and everything else
+// declines, sending the caller to a fallback that is correct for any carry.
+static bool matchLowBorrow(SDValue Carry, SDValue &Lo, SDValue &Ro) {
+  if (Carry.getResNo() != 1)
+    return false;
+  unsigned Opc = Carry.getOpcode();
+  if (Opc != ISD::USUBO && Opc != ARCISD::USUBO)
+    return false;
+  if (Carry.getOperand(0).getValueType() != MVT::i32)
+    return false;
+  Lo = Carry.getOperand(0);
+  Ro = Carry.getOperand(1);
+  return true;
+}
+
+// Offset-binary bias of a HIGH word, turning a SIGNED 64-bit compare into the
+// UNSIGNED one the `cmp` + `sbc.f` sequence above already proves.
+//
+// Flipping bit 31 is an order isomorphism from the signed order on i32 to the
+// unsigned order on i32 (standard offset binary / excess-2^31): for all x, y
+//
+//     x <s y  <=>  (x ^ 0x80000000) <u (y ^ 0x80000000)
+//
+// and, XOR by a constant being a bijection, it preserves equality too:
+// x == y <=> x' == y'. Apply it to the HIGH words ONLY and the whole 64-bit
+// relation follows, because the standard decomposition
+//
+//     A <s B  ==  (AHi <s BHi) || (AHi == BHi && ALo <u BLo)
+//
+// maps disjunct-for-disjunct onto
+//
+//     A' <u B' ==  (AHi' <u BHi') || (AHi' == BHi' && ALo <u BLo)
+//
+// The low words are deliberately NOT biased: they are magnitude bits under
+// both readings and are already compared UNSIGNED in either relation (which is
+// also exactly what LegalizeIntegerTypes' own LowCC switch does).
+//
+// WHY THIS SHAPE AND NOT THE SIGNED CONDITION CODES: the verdict is read out
+// of `sbc.f` as the C flag alone -- the same borrow bit the unsigned path
+// already depends on -- so this never reads V. See LowerSETCCCARRY's
+// V-exclusion note for why that matters.
+//
+// COST: one 4-byte `bxor rD, rS, 31` per high word, and zero when the high word
+// is a constant (the XOR constant-folds inside getNode, e.g. 0x12345678 ^
+// 0x80000000 -> the literal 0x92345678, no instruction). The single-instruction
+// selection is not an assumption: ARCARCompactPatterns.td's
+// `(xor GPR32:$b, bit_pos_hi:$m) -> (ARC_BXOR_a_b_u6 $b, (log2_bit_pos_hi $m))`
+// leaf accepts 0x80000000 (its bit_pos_hi ImmLeaf takes any power of two above
+// 2047) and its log2_bit_pos_hi XForm lowers the mask to the u6 bit index 31,
+// so no LIMM is needed.
+//
+// The `bxor` MUST NOT set flags, or it would destroy the borrow the sequence
+// runs on. It does not: F (Inst{15}) is 0 in ARC_BXOR_a_b_u6, byte-verified
+// with the workshop's authoritative big-endian ARC disassembler (llvm-objdump
+// misdecodes big-endian ARC and must not be used) --
+//     0x205207C0 -> `bxor r0, r0, 0x1F`   (bit 15 clear: no `.f` suffix)
+// Ordering is likewise not left to chance: the bias feeds the compare pseudo's
+// OPERANDS, so the data dependence alone pins both `bxor`s ahead of the `cmp`,
+// and the `cmp`/`sbc.f` pair is welded inside one atomic pseudo until
+// ARCExpandPseudos. (ARC_BXOR_a_b_u6 additionally carries a conservative
+// Defs = [STATUS32], which errs in the safe direction here: it makes every
+// flag-hazard-aware pass, the delay-slot filler included, refuse to sink a
+// `bxor` between the `sbc.f` and its consumer.)
+static SDValue biasHiWord(SDValue Hi, SelectionDAG &DAG, const SDLoc &dl) {
+  return DAG.getNode(ISD::XOR, dl, MVT::i32, Hi,
+                     DAG.getConstant(APInt::getSignedMinValue(32), dl,
+                                     MVT::i32));
+}
+
+SDValue ARCTargetLowering::LowerSETCCCARRY(SDValue Op,
+                                           SelectionDAG &DAG) const {
+  SDLoc dl(Op);
+  SDValue LHSHi = Op.getOperand(0);
+  SDValue RHSHi = Op.getOperand(1);
+  SDValue Carry = Op.getOperand(2);
+  ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(3))->get();
+  EVT VT = Op.getValueType();
+
+  // This hook must be TOTAL: every SETCCCARRY that reaches it has to come out
+  // lowered. Returning SDValue() would NOT decline gracefully -- LegalizeDAG
+  // falls a Custom hook through to Expand, and ISD::SETCCCARRY has no
+  // expansion at all, so an early-out here is a hard failure, not a fallback.
+  // Hence asserts for the conditions traced to be impossible, and a real
+  // lowering for everything else.
+  //
+  // Both types are pinned by construction: LegalizeDAG selects this hook via
+  // getOperationAction(SETCCCARRY, <type of operand 0>), which is Custom only
+  // for i32, and a setcc result is getSetCCResultType() == i32 on this target.
+  assert(LHSHi.getValueType() == MVT::i32 && VT == MVT::i32 &&
+         "SETCCCARRY is only Custom for i32; ARC setcc results are i32");
+  // The condition code is pinned to these four by IntegerExpandSetCCOperands:
+  // SETEQ/SETNE and the sign-bit compares (`x < 0`, `x > -1`) return before
+  // its SETCCCARRY construction is ever reached, and GT/UGT/LE/ULE are
+  // normalized onto LT/ULT/GE/UGE by swapping operands. ExpandIntOp_SETCCCARRY
+  // (the i128-and-wider path) only forwards a code it was already given.
+  assert((CC == ISD::SETULT || CC == ISD::SETUGE || CC == ISD::SETLT ||
+          CC == ISD::SETGE) &&
+         "IntegerExpandSetCCOperands normalizes every SETCCCARRY it builds "
+         "onto LT/ULT/GE/UGE");
+
+  SDValue LHSLo, RHSLo;
+  bool HaveLo = matchLowBorrow(Carry, LHSLo, RHSLo);
+
+  // ---- Fast path: BOTH signednesses --------------------------------------
+  //
+  //     [signed only:]
+  //     bxor  AHi', AHi, 31   ; non-.f, no LIMM -- see biasHiWord above
+  //     bxor  BHi', BHi, 31
+  //     cmp   ALo,  BLo       ; C = borrow(lo)           == (ALo <u BLo)
+  //     sbc.f 0, AHi', BHi'   ; C = borrow(AHi'-BHi'-C)  == (A <u B), 64-bit
+  //     mov.LO / mov.HS       ; materialize the 0/1
+  //
+  // Unsigned runs the sequence on the high words as they are; SIGNED runs the
+  // IDENTICAL sequence on bit-31-biased high words, which is what makes the
+  // signed relation an unsigned one (biasHiWord carries the proof). Both then
+  // read the SAME bit out of `sbc.f`: the carry.
+  //
+  // WHY SIGNED DOES NOT USE THE SIGNED CONDITION CODES. The obvious signed
+  // lowering is this same `cmp` + `sbc.f` pair read with LT (0x0B, N != V) /
+  // GE (0x0A, N == V) instead of LO/HS. That is one instruction shorter -- it
+  // needs no bias -- but it requires V after a subtract-WITH-BORROW to equal
+  // the true 64-bit signed overflow, and on this silicon that is
+  // UNCHARACTERIZED: isa-characterization.md section 10.2 puts complete
+  // conditional-flag behaviour per ALU encoding outside the proven surface,
+  // SBC appears nowhere in that document (section 5.4 proves C = borrow for
+  // SUB/CMP only), and the 2026-07-16 cycle characterization run did not probe
+  // it either. The ISA text and the emulator both model V after SBC the way we
+  // would want, but the emulator's model is *derived from* the ISA, so
+  // agreeing with it proves nothing independent. The bias route sidesteps the
+  // question entirely rather than guessing at it: it depends only on the
+  // carry-out, the same bit the unsigned path already validated over 43,350
+  // results with 0 mismatches.
+  //
+  // THE PROBE THAT WOULD SETTLE V, if the two `bxor`s are ever worth removing
+  // (12 bytes instead of 20 in the branch form, 16 instead of 24 in the value
+  // form). On silicon, over the boundary set {INT64_MIN, -1, 0, 1, INT64_MAX,
+  // 0x8000000000000000, and the hi-equal/lo-differ, hi-differ/lo-equal,
+  // hi-differ/lo-differ classes}, run
+  //     cmp   ALo, BLo
+  //     sbc.f 0, AHi, BHi
+  //     mov.lt r0, 1          ; and separately mov.ge
+  // and confirm the verdict equals the C-language `(int64_t)a < (int64_t)b` on
+  // every vector. If it holds, drop the bias and pass ARCCC::LT / ARCCC::GE
+  // here. That is the same methodology (>200k boundary+random vectors, zero
+  // mismatch) that validated the UADDO/USUBO/UADDSAT carry work already in
+  // this backend. Until someone runs it, V stays unread.
+  if (HaveLo) {
+    bool IsSigned = (CC == ISD::SETLT || CC == ISD::SETGE);
+    SDValue AHi = LHSHi, BHi = RHSHi;
+    if (IsSigned) {
+      AHi = biasHiWord(AHi, DAG, dl);
+      BHi = biasHiWord(BHi, DAG, dl);
+    }
+    // Derived from `a<b => C=1`: strictly-less-than is carry-SET (LO/CS,
+    // 0x05); greater-or-equal is carry-CLEAR (HS/CC, 0x06). After the bias the
+    // comparison IS unsigned, so signed maps onto the very same two codes --
+    // the bias changes the operands, never the polarity.
+    ARCCC::CondCode ArcCC =
+        (CC == ISD::SETULT || CC == ISD::SETLT) ? ARCCC::LO : ARCCC::HS;
+    return DAG.getNode(ARCISD::SETCCCARRY, dl, VT, LHSLo, RHSLo, AHi, BHi,
+                       DAG.getConstant(ArcCC, dl, MVT::i32));
+  }
+
+  // ---- General fallback: any carry shape, either signedness ---------------
+  //
+  // Reached when the carry is not a recoverable low-half borrow -- in practice
+  // the i128-and-wider path, where ExpandIntOp_SETCCCARRY supplies an
+  // ISD::USUBO_CARRY carry instead of an ISD::USUBO. There are no low-half
+  // operands to recover, so fold on the carry VALUE using the defining
+  // identity of SETCCCARRY itself:
+  //
+  //     SETCCCARRY(L, R, C, cc) == (ext(L) - ext(R) - C) `cc` 0
+  //
+  // evaluated in infinite precision. Since C is 0 or 1, subtracting it just
+  // relaxes the relation by one step:
+  //
+  //     cc = LT/ULT :  C ? (L <= R) : (L < R)
+  //     cc = GE/UGE :  C ? (L >  R) : (L >= R)
+  //
+  // (Check the boundary: L == R, C == 1 -> L-R-1 == -1 < 0 -> true, and
+  // indeed L <= R. L == R, C == 0 -> 0 < 0 -> false, and L < R is false.)
+  // Correct for BOTH signednesses, assumes nothing about the carry's
+  // producer, and reads no flag we have not characterized -- it emits only
+  // ordinary i32 compares and a select, all of which this backend already
+  // lowers. Slower than the fast path, but this shape is rare and correctness
+  // is the only thing that matters here.
+  ISD::CondCode CarryCC;
+  switch (CC) {
+  case ISD::SETULT: CarryCC = ISD::SETULE; break;
+  case ISD::SETUGE: CarryCC = ISD::SETUGT; break;
+  case ISD::SETLT:  CarryCC = ISD::SETLE;  break;
+  case ISD::SETGE:  CarryCC = ISD::SETGT;  break;
+  default:
+    llvm_unreachable("CC already restricted to LT/ULT/GE/UGE above");
+  }
+  SDValue NoCarry = DAG.getSetCC(dl, VT, LHSHi, RHSHi, CC);
+  SDValue WithCarry = DAG.getSetCC(dl, VT, LHSHi, RHSHi, CarryCC);
+  return DAG.getSelect(dl, VT, Carry, WithCarry, NoCarry);
 }
 
 SDValue ARCTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
@@ -2229,7 +2495,16 @@ SDValue ARCTargetLowering::PerformDAGCombine(SDNode *N,
   case ISD::SREM:
     return performSDivRemCombine(N, DCI);
   case ISD::BRCOND:
-    return performOverflowBrcondCombine(N, DCI);
+    // Two structurally disjoint shapes land on BRCOND, tried in sequence --
+    // same double-try pattern as ISD::UREM above and ISD::OR below.
+    // performOverflowBrcondCombine matches a UADDO/USUBO overflow bit (raw or
+    // wrapped in a boolean setcc) at BeforeLegalizeTypes;
+    // performSetccCarryBrCombine matches an ISD::SETCCCARRY, which cannot
+    // exist before type legalization. Neither can see the other's shape, so
+    // trying both cannot misfire.
+    if (SDValue R = performOverflowBrcondCombine(N, DCI))
+      return R;
+    return performSetccCarryBrCombine(N, DCI);
   case ISD::SELECT:
     return performOverflowSelectCombine(N, DCI);
   case ISD::OR:
@@ -2460,6 +2735,112 @@ SDValue ARCTargetLowering::performOverflowSelectCombine(
   SDValue F = Invert ? TVal : FVal;
   return DAG.getNode(ISD::SELECT_CC, dl, N->getValueType(0), CmpLHS, CmpRHS, T,
                      F, DAG.getCondCode(CC));
+}
+
+//===----------------------------------------------------------------------===//
+//  i64 compare-and-branch fusion -- dossier 23 Phase 1.
+//
+//  After type legalization, `if (a <u b) ...` on i64 is exactly:
+//
+//      carry = USUBO(ALo, BLo).1
+//      cond  = SETCCCARRY(AHi, BHi, carry, SETULT)      ; i32 0/1
+//      BRCOND(chain, cond, dest)
+//
+//  and folding that whole thing to `cmp` + `sbc.f` + `Bcc` is 3 instructions /
+//  12 bytes, against 9 / 36 for the getSelect fallback it replaces -- and
+//  against 5 / 20 if the 0/1 boolean were materialized by
+//  SETCCCARRY_PSEUDO and then re-tested by a `brne`.
+//
+//  The consumer is BRCOND, NOT BR_CC. That is worth stating because the
+//  opposite is easy to assume: ExpandIntOp_BR_CC *does* contain a
+//  BR_CC(Res, 0, SETNE) rewrite for this situation, but it is unreachable on
+//  this target. A BR_CC only ever gets i64 operands via DAGCombiner's
+//  `(brcond (setcc a, b, cc)) -> (br_cc cc, a, b)` fold, which is gated on
+//  isOperationLegalOrCustom(ISD::BR_CC, <operand type>) -- and that is false
+//  for i64 here for a reason no operation action can change: i64 is not a
+//  legal TYPE on ARC, and isOperationLegalOrCustom() requires isTypeLegal()
+//  first. So the fold cannot fire before type legalization, and afterwards the
+//  condition is an ISD::SETCCCARRY rather than an ISD::SETCC, so it does not
+//  match either. The BRCOND survives to LegalizeDAG, which expands it into
+//  BR_CC(SETNE, cond, 0) only *after* every DAGCombine round has finished --
+//  far too late to fuse. Matching BRCOND is what makes this fire at all.
+//
+//  Round: AfterLegalizeTypes. ISD::SETCCCARRY does not exist before it (type
+//  legalization creates it), and DAGCombiner's own visitBRCOND declines first
+//  -- its only rewrite of a non-SETCC condition is rebuildSetCC(), which
+//  handles just SRL/TRUNCATE/XOR shapes and returns nothing for a SETCCCARRY,
+//  at which point the target hook gets the node untouched.
+//===----------------------------------------------------------------------===//
+
+SDValue
+ARCTargetLowering::performSetccCarryBrCombine(SDNode *N,
+                                              DAGCombinerInfo &DCI) const {
+  // ISD::BRCOND: (chain, cond, dest) -- branch when `cond` is TRUE.
+  SDValue Chain = N->getOperand(0);
+  SDValue Cond = N->getOperand(1);
+  SDValue Dest = N->getOperand(2);
+
+  if (Cond.getOpcode() != ISD::SETCCCARRY)
+    return {};
+  // The compare must feed nothing but this branch. If its 0/1 result is also
+  // used as a value it has to be materialized anyway, so fusing here would
+  // just compute the same compare twice.
+  if (!Cond.hasOneUse())
+    return {};
+
+  ISD::CondCode CC = cast<CondCodeSDNode>(Cond.getOperand(3))->get();
+  // All four surviving codes, signed included -- signed via the bit-31 bias
+  // below, exactly as in LowerSETCCCARRY's value form. This must stay in step
+  // with that hook: if the branch form declined a code the value form fuses,
+  // the compare would be materialized as a 0/1 and then re-tested by a `brne`,
+  // which is strictly worse than either.
+  //
+  // No polarity inversion is needed or wanted here. BRCOND branches when its
+  // condition is true, and SelectionDAGBuilder has already folded any
+  // fallthrough inversion into the compare's OWN condition code (an `icmp ult`
+  // whose true-block is the next block arrives as SETUGE branching to the
+  // false-block). So this CC is already the branch's real polarity: emit it
+  // as-is and there is nothing to get backwards.
+  if (CC != ISD::SETULT && CC != ISD::SETUGE && CC != ISD::SETLT &&
+      CC != ISD::SETGE)
+    return {};
+
+  SDValue ALo, BLo;
+  if (!matchLowBorrow(Cond.getOperand(2), ALo, BLo))
+    return {};
+
+  SDValue AHi = Cond.getOperand(0);
+  SDValue BHi = Cond.getOperand(1);
+  // Explicit VT guard, mirroring performOverflowBrcondCombine's, rather than
+  // leaning on "i32 is currently ARC's only legal scalar type".
+  if (AHi.getValueType() != MVT::i32 || ALo.getValueType() != MVT::i32)
+    return {};
+
+  SelectionDAG &DAG = DCI.DAG;
+  SDLoc dl(N);
+
+  // Signed: bias both high words into offset binary so the compare below is an
+  // UNSIGNED one (see biasHiWord). Reads the carry only -- never V.
+  if (CC == ISD::SETLT || CC == ISD::SETGE) {
+    AHi = biasHiWord(AHi, DAG, dl);
+    BHi = biasHiWord(BHi, DAG, dl);
+  }
+
+  // Derived from `a<b => C=1` (see the carry-polarity block above
+  // LowerSETCCCARRY, the single place that rule is stated): less-than is
+  // carry-SET (LO, 0x05); greater-or-equal is carry-CLEAR (HS, 0x06). The bias
+  // moves signed onto these same two codes -- it changes the operands, not the
+  // polarity.
+  ARCCC::CondCode ArcCC =
+      (CC == ISD::SETULT || CC == ISD::SETLT) ? ARCCC::LO : ARCCC::HS;
+  // Operand order matches BRCARRY_p's td pattern
+  // `(ARCbrcccarry bb:$T, $ALo, $BLo, $AHi, $BHi, imm32:$cc)`, with the chain
+  // ahead of it (SDNPHasChain). Seven operands, so this needs getNode's
+  // ArrayRef form -- the variadic overloads stop at five (N1..N5).
+  SDValue Ops[] = {Chain, Dest, ALo,
+                   BLo,   AHi,  BHi,
+                   DAG.getConstant(ArcCC, dl, MVT::i32)};
+  return DAG.getNode(ARCISD::BRCCCARRY, dl, MVT::Other, Ops);
 }
 
 //===----------------------------------------------------------------------===//
@@ -3089,6 +3470,8 @@ SDValue ARCTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     return LowerSADDO(Op, DAG);
   case ISD::SSUBO:
     return LowerSSUBO(Op, DAG);
+  case ISD::SETCCCARRY:
+    return LowerSETCCCARRY(Op, DAG);
   case ISD::VASTART:
     return LowerVASTART(Op, DAG);
   case ISD::READCYCLECOUNTER:

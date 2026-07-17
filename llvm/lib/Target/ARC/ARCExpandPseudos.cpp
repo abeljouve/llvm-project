@@ -59,6 +59,13 @@ private:
   void expandSADDO(MachineFunction &, MachineBasicBlock::iterator);
   void expandSSUBO(MachineFunction &, MachineBasicBlock::iterator);
   void expandAVGFLOORU(MachineFunction &, MachineBasicBlock::iterator);
+  // Fused i64 compare, value form (dossier 23 Phase 1,
+  // docs/llvm-arc700-optimizations/23-conditional-compare-chaining.md). Same
+  // adjacency requirement as the idioms above, with one extra link: here the
+  // STATUS32 chain is three instructions long -- `cmp` produces the low
+  // borrow, `sbc.f` both CONSUMES and re-produces it, and `mov.$cc` consumes
+  // the final value.
+  void expandSETCCCARRY(MachineFunction &, MachineBasicBlock::iterator);
   // Carry-chain fusions (dossier 24, docs/llvm-arc700-optimizations/24-
   // carry-chain-and-bit-serial-idioms.md): i64<<1 and one bit-reverse step.
   // Same atomicity requirement as the carry-consuming idioms above -- the
@@ -326,6 +333,70 @@ void ARCExpandPseudos::expandUSUBO(MachineFunction &MF,
       .add(OvfDst)
       .addImm(1)
       .addImm(ARCCC::LO)
+      .addReg(ZeroReg);
+  MI.eraseFromParent();
+}
+
+// Fused i64 compare, value form -- dossier 23 Phase 1. See
+// docs/llvm-arc700-optimizations/23-conditional-compare-chaining.md and the
+// carry-polarity block above ARCTargetLowering::LowerSETCCCARRY, which is the
+// single place the LO/HS rule used here is derived. The compare performed is
+// always unsigned; signed operands arrive bit-31-biased (biasHiWord), so this
+// expansion is signedness-agnostic.
+void ARCExpandPseudos::expandSETCCCARRY(MachineFunction &MF,
+                                        MachineBasicBlock::iterator MII) {
+  // Expand:
+  //   %Dst<def> = SETCCCARRY_PSEUDO %ALo, %BLo, %AHi, %BHi, cc,
+  //               %STATUS<imp-def>
+  // To:
+  //   CMP_rr %ALo, %BLo, %STATUS<imp-def>
+  //   SBC_f_null_rrr %AHi, %BHi, %STATUS<imp-def>, %STATUS<imp-use>
+  //   %Zero<def> = MOV_ru6 0
+  //   %Dst<def,tied1> = MOV_cc_ru6 1, cc, %Zero<tied0>, %STATUS<imp-use>
+  //
+  // `cmp ALo, BLo` leaves C = borrow = (ALo <u BLo); `sbc.f 0, AHi, BHi`
+  // computes AHi - BHi - C and leaves C = the borrow of the FULL 64-bit
+  // subtract, i.e. C = (A <u B). cc is ARCCC::LO for `<u` (C=1) or ARCCC::HS
+  // for `>=u` (C=0) -- chosen in LowerSETCCCARRY, never here.
+  //
+  // The `cmp` is the low-half borrow producer, so it must reach `sbc.f` with
+  // STATUS32 untouched, and `sbc.f`'s C must reach the `mov.cc` likewise. All
+  // four are built back-to-back with nothing inserted between them, and the
+  // only instruction that lands *inside* the chain is the `mov Zero, 0`, which
+  // is the non-`.f` MOV_ru6 form and does not write STATUS32 -- exactly the
+  // shape expandUSUBO above already ships. Everything upstream of this point
+  // saw a single opaque pseudo, so nothing could have been scheduled into the
+  // middle of it.
+  MachineInstr &MI = *MII;
+  const MachineOperand &Dst = MI.getOperand(0);
+  const MachineOperand &ALo = MI.getOperand(1);
+  const MachineOperand &BLo = MI.getOperand(2);
+  const MachineOperand &AHi = MI.getOperand(3);
+  const MachineOperand &BHi = MI.getOperand(4);
+  unsigned CC = MI.getOperand(5).getImm();
+  // The compare is always UNSIGNED -- a SIGNED i64 compare reaches here with
+  // its high words already bit-31-biased into offset binary, which is what
+  // makes it unsigned, so it lands on these same two codes. A signed code here
+  // would mean someone started reading V (see LowerSETCCCARRY).
+  assert((CC == ARCCC::LO || CC == ARCCC::HS) &&
+         "SETCCCARRY_PSEUDO compares unsigned: LowerSETCCCARRY must only ever "
+         "build it with ARCCC::LO (a <u b, C=1) or ARCCC::HS (a >=u b, C=0)");
+  MachineRegisterInfo &MRI = MF.getRegInfo();
+  Register ZeroReg = MRI.createVirtualRegister(&ARC::GPR32RegClass);
+
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::CMP_rr))
+      .add(ALo)
+      .add(BLo);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::SBC_f_null_rrr))
+      .add(AHi)
+      .add(BHi);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_ru6),
+          ZeroReg)
+      .addImm(0);
+  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(ARC::MOV_cc_ru6))
+      .add(Dst)
+      .addImm(1)
+      .addImm(CC)
       .addReg(ZeroReg);
   MI.eraseFromParent();
 }
@@ -742,6 +813,10 @@ bool ARCExpandPseudos::runOnMachineFunction(MachineFunction &MF) {
         break;
       case ARC::AVGFLOORU_PSEUDO:
         expandAVGFLOORU(MF, MBBI);
+        Expanded = true;
+        break;
+      case ARC::SETCCCARRY_PSEUDO:
+        expandSETCCCARRY(MF, MBBI);
         Expanded = true;
         break;
       case ARC::SHL64_1_PSEUDO:

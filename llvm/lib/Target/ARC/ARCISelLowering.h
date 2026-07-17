@@ -110,6 +110,37 @@ private:
   // Pat, so LegalizeDAG never calls into Custom lowering for them.
   SDValue LowerSADDO(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSSUBO(SDValue Op, SelectionDAG &DAG) const;
+
+  // 64-bit relational compare via SETCCCARRY -- dossier 23 Phase 1, see
+  // docs/llvm-arc700-optimizations/23-conditional-compare-chaining.md.
+  //
+  // Marking ISD::SETCCCARRY Custom on i32 flips LegalizeIntegerTypes.cpp's
+  // `HasSETCCCARRY` gate, so an i64 relational compare expands to
+  // `USUBO(ALo,BLo)` + `SETCCCARRY(AHi,BHi,carry,cc)` instead of the
+  // getSelect fallback (9 instructions / 36 bytes, measured). That folds to
+  // `cmp`+`sbc.f`+`mov`/`mov.cc` (value form, 16 bytes) or `cmp`+`sbc.f`+`Bcc`
+  // (branch form, 12 bytes).
+  //
+  // That gate is a TYPE-level query with no per-condition-code granularity,
+  // and IntegerExpandSetCCOperands normalizes GT/UGT/LE/ULE onto LT/ULT/
+  // GE/UGE by swapping operands -- so flipping it routes ALL FOUR surviving
+  // codes {SETULT, SETUGE, SETLT, SETGE} here, signed included, whether we
+  // want them or not (SETEQ/SETNE and sign-bit compares return earlier and
+  // never build a SETCCCARRY). Signed CANNOT be left on the old path merely
+  // by not implementing it: returning SDValue() would fall through to
+  // Expand, for which SETCCCARRY has no expansion at all -- a hard failure.
+  // LowerSETCCCARRY therefore handles every code it can receive.
+  //
+  // SIGNED runs the SAME `cmp`+`sbc.f` sequence over bit-31-biased high words
+  // (offset binary: `x <s y` <=> `x^0x80000000 <u y^0x80000000`), costing two
+  // extra non-flag-setting `bxor` -- 20 bytes branch / 24 value, still well
+  // under the 36-byte fallback. The bias is not a workaround for a missing
+  // feature: it is what lets signed read ONLY the carry, never V, whose
+  // behaviour after a subtract-with-borrow is uncharacterized on this
+  // silicon. See biasHiWord and LowerSETCCCARRY in the .cpp for the proof, the
+  // cost table, and the one probe that would settle V and let the bias go.
+  SDValue LowerSETCCCARRY(SDValue Op, SelectionDAG &DAG) const;
+
   SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
 
   // Bounded scaled-add/shift/sub/neg synthesizer for `mul x, C` on cores
@@ -243,6 +274,24 @@ private:
   // semantics for a signed overflow test.
   SDValue performOverflowBrcondCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performOverflowSelectCombine(SDNode *N, DAGCombinerInfo &DCI) const;
+
+  // Fold `BRCOND(SETCCCARRY(AHi, BHi, USUBO(ALo,BLo).1, cc), dest)` -- the
+  // shape an i64 `if (a <u b)` has once type legalization has run -- into a
+  // single ARCISD::BRCCCARRY, so the compare's 0/1 boolean is never
+  // materialized: `cmp`+`sbc.f`+`Bcc`, 12 bytes, against 20 with the boolean
+  // and 36 for the getSelect fallback this replaces.
+  //
+  // Shares ISD::BRCOND's target-combine registration with
+  // performOverflowBrcondCombine (dossier 19) and is tried after it; the two
+  // shapes are disjoint. It matches at the AfterLegalizeTypes round -- the
+  // only window where the shape exists, since ISD::SETCCCARRY is *created by*
+  // type legalization and LegalizeDAG's Custom hook (LowerSETCCCARRY) consumes
+  // it immediately after. Declines cleanly at every other round and on every
+  // non-matching shape, so no level guard is needed.
+  //
+  // BRCOND, not BR_CC, is deliberate and load-bearing -- see the block comment
+  // at the definition for why a BR_CC match would be dead code on this target.
+  SDValue performSetccCarryBrCombine(SDNode *N, DAGCombinerInfo &DCI) const;
 
   // Carry-chain fusions -- docs/llvm-arc700-optimizations/24-carry-chain-
   // and-bit-serial-idioms.md. Both guard on Subtarget.isARCompact() first

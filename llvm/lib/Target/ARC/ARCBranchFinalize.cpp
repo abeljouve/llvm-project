@@ -53,6 +53,7 @@ public:
   bool runOnMachineFunction(MachineFunction &MF) override;
   void replaceWithBRcc(MachineInstr *MI) const;
   void replaceWithCmpBcc(MachineInstr *MI) const;
+  void expandBRCarry(MachineInstr *MI) const;
   bool tryFuseBBIT(MachineInstr *MI) const;
   bool tryFuseFlagRecycle(MachineInstr *MI) const;
 
@@ -192,10 +193,15 @@ static bool matchBitTestBRcc(MachineInstr *MI, const TargetRegisterInfo *TRI,
 // side (ARCISelLowering.cpp's LowerSELECT_CC, which emits ARCISD::LSRTEST /
 // ARCISD::BMSKTEST target nodes at the SelectionDAG level), this is a
 // POST-ISEL peephole for the SAME reason bbit0/bbit1 fusion above is one: a
-// dedicated glue-consuming branch node/pseudo built straight out of ISel
-// would be unanalyzable by analyzeBranch (only BRcc_rr_p/BRcc_ru6_p are
-// recognized -- see isCondBranchOpcode in ARCInstrInfo.cpp) and would break
-// MachineBlockPlacement / BranchFolding for every block ending in it. So
+// dedicated glue-consuming branch node/pseudo built straight out of ISel would
+// be unanalyzable by analyzeBranch and would break MachineBlockPlacement /
+// BranchFolding for every block ending in it. The blocker is the GLUE, not the
+// opcode list: such a branch reads STATUS32 from a separate, already-emitted
+// producer, which analyzeBranch cannot hand back in Cond -- so a caller could
+// reorder the branch away from that producer, or invert the test while the
+// producer stayed put. (Self-contained compare pseudos have no such problem and
+// are analyzable: BRcc_rr_p/BRcc_ru6_p and BRCARRY_p all carry their whole
+// compare inside the one MI -- see isCondBranchOpcode in ARCInstrInfo.cpp.) So
 // LowerBR_CC keeps emitting the generic ARCISD::BRcc node unchanged, and we
 // fuse it here, late, after all CFG-shape-dependent passes have already run
 // on the still-analyzable BRcc_rr_p/BRcc_ru6_p pseudo.
@@ -637,6 +643,81 @@ void ARCBranchFinalize::replaceWithCmpBcc(MachineInstr *MI) const {
   MI->eraseFromParent();
 }
 
+// Fused i64 UNSIGNED compare-and-branch -- dossier 23 Phase 1, see
+// docs/llvm-arc700-optimizations/23-conditional-compare-chaining.md.
+//
+// Expand:
+//   BRCARRY_p $T, %ALo, %BLo, %AHi, %BHi, cc, %STATUS<imp-def>
+// To:
+//   cmp   %ALo, %BLo        ; C = borrow(lo)  == (ALo <u BLo)
+//   sbc.f 0, %AHi, %BHi     ; C = borrow of the full 64-bit subtract
+//   b$cc  $T                ; cc = LO (a <u b, C=1) or HS (a >=u b, C=0)
+//
+// The polarity above is derived in exactly one place -- the carry block above
+// ARCTargetLowering::LowerSETCCCARRY -- and `cc` arrives already chosen; this
+// function never picks one.
+//
+// WHY HERE, and why the triple is safe:
+//
+//   * Until this point the whole compare is ONE opaque terminator with
+//     Size = 12, so register allocation, the pre- and post-RA schedulers and
+//     block layout could only ever move it as a unit -- nothing can be
+//     inserted between the `cmp` producer and its `sbc.f`/`Bcc` consumers.
+//     This mirrors BRcc_rr_p, which exists as a pseudo until this same pass
+//     for the same reason. The three real instructions are built back-to-back
+//     with nothing in between, and no later pass reorders within a block.
+//
+//   * ARCDelaySlotFiller runs after this pass (addPreEmitPass order:
+//     ARCBranchFinalize -> ARCSizeReduction -> ARCDelaySlotFiller) and does
+//     move instructions across transfers, so it is the one pass that could
+//     still break the triple. It cannot, and the guard is not incidental:
+//     findDelayInstr seeds RegUses from the slot's own transfer via
+//     insertDefsUses, which walks EVERY operand of a non-call/non-return MI
+//     including implicit ones -- so `Bcc`'s `Uses = [STATUS32]` puts STATUS32
+//     in RegUses. delayHasHazard then rejects any candidate that DEFS a
+//     register in RegUses, and both `cmp` and `sbc.f` def STATUS32. Neither
+//     can be sunk into the branch's slot. (This holds only while `Bcc` keeps
+//     `Uses = [STATUS32]`; if that ever changes, this fold breaks silently.)
+//     The filler only ever MOVES an instruction from before the transfer INTO
+//     the slot after it -- it never inserts anything between two existing
+//     instructions -- so it cannot come between `cmp` and `sbc.f` either. A
+//     non-flag instruction from before the `cmp` may still be sunk, which is
+//     harmless: it leaves STATUS32 alone and retires before the target.
+//
+//   * ARCSizeReduction may shrink the `cmp` to a 2-byte `cmp_s`, which still
+//     sets the flags (ISA Ch.8: 16-bit instructions set no flags "except ...
+//     BTST_S, CMP_S, and TST_S"). `sbc.f` has no 16-bit form at all (ISA: ADC,
+//     SBC, RSUB, SUB1/2/3, ROR, MIN, MAX have no OP_S b,b,c equivalent), so it
+//     is untouched. Only the Size=12 estimate becomes conservative.
+//
+//   * `Bcc` carries s21 (+/-1 MB) range, which this pass already treats as
+//     always-reachable -- it is the fallback replaceWithCmpBcc() degrades an
+//     out-of-s9-range BRcc into. So, unlike the BRcc/bbit paths above, there
+//     is no range decision to make here.
+void ARCBranchFinalize::expandBRCarry(MachineInstr *MI) const {
+  LLVM_DEBUG(dbgs() << "Expanding i64 compare-and-branch: " << *MI << "\n");
+  unsigned CC = MI->getOperand(5).getImm();
+  // The compare is always UNSIGNED -- a SIGNED i64 compare reaches here with
+  // its high words already bit-31-biased into offset binary, which is what
+  // makes it unsigned, so it lands on these same two codes. A signed code here
+  // would mean someone started reading V (see LowerSETCCCARRY).
+  assert((CC == ARCCC::LO || CC == ARCCC::HS) &&
+         "BRCARRY_p compares unsigned: performSetccCarryBrCombine must only "
+         "ever build it with ARCCC::LO (a <u b, C=1) or ARCCC::HS (a >=u b, "
+         "C=0)");
+  BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(ARC::CMP_rr))
+      .addReg(MI->getOperand(1).getReg())
+      .addReg(MI->getOperand(2).getReg());
+  BuildMI(*MI->getParent(), MI, MI->getDebugLoc(),
+          TII->get(ARC::SBC_f_null_rrr))
+      .addReg(MI->getOperand(3).getReg())
+      .addReg(MI->getOperand(4).getReg());
+  BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(ARC::Bcc))
+      .addMBB(MI->getOperand(0).getMBB())
+      .addImm(CC);
+  MI->eraseFromParent();
+}
+
 bool ARCBranchFinalize::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(dbgs() << "Running ARC Branch Finalize on " << MF.getName()
                     << "\n");
@@ -687,6 +768,15 @@ bool ARCBranchFinalize::runOnMachineFunction(MachineFunction &MF) {
   }
   for (auto P : BranchToPCList) {
     MachineInstr *MI = P.first;
+    // Fused i64 compare-and-branch (dossier 23 Phase 1). Always
+    // expands to cmp + sbc.f + Bcc, so -- like tryFuseFlagRecycle below --
+    // there is no target-distance decision to make: Bcc's s21 range is
+    // always reachable.
+    if (MI->getOpcode() == ARC::BRCARRY_p) {
+      expandBRCarry(MI);
+      Changed = true;
+      continue;
+    }
     if (!isBRccPseudo(MI))
       continue;
     // Flag-recycling fusion (dossier 21 idea 3) is tried unconditionally,

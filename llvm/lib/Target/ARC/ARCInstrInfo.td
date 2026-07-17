@@ -133,6 +133,55 @@ def ARCshl64c1 : SDNode<"ARCISD::SHL64_1", SDT_ARCShl64C1, []>;
 // semantically different fusion (shift-right producer, not shift-left).
 def ARCbitrevstep : SDNode<"ARCISD::BITREV_STEP", SDT_ARCShl64C1, []>;
 
+// Fused 64-bit relational compare (dossier 23 Phase 1,
+// docs/llvm-arc700-optimizations/23-conditional-compare-chaining.md).
+//
+// The compare these nodes perform is always UNSIGNED -- $cc is only ever LO or
+// HS. A SIGNED i64 compare reaches them too, as the unsigned compare of high
+// words its builder has already bit-31-biased into offset binary (see
+// biasHiWord in ARCISelLowering.cpp); the bias is in the OPERANDS, so nothing
+// here needs to know about it.
+//
+// Built ONLY by ARCTargetLowering::LowerSETCCCARRY (value form) and
+// performSetccCarryBrCombine (branch form), both of which match the exact
+// `SETCCCARRY(AHi, BHi, USUBO(ALo,BLo).1, cc)` shape that
+// LegalizeIntegerTypes.cpp's IntegerExpandSetCCOperands emits for an i64
+// `<`/`>=` once ISD::SETCCCARRY is Legal-or-Custom on i32. Each is folded
+// into ONE opaque pseudo (SETCCCARRY_PSEUDO / BRCARRY_p below) that survives
+// until ARCExpandPseudos / ARCBranchFinalize, so nothing can be scheduled
+// between the `cmp` carry producer and the `sbc.f` carry consumer -- same
+// atomic-pseudo discipline as SHL64_1_PSEUDO/UADDO_PSEUDO above, and the
+// reason these carry no SelectionDAG glue.
+//
+// CARRY POLARITY (the sole silent-miscompile risk in this whole area, and a
+// point THREE dossiers state INVERTED -- read this, not them): this ARC700
+// sets C = BORROW after SUB/CMP/SBC, x86-style, NOT ARM-style.
+//
+//     a <u b   =>  C = 1  =>  LO/CS (0x05)
+//     a >=u b  =>  C = 0  =>  HS/CC (0x06)
+//
+// Sources, all three cross-checked: the ARCompact ISA Programmer's Reference
+// Ch.8 condition-code table ("CS, C, LO | Carry set, lower than (unsigned) |
+// C | 0x05"; "CC, NC, HS | Carry clear, higher or same (unsigned) | /C |
+// 0x06"), mirrored in docs/isa/06-condition-codes.md Table 85;
+// docs/notes/isa-characterization.md section 5.4; and the emulator's ALU
+// model (`AluOp::Sub | AluOp::Cmp => // ARC convention: C = borrow (C=1 when
+// A < B unsigned)`). It also matches what this backend already SHIPS and what
+// silicon already runs -- ARCExpandPseudos.cpp's expandUSUBO selects a borrow
+// (`a <u b`) with ARCCC::LO. $cc is LO/HS only -- signed arrives pre-biased,
+// see the header note above and biasHiWord in ARCISelLowering.cpp.
+//
+// SETCCCARRY: (Dst) = ARCsetcccarry(ALo, BLo, AHi, BHi, cc) -- the i32 0/1
+// boolean of the 64-bit compare (AHi:ALo) <u/>=u (BHi:BLo).
+def SDT_ARCsetcccarry : SDTypeProfile<1, 5, []>;
+def ARCsetcccarry : SDNode<"ARCISD::SETCCCARRY", SDT_ARCsetcccarry, []>;
+
+// BRCCCARRY: same compare, consumed directly by a conditional branch, so the
+// 0/1 boolean is never materialized. Constraint-free profile, mirroring
+// SDT_ARCbrcc below.
+def SDT_ARCbrcccarry : SDTypeProfile<0, 6, []>;
+def ARCbrcccarry : SDNode<"ARCISD::BRCCCARRY", SDT_ARCbrcccarry, [SDNPHasChain]>;
+
 // Conditional Branch
 def ARCbrcc : SDNode<"ARCISD::BRcc", SDT_ARCbrcc, [SDNPHasChain]>;
 
@@ -334,6 +383,28 @@ let Defs = [STATUS32] in {
                            (ins GPR32:$A, GPR32:$B),
                            "# AVGFLOORU_PSEUDO $Dst, $A, $B",
                            [(set GPR32:$Dst, (avgflooru i32:$A, i32:$B))]>;
+
+  // Fused i64 unsigned compare, value form (dossier 23 Phase 1). Same atomic
+  // pre-RA pseudo mechanism as UADDO_PSEUDO above: ARCExpandPseudos
+  // (addPreRegAlloc, i.e. after the pre-RA scheduler) splits this into
+  //     cmp   ALo, BLo        ; C = borrow(lo)
+  //     sbc.f 0, AHi, BHi     ; C = borrow of the full 64-bit subtract
+  //     mov   Zero, 0
+  //     mov.$cc Dst, 1        ; $cc = LO (a <u b) or HS (a >=u b)
+  // so the pre-RA scheduler can only move the whole pseudo and can never
+  // insert a flag writer between the `cmp` producer and the `sbc.f` consumer.
+  // (The `mov Zero,0` between the sbc.f and the mov.$cc is non-`.f` and does
+  // not touch STATUS32 -- exactly the shape expandUSUBO already ships.)
+  // $cc is LO/HS only -- the compare is always unsigned, signed having been
+  // bit-31-biased into offset binary by ARCISelLowering.cpp's biasHiWord
+  // before it ever gets here.
+  def SETCCCARRY_PSEUDO : PseudoInstARC<(outs GPR32:$Dst),
+                           (ins GPR32:$ALo, GPR32:$BLo, GPR32:$AHi,
+                                GPR32:$BHi, ccond:$cc),
+                           "# SETCCCARRY_PSEUDO $Dst, $ALo, $BLo, $AHi, $BHi, $cc",
+                           [(set GPR32:$Dst,
+                                 (ARCsetcccarry i32:$ALo, i32:$BLo, i32:$AHi,
+                                                i32:$BHi, imm32:$cc))]>;
 }
 
 // Carry-chain fusions for i64<<1 and the bit-reverse step (dossier 24,
@@ -542,6 +613,38 @@ defm SETEQ : ArcBinaryGEN4Inst<0b111000, "seteq",1>;
 let Uses=[STATUS32], isAsCheapAsAMove=0, isReMaterializable=0 in {
   defm ADC : ArcBinaryGEN4Inst<0b000001, "adc",1>;
   defm SBC : ArcBinaryGEN4Inst<0b000011, "sbc">;
+
+  // `sbc.f 0,B,C` -- subtract-with-borrow into the ARCompact NULL destination.
+  // Computes (B - C - C_flag), DISCARDS the difference, and writes STATUS32.
+  // The high half of a fused 64-bit unsigned compare: with C already holding
+  // the low half's borrow (from a preceding `cmp ALo,BLo`), this leaves
+  // C = borrow of the full 64-bit subtract, i.e. C = (A <u B). Emitted only
+  // by ARCExpandPseudos::expandSETCCCARRY and ARCBranchFinalize's BRCARRY_p
+  // expansion (dossier 23 Phase 1).
+  //
+  // *** A = 62, NOT 0. *** r62 is the ARCompact null-destination encoding:
+  // "When a destination register is set to r62, there is no destination for
+  // the result so results are discarded. Any flag updates will still occur
+  // according to the set flags directive (.F or implicit)" -- ISA Programmer's
+  // Reference, mirrored in docs/isa/16-operand-formats.md. The `0` in the
+  // ISA's `SUB<.f> 0,B,C` assembler syntax IS that r62, not a literal zero.
+  //
+  // Do NOT copy ArcSpecialDOPInst's `let A = 0;` here. That works for CMP only
+  // because CMP's sub-opcode (0x0C) is inherently non-writing, so its A field
+  // is a don't-care. SBC *does* write its destination, so `A = 0` names r0 --
+  // the return-value / first-argument register -- and silently clobbers it.
+  // Byte-verified with the workshop's authoritative big-endian ARC
+  // disassembler (llvm-objdump misdecodes big-endian ARC and must not be used
+  // for this):
+  //     0x200380BE  (A=62)  ->  sbc.f 0x0, r0, r2     <- correct, null dest
+  //     0x20038080  (A=0)   ->  sbc.f r0, r0, r2      <- clobbers r0
+  // Uses=[STATUS32] (inherited from the enclosing `let`) is load-bearing: SBC
+  // READS the carry-in. Defs=[STATUS32] comes from F=1 below.
+  let Defs = [STATUS32] in
+  def SBC_f_null_rrr : F32_DOP_RR<0b00100, 0b000011, 1, (outs),
+                                  (ins GPR32:$B, GPR32:$C),
+                                  "sbc.f\t0, $B, $C", []>
+  { let A = 62; }
 }
 
 // Patterns for 3 operand binary instructions.
@@ -773,6 +876,58 @@ let isBranch = 1, isTerminator = 1 in {
                                  "pbr$cc\t$B, $C, $T",
                                  [(ARCbrcc bb:$T, i32:$B, immU6:$C, imm32:$cc)]>
                                  { let Size = 8; }
+
+  // Fused i64 unsigned compare-and-branch (dossier 23 Phase 1). Mirrors
+  // BRcc_rr_p above: an opaque pseudo terminator that survives register
+  // allocation, scheduling and block layout, and is expanded by
+  // ARCBranchFinalize (addPreEmitPass, before ARCDelaySlotFiller) into
+  //     cmp   ALo, BLo        ; C = borrow(lo)
+  //     sbc.f 0, AHi, BHi     ; C = borrow of the full 64-bit subtract
+  //     b$cc  T               ; $cc = LO (a <u b) or HS (a >=u b)
+  // Being one MI until then is what guarantees the STATUS32 adjacency of the
+  // triple through RA/scheduling; after expansion nothing reorders within a
+  // basic block, and ARCDelaySlotFiller cannot break it either -- see the
+  // expansion site in ARCBranchFinalize.cpp for that argument in full.
+  //
+  // Size = 12 is the exact expansion size (3 x 4 bytes) and is what the
+  // ARCBranchFinalize PC walk and the s9-range check for sibling BRcc pseudos
+  // account for. ARCSizeReduction may later shrink the `cmp` to a 2-byte
+  // `cmp_s` (ISA: CMP_S sets flags implicitly), making the real sequence 10
+  // bytes -- an over-estimate here is conservative for branch range and never
+  // wrong. `b$cc` itself is Bcc's s21 (+/-1 MB) range, which this backend
+  // already treats as always-reachable: it is the existing out-of-range
+  // fallback replaceWithCmpBcc() degrades every long BRcc into.
+  //
+  // ANALYZABLE: listed in ARCInstrInfo.cpp's isCondBranchOpcode, with Cond
+  // carrying this pseudo's 5-operand {ALo, BLo, AHi, BHi, cc} condition
+  // alongside BRcc's 3-operand {B, C, cc}. Cond is target-opaque
+  // (TargetInstrInfo.h asks only for "a list of operands that evaluate the
+  // condition" and fixes no arity), so both shapes coexist; getNumCondOperands
+  // maps opcode -> arity and the cc is always Cond.back().
+  //
+  // Being analyzable is SAFE here for the same reason the pseudo exists at all:
+  // until ARCBranchFinalize it is ONE self-contained MI, condition and all, and
+  // branch-folder / tailduplication / block-placement every one run strictly
+  // BEFORE that pass. There is no separate flag producer in the block yet, so
+  // no caller can split a `cmp`/`sbc.f` from its `Bcc`; the triple is only ever
+  // materialized later, atomically. reverseBranchCondition is exact too -- LO
+  // and HS test the same carry bit, so inverting the cc needs no operand swap.
+  //
+  // It is also what makes Size = 12 the truth rather than an aspiration: while
+  // this pseudo was unanalyzable, BranchFolding could not elide the fallthrough
+  // branch after it, so every fused i64 compare-and-branch really emitted FOUR
+  // instructions -- `cmp`/`sbc.f`/`b$cc`/`b .Lnext`, 16 bytes, with those last
+  // 4 dead. Contrast the flag-recycling fusions in ARCBranchFinalize.cpp, which
+  // consume a SEPARATE producer's flags and so must stay unanalyzable and late.
+  let Defs = [STATUS32] in
+  def BRCARRY_p : PseudoInstARC<(outs),
+                                (ins btarget:$T, GPR32:$ALo, GPR32:$BLo,
+                                     GPR32:$AHi, GPR32:$BHi, ccond:$cc),
+                                "# BRCARRY_p $ALo, $BLo, $AHi, $BHi, $T, $cc",
+                                [(ARCbrcccarry bb:$T, i32:$ALo, i32:$BLo,
+                                               i32:$AHi, i32:$BHi,
+                                               imm32:$cc)]>
+                                { let Size = 12; }
 } // let isBranch, isTerminator
 
 // Unconditional Jump.
