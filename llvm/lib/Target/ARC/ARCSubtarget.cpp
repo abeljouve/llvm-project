@@ -71,7 +71,9 @@ bool ARCSubtarget::enableJoinGlobalCopies() const {
   // Deliberately NOT the default (which mirrors enableMachineScheduler() and
   // would silently turn the coalescer aggressive the moment the scheduler was
   // switched on). Keeps the pre-scheduler behaviour so the scheduler's effect
-  // can be attributed on its own. See the header.
+  // can be attributed on its own. Evaluated on its own 2026-07-16 and measured
+  // effectively neutral (sub-0.1% .text, no net spill increase, not
+  // demonstrable on the target corpus), so the pin stays. See the header.
   return false;
 }
 

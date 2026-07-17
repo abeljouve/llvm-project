@@ -150,9 +150,23 @@ public:
   /// was measured and would leave any regression unattributable between the
   /// two.
   ///
-  /// This is not a claim that global-copy joining is bad here -- it is
-  /// untested. Evaluate it on its own, with its own measurement, and delete
-  /// this override if it wins.
+  /// Evaluated on its own 2026-07-16, and KEPT. Forcing global-copy joining on
+  /// (via -join-globalcopies=true, an exact equivalent of removing this
+  /// override -- the coalescer is the sole reader of the flag) is a
+  /// two-directional traversal-order reshuffle inside the register coalescer.
+  /// Across several synthetic corpora its net effect is a consistent but
+  /// sub-0.1% .text change (-0.05% to -0.12%), always <= the pinned-off size,
+  /// with no net spill increase in any corpus and a worst single-function
+  /// regression of +5 instructions / 0 extra spills. The direction is
+  /// corpus-shape-dependent -- the interval-join count does not even fix the
+  /// sign of the size impact -- and the win is not demonstrable on the actual
+  /// target corpus. That is effectively neutral, not a clear win. The override
+  /// therefore stays: it costs nothing and preserves the attributability the
+  /// scheduler change was built around (it keeps the coalescer from silently
+  /// going aggressive the moment the scheduler was enabled). Revisit only if a
+  /// real target-corpus measurement shows a win worth that attribution cost; if
+  /// it ever does, deleting this override (here and its .cpp definition) is the
+  /// whole edit.
   bool enableJoinGlobalCopies() const override;
 };
 
