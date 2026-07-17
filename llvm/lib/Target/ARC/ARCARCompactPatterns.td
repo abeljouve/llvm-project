@@ -483,8 +483,10 @@ let Predicates = [IsARCompact] in {
 //     ARCBranchFinalize.cpp instead (mirrors why bbit0/bbit1 fusion above
 //     is a peephole and not a Pat: a dedicated glue-consuming branch node
 //     built straight out of ISel would be unanalyzable by analyzeBranch and
-//     break MachineBlockPlacement/BranchFolding, which only recognize
-//     BRcc_rr_p/BRcc_ru6_p as analyzable conditional-branch terminators).
+//     break MachineBlockPlacement/BranchFolding. The blocker is the glue --
+//     flags read from a SEPARATE producer that analyzeBranch cannot hand back
+//     in Cond -- not the opcode list. Self-contained compare pseudos are
+//     analyzable: see isCondBranchOpcode in ARCInstrInfo.cpp.
 //===----------------------------------------------------------------------===//
 
 // K is already range-checked and computed (Log2_32 of the pow2 RHS, or the

@@ -138,8 +138,39 @@ static ARCCC::CondCode getOppositeBranchCondition(ARCCC::CondCode CC) {
 
 static bool isUncondBranchOpcode(int Opc) { return Opc == ARC::BR; }
 
+// Conditional-branch terminators analyzeBranch understands. All three are
+// SELF-CONTAINED pseudos: the whole compare -- operands and condition code --
+// lives inside the one MI, and the flag producer it expands into is created by
+// that same expansion, back-to-back with the branch, in addPreEmitPass
+// (ARCBranchFinalize), which runs strictly AFTER branch-folder, tailduplication
+// and block-placement. So at the time these callers run there is no separate
+// flag producer to lose adjacency with, and moving/deleting/re-inserting the
+// pseudo can never split a `cmp`/`sbc.f` from its `Bcc`.
+//
+// That property, not the opcode list, is the admission criterion. A branch that
+// reads STATUS32 from a DIFFERENT, already-materialized instruction (the
+// flag-recycling `<flag-op>.f`+`Bcc` fusions in ARCBranchFinalize.cpp, say)
+// must stay OUT of this list: analyzeBranch cannot hand its producer back in
+// Cond, so a caller could reorder the branch away from it or invert the test
+// without inverting the producer. Those are deliberately fused late, after every
+// CFG-shape-dependent pass has already run.
 static bool isCondBranchOpcode(int Opc) {
-  return Opc == ARC::BRcc_rr_p || Opc == ARC::BRcc_ru6_p;
+  return Opc == ARC::BRcc_rr_p || Opc == ARC::BRcc_ru6_p ||
+         Opc == ARC::BRCARRY_p;
+}
+
+/// Number of operands following the target block that make up a conditional
+/// branch's condition -- what analyzeBranch copies into Cond and insertBranch
+/// hands back to BuildMI. BRcc's condition is {B, C, cc}; BRCARRY_p's fused i64
+/// compare is {ALo, BLo, AHi, BHi, cc}. The condition code is always the last
+/// one, so reverseBranchCondition can invert either shape via Cond.back().
+///
+/// Cond is target-opaque -- TargetInstrInfo.h only requires "a list of operands
+/// that evaluate the condition" and fixes no arity -- so carrying both shapes is
+/// within the contract.
+static unsigned getNumCondOperands(int Opc) {
+  assert(isCondBranchOpcode(Opc) && "Not a conditional branch!");
+  return Opc == ARC::BRCARRY_p ? 5 : 3;
 }
 
 static bool isJumpOpcode(int Opc) { return Opc == ARC::J; }
@@ -206,10 +237,12 @@ bool ARCInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
 
       assert(!FBB && "FBB should have been null.");
       FBB = TBB;
+      // Operand 0 is the target block; every explicit operand after it is the
+      // condition. Any implicit STATUS32 def (BRCARRY_p has one) is left out --
+      // BuildMI re-adds it from the MCInstrDesc when insertBranch rebuilds.
       TBB = I->getOperand(0).getMBB();
-      Cond.push_back(I->getOperand(1));
-      Cond.push_back(I->getOperand(2));
-      Cond.push_back(I->getOperand(3));
+      for (unsigned i = 1, e = getNumCondOperands(I->getOpcode()); i <= e; ++i)
+        Cond.push_back(I->getOperand(i));
     } else if (I->isReturn()) {
       // Returns can't be analyzed, but we should run cleanup.
       CantAnalyze = !isPredicated(*I);
@@ -349,10 +382,22 @@ void ARCInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
 }
 
 /// Return the inverse opcode of the specified Branch instruction.
+///
+/// Both Cond shapes end in the condition code (see getNumCondOperands), so
+/// inverting Cond.back() covers BRcc {B, C, cc} and BRCARRY_p
+/// {ALo, BLo, AHi, BHi, cc} alike, and the operands are left untouched.
+///
+/// That is exact for BRCARRY_p, not merely convenient: its cc is LO or HS --
+/// carry-set vs carry-clear -- and both read the SAME carry bit produced by the
+/// same `cmp`/`sbc.f` over the same operands. Negating `a <u b` to `a >=u b` is
+/// therefore purely a flip of the test, with nothing to swap and no producer to
+/// re-derive. getOppositeBranchCondition already maps LO<->HS.
 bool ARCInstrInfo::reverseBranchCondition(
     SmallVectorImpl<MachineOperand> &Cond) const {
-  assert((Cond.size() == 3) && "Invalid ARC branch condition!");
-  Cond[2].setImm(getOppositeBranchCondition((ARCCC::CondCode)Cond[2].getImm()));
+  assert((Cond.size() == 3 || Cond.size() == 5) &&
+         "Invalid ARC branch condition!");
+  Cond.back().setImm(
+      getOppositeBranchCondition((ARCCC::CondCode)Cond.back().getImm()));
   return false;
 }
 
@@ -378,19 +423,26 @@ unsigned ARCInstrInfo::insertBranch(MachineBasicBlock &MBB,
 
   // Shouldn't be a fall through.
   assert(TBB && "insertBranch must not be told to insert a fallthrough");
-  assert((Cond.size() == 3 || Cond.size() == 0) &&
-         "ARC branch conditions have two components!");
+  // 0 = unconditional, 3 = BRcc {B, C, cc}, 5 = BRCARRY_p's fused i64 compare
+  // {ALo, BLo, AHi, BHi, cc}. See getNumCondOperands.
+  assert((Cond.size() == 0 || Cond.size() == 3 || Cond.size() == 5) &&
+         "Invalid ARC branch condition!");
 
   if (Cond.empty()) {
     BuildMI(&MBB, DL, get(ARC::BR)).addMBB(TBB);
     return 1;
   }
-  int BccOpc = Cond[1].isImm() ? ARC::BRcc_ru6_p : ARC::BRcc_rr_p;
+  // The arity alone picks the opcode: only BRCARRY_p has a 5-operand
+  // condition, and it rebuilds exactly what analyzeBranch took apart.
+  int BccOpc;
+  if (Cond.size() == 5)
+    BccOpc = ARC::BRCARRY_p;
+  else
+    BccOpc = Cond[1].isImm() ? ARC::BRcc_ru6_p : ARC::BRcc_rr_p;
   MachineInstrBuilder MIB = BuildMI(&MBB, DL, get(BccOpc));
   MIB.addMBB(TBB);
-  for (unsigned i = 0; i < 3; i++) {
-    MIB.add(Cond[i]);
-  }
+  for (const MachineOperand &MO : Cond)
+    MIB.add(MO);
 
   // One-way conditional branch.
   if (!FBB) {
