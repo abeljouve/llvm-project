@@ -300,6 +300,18 @@ let Defs = [STATUS32], Predicates = [HasBitScan] in {
                            [(set GPR32:$A, (cttz i32:$B))]>;
 }
 
+// The CTLZ/CTTZ pseudos above compute a fully zero-DEFINED result (fls/ffs give
+// a defined answer for a zero input), so they are a valid selection target for
+// the zero-UNDEF nodes too. TargetLowering marks CTLZ_ZERO_UNDEF /
+// CTTZ_ZERO_UNDEF Legal on the bit-scan subtarget, but the pseudos above only
+// match the zero-DEFINED generic nodes -- without these two patterns a
+// zero-undef node reaches ISel as "Cannot select". Gated behind HasBitScan
+// (Predicates only; Pat has no Defs field) so ARCompact keeps its Custom path.
+let Predicates = [HasBitScan] in {
+  def : Pat<(ctlz_zero_undef i32:$B), (CTLZ i32:$B)>;
+  def : Pat<(cttz_zero_undef i32:$B), (CTTZ i32:$B)>;
+}
+
 // Unsigned AND signed carry/overflow-consuming arithmetic idioms
 // (UADDSAT/USUBSAT/UADDO/USUBO, SADDSAT/SSUBSAT/SADDO/SSUBO, AVGFLOORU).
 // Each pseudo bundles a `.f`-form ADD/SUB producer with its conditional-mov
