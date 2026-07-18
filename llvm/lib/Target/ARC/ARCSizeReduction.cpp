@@ -270,9 +270,31 @@ bool ARCSizeReduction::runOnMachineFunction(MachineFunction &MF) {
   if (!Subtarget.isARCompact())
     return false;
 
-  // Only reduce when optimizing for size (-Os / -Oz).
+  // Run whenever the function is OPTIMIZED (-O1/-O2/-Os/-Oz); skip only
+  // -O0 and optnone functions.
+  //
+  // Compaction is a pure post-RA re-encoding: each rule swaps a 32-bit
+  // ARCompact instruction for the semantically identical 16-bit (_S) form
+  // with the same operands, same register values, and same flag behaviour
+  // -- verified byte-exact on silicon for the whole firing set. Nothing
+  // about that equivalence is size-mode specific, so at -O1/-O2 the smaller
+  // encoding is a strict win (less I-cache pressure on the 4 KiB 1-way
+  // I-cache, no semantic change). Two properties keep it safe at speed:
+  //   * The pass runs in addPreEmitPass BEFORE the delay-slot filler, so it
+  //     can never rewrite an instruction already promoted into a delay slot.
+  //   * The firing set is data-movement / ALU re-encodings only; no
+  //     short-branch (PC-relative range-limited) reductions are enabled, so
+  //     changing instruction sizes here cannot invalidate a branch reach.
+  //
+  // -O0 / optnone are excluded so debug builds keep a 1:1 machine-instr
+  // mapping (predictable single-stepping and breakpoints); at -O0 ISel also
+  // emits forms this pass was never validated against, so we simply do not
+  // run rather than widen the validated envelope. hasOptNone() also covers
+  // any individually optnone function inside an otherwise-optimized module.
+  if (MF.getTarget().getOptLevel() == CodeGenOptLevel::None)
+    return false;
   const Function &F = MF.getFunction();
-  if (!F.hasOptSize() && !F.hasMinSize())
+  if (F.hasOptNone())
     return false;
 
   TII = Subtarget.getInstrInfo();
@@ -453,7 +475,7 @@ bool ARCSizeReduction::tryReduce(MachineBasicBlock &MBB,
 
     MachineInstrBuilder MIB =
         BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(Entry.NarrowOpc))
-            .addReg(RB, RegState::Define)
+            .addReg(RB, RegState::Define | getDeadRegState(OpB.isDead()))
             .addImm(Imm);
 
     for (unsigned i = 2, e = Old.getNumOperands(); i != e; ++i) {
@@ -818,7 +840,7 @@ bool ARCSizeReduction::tryReduce(MachineBasicBlock &MBB,
 
     MachineInstrBuilder MIB =
         BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(ARC::ARC_ADD_S_b_u7))
-            .addReg(RA, RegState::Define)
+            .addReg(RA, RegState::Define | getDeadRegState(OpA.isDead()))
             .addImm(Imm);
     for (unsigned i = 3, e = Old.getNumOperands(); i != e; ++i) {
       const MachineOperand &MO = Old.getOperand(i);
@@ -914,6 +936,10 @@ bool ARCSizeReduction::tryReduce(MachineBasicBlock &MBB,
 
     // Only dest needs to be in GPR_S; src can be any GPR32.
     if (!isGPR_S(RB, TRI))
+      return false;
+
+    // Source becomes the compact MOV_S H-field; r62/r63 would alias LIMM/PCL.
+    if (RC == ARC::R62 || RC == ARC::R63)
       return false;
 
     LLVM_DEBUG(dbgs() << "  Reducing " << Old << " to 16-bit (mov_s b,h)\n");

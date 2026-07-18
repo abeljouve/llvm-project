@@ -20,7 +20,7 @@ define i32 @bswap32(i32 %a) {
 ; CHECK: and [[T1:%r[0-9]+]], [[T0]], 16711935
 ; CHECK: and [[T2:%r[0-9]+]], %r0, 16711935
 ; CHECK: asl [[T3:%r[0-9]+]], [[T2]], 8
-; CHECK: or %r0, [[T3]], [[T1]]
+; CHECK: or_s %r0, [[T1]]
 ; CHECK: swap %r0, %r0
 ; CHECK-NOT: swape
   %r = call i32 @llvm.bswap.i32(i32 %a)

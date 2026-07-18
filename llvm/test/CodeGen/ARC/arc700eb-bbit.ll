@@ -40,7 +40,7 @@ f:
 ; The loop is 2 instructions (one cache line), not ld+and+brne.
 define void @poll_bit1(ptr %r) {
 ; CHECK-LABEL: poll_bit1:
-; CHECK: ld %r{{[0-9]+}}, [%r0
+; CHECK: ld_s %r{{[0-9]+}}, [%r0
 ; CHECK-NEXT: bbit1 %r{{[0-9]+}}, 1, @
 ; CHECK-NOT: and %r
 entry:
@@ -59,7 +59,7 @@ done:
 ; path, not bbit. Still a 2-instruction loop (one cache line), not ld+cmp+bcc.
 define void @poll_sign(ptr %r) {
 ; CHECK-LABEL: poll_sign:
-; CHECK: ld %r{{[0-9]+}}, [%r0
+; CHECK: ld_s %r{{[0-9]+}}, [%r0
 ; CHECK-NEXT: brlt %r{{[0-9]+}}, 0, @
 ; CHECK-NOT: cmp
 entry:

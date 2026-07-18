@@ -48,7 +48,7 @@ entry:
 
 ; CHECK-LABEL: neg_byte_load_no_ldas:
 ; CHECK-NOT: ld.as
-; CHECK: ldb %r{{[0-9]+}}, [%r{{[0-9]+}},0]
+; CHECK: ldb_s %r{{[0-9]+}}, [%r{{[0-9]+}}, 0]
 define i32 @neg_byte_load_no_ldas(ptr inreg %base, i32 inreg %idx) {
 entry:
   %p = getelementptr inbounds i32, ptr %base, i32 %idx
@@ -64,7 +64,7 @@ entry:
 
 ; CHECK-LABEL: neg_half_load_no_ldas:
 ; CHECK-NOT: ld.as
-; CHECK: ldh %r{{[0-9]+}}, [%r{{[0-9]+}},0]
+; CHECK: ldw_s %r{{[0-9]+}}, [%r{{[0-9]+}}, 0]
 define i32 @neg_half_load_no_ldas(ptr inreg %base, i32 inreg %idx) {
 entry:
   %p = getelementptr inbounds i32, ptr %base, i32 %idx
@@ -192,7 +192,7 @@ entry:
 ;===----------------------------------------------------------------------===
 
 ; CHECK-LABEL: pos_sexth_ldh:
-; CHECK: ldh.x %r{{[0-9]+}}, [%r{{[0-9]+}},0]
+; CHECK: ldw_s.x %r{{[0-9]+}}, [%r{{[0-9]+}}, 0]
 ; CHECK-NOT: asl
 ; CHECK-NOT: asr
 define i32 @pos_sexth_ldh(ptr inreg %p) {

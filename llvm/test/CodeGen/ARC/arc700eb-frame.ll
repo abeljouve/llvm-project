@@ -17,8 +17,8 @@ declare i32 @callee(i32)
 define i32 @test_callee_saved(i32 %n) {
 ; CHECK-LABEL: test_callee_saved:
 ; CHECK: push_s %blink
-; CHECK: st %r13
-; CHECK: ld %r13
+; CHECK: st_s %r13
+; CHECK: ld_s %r13
 ; CHECK: pop_s %blink
 entry:
   %r = call i32 @callee(i32 %n)
@@ -31,7 +31,7 @@ define i32 @test_many_args(i32 %a, i32 %b, i32 %c, i32 %d,
                            i32 %e, i32 %f, i32 %g, i32 %h) {
 ; CHECK-LABEL: test_many_args:
 ; First 8 args in r0-r7
-; CHECK: add %r0, %r0, %r1
+; CHECK: add_s %r0, %r0, %r1
   %s1 = add i32 %a, %b
   %s2 = add i32 %c, %d
   %s3 = add i32 %e, %f

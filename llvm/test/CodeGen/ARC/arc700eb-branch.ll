@@ -46,7 +46,7 @@ iffalse:
 
 define i32 @test_cmp(i32 %a, i32 %b) {
 ; CHECK-LABEL: test_cmp:
-; CHECK: cmp %r0, %r1
+; CHECK: cmp_s %r0, %r1
   %cmp = icmp sgt i32 %a, %b
   br i1 %cmp, label %iftrue, label %iffalse
 
