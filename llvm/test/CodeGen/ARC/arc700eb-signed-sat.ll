@@ -38,7 +38,7 @@ declare { i32, i1 } @llvm.ssub.with.overflow.i32(i32, i32)
 ; CHECK:      asr %r2, %r0, 31
 ; CHECK:      mov %r3, -1
 ; CHECK-NEXT: lsr %r3, %r3, 1
-; CHECK-NEXT: xor %r2, %r2, %r3
+; CHECK-NEXT: xor_s %r2, %r3
 ; CHECK:      add.f %r0, %r0, %r1
 ; CHECK-NEXT: mov.vs %r0, %r2
 ; CHECK-NOT:  mov.vc
@@ -53,7 +53,7 @@ define i32 @t_saddsat(i32 %a, i32 %b) {
 ; CHECK:      asr %r2, %r0, 31
 ; CHECK:      mov %r3, -1
 ; CHECK-NEXT: lsr %r3, %r3, 1
-; CHECK-NEXT: xor %r2, %r2, %r3
+; CHECK-NEXT: xor_s %r2, %r3
 ; CHECK:      sub.f %r0, %r0, %r1
 ; CHECK-NEXT: mov.vs %r0, %r2
 ; CHECK-NOT:  mov.vc

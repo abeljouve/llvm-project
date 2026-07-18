@@ -53,7 +53,7 @@ define i16 @underaligned_half_peel() {
 ; effective offset, so a truthful aligned access never reaches it.
 define i32 @aligned_word() {
 ; CHECK-LABEL: aligned_word:
-; CHECK: ld %r{{[0-9]+}}, [%{{sp|fp|r[0-9]+}},
+; CHECK: ld_s %r{{[0-9]+}}, [%{{sp|fp|r[0-9]+}},
 ; CHECK-NOT: ldb
   %ctx = alloca [16 x i8], align 4
   call void @escape(ptr %ctx)

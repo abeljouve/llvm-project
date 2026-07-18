@@ -43,12 +43,12 @@ entry:
 ; load-bearing property is only that the use no longer sits on top of the load.
 ;
 ; SCHED-LABEL: load_use_is_separated:
-; SCHED:       ld [[A:%r[0-9]+]], [
-; SCHED-NEXT:  ld {{%r[0-9]+}}, [
+; SCHED:       ld_s [[A:%r[0-9]+]], [
+; SCHED-NEXT:  ld_s {{%r[0-9]+}}, [
 
 ; Unscheduled control: source order, so the shift consumes the load result
 ; immediately and eats the full 10-cycle interlock.
 ;
 ; NOSCHED-LABEL: load_use_is_separated:
-; NOSCHED:       ld [[A:%r[0-9]+]], [
+; NOSCHED:       ld_s [[A:%r[0-9]+]], [
 ; NOSCHED-NEXT:  asl [[A]], [[A]], 3

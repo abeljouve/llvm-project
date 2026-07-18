@@ -66,7 +66,7 @@ define i32 @bmskreg(i32 %a, i32 %n) {
 define i32 @bsetreg_wrongbase(i32 %a, i32 %n) {
 ; CHECK-LABEL: bsetreg_wrongbase:
 ; CHECK: asl
-; CHECK: or %r0, %r0, %r1
+; CHECK: or_s %r0, %r1
 ; CHECK-NOT: bset %r
   %s = shl i32 2, %n
   %r = or i32 %a, %s
@@ -77,7 +77,7 @@ define i32 @bsetreg_wrongbase(i32 %a, i32 %n) {
 define i32 @bxorreg_wrongbase(i32 %a, i32 %n) {
 ; CHECK-LABEL: bxorreg_wrongbase:
 ; CHECK: asl
-; CHECK: xor %r0, %r0, %r1
+; CHECK: xor_s %r0, %r1
 ; CHECK-NOT: bxor %r
   %s = shl i32 3, %n
   %r = xor i32 %a, %s
@@ -104,7 +104,7 @@ define i32 @bclrreg_wrongbase(i32 %a, i32 %n) {
 define i32 @bmskreg_wrongshift(i32 %a, i32 %n) {
 ; CHECK-LABEL: bmskreg_wrongshift:
 ; CHECK: asl
-; CHECK: and %r0, %r0, %r1
+; CHECK: and_s %r0, %r1
 ; CHECK-NOT: bmsk %r
   %np2 = add i32 %n, 2
   %s = shl i32 1, %np2

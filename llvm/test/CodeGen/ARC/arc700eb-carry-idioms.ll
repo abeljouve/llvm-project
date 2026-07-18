@@ -34,7 +34,7 @@ declare { i32, i1 } @llvm.usub.with.overflow.i32(i32, i32)
 ; correctness benefit. umax picks a on unsigned-greater (.hi), umin on
 ; unsigned-lower (.lo).
 ; CHECK-LABEL: t_umax:
-; CHECK:      cmp %r0, %r1
+; CHECK:      cmp_s %r0, %r1
 ; CHECK-NEXT: mov.hi %r1, %r0
 ; CHECK-NOT:  __muls
 define i32 @t_umax(i32 %a, i32 %b) {
@@ -43,7 +43,7 @@ define i32 @t_umax(i32 %a, i32 %b) {
 }
 
 ; CHECK-LABEL: t_umin:
-; CHECK:      cmp %r0, %r1
+; CHECK:      cmp_s %r0, %r1
 ; CHECK-NEXT: mov.lo %r1, %r0
 define i32 @t_umin(i32 %a, i32 %b) {
   %r = call i32 @llvm.umin.i32(i32 %a, i32 %b)
@@ -75,7 +75,7 @@ define i32 @t_usubsat(i32 %a, i32 %b) {
 ; clamps to 255 (the sum of two zero-extended bytes is non-negative, so a
 ; signed MIN is exact); i16 saturating sub extends then clamps 0 on borrow.
 ; CHECK-LABEL: t_uaddsat_i8:
-; CHECK:      add %r0, %r0, %r1
+; CHECK:      add_s %r0, %r0, %r1
 ; CHECK:      min %r0, %r0, 255
 define i8 @t_uaddsat_i8(i8 %a, i8 %b) {
   %r = call i8 @llvm.uadd.sat.i8(i8 %a, i8 %b)
@@ -162,7 +162,7 @@ ok:
 ; with no separate 0/1 boolean.
 ; CHECK-LABEL: t_uaddo_sel:
 ; CHECK:      add %r1, %r0, %r1
-; CHECK:      cmp %r1, %r0
+; CHECK:      cmp_s %r1, %r0
 ; CHECK-NEXT: mov.lo %r1,
 ; CHECK-NOT:  add.f
 define i32 @t_uaddo_sel(i32 %a, i32 %b) {

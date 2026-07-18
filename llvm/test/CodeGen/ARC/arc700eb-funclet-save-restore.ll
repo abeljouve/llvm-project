@@ -36,10 +36,10 @@ define void @boundary_max_r14() {
 ; CHECK-LABEL: boundary_max_r14:
 ; CHECK-NOT: __st_r13_to_
 ; CHECK: sub_s %sp, %sp, 8
-; CHECK: st %r13, [%sp,0]
-; CHECK: st %r14, [%sp,4]
-; CHECK: ld %r14, [%sp,4]
-; CHECK: ld %r13, [%sp,0]
+; CHECK: st_s %r13, [%sp, 0]
+; CHECK: st_s %r14, [%sp, 4]
+; CHECK: ld_s %r14, [%sp, 4]
+; CHECK: ld_s %r13, [%sp, 0]
 ; CHECK: add_s %sp, %sp, 8
 ; CHECK-NOT: __ld_r13_to_
   call void asm sideeffect "", "~{r13},~{r14}"()
@@ -63,9 +63,9 @@ define void @boundary_max_r15() {
 ; INLINE-LABEL: boundary_max_r15:
 ; INLINE-NOT: __st_r13_to_
 ; INLINE: sub_s %sp, %sp, 12
-; INLINE: st %r13, [%sp,0]
-; INLINE: st %r14, [%sp,4]
-; INLINE: st %r15, [%sp,8]
+; INLINE: st_s %r13, [%sp, 0]
+; INLINE: st_s %r14, [%sp, 4]
+; INLINE: st_s %r15, [%sp, 8]
   call void asm sideeffect "", "~{r13},~{r14},~{r15}"()
   ret void
 }
@@ -238,10 +238,11 @@ define i32 @multiple_returns(i32 %c) {
 ; CHECK-NEXT: add_s %sp, %sp, 12
 ; CHECK-NEXT: pop_s %blink
 ; CHECK-NEXT: b @tgt
-; Second epilogue: ordinary return. The restore helper takes a delay slot here;
-; the delay-slot instruction must not touch SP or blink.
-; CHECK: bl.d @__ld_r13_to_r15
-; CHECK-NEXT: mov %r0, 7
+; Second epilogue: ordinary return. The return-value move is emitted ahead of the
+; restore helper call (16-bit compaction leaves the call without a delay slot);
+; the teardown that follows must not touch SP or blink.
+; CHECK: mov_s %r0, 7
+; CHECK-NEXT: bl @__ld_r13_to_r15
 ; CHECK-NEXT: add_s %sp, %sp, 12
 ; CHECK-NEXT: pop_s %blink
 ; CHECK-NEXT: j_s [%blink]

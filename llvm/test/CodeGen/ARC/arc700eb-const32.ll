@@ -137,7 +137,7 @@ define i32 @c_s12_neg5() {
 
 ; --- trivial zero ---
 ; CHECK-LABEL: c_s12_zero:
-; CHECK: mov %r0, 0
+; CHECK: mov_s %r0, 0
 ; CHECK-NOT: mov_s
 ; CHECK-NOT: asl
 define i32 @c_s12_zero() {

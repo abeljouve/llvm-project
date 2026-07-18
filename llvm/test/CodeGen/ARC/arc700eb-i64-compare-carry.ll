@@ -58,7 +58,7 @@
 
 ; a <u b: the verdict is the borrow itself -> "lo" (C=1).
 ; CHECK-LABEL: t_i64_ult_setcc:
-; CHECK:      cmp %r1, %r3
+; CHECK:      cmp_s %r1, %r3
 ; CHECK-NEXT: sbc.f 0, %r0, %r2
 ; CHECK-NOT:  mov.hs
 ; CHECK:      mov.lo
@@ -71,7 +71,7 @@ define i32 @t_i64_ult_setcc(i64 %a, i64 %b) {
 
 ; a >=u b: no borrow -> "hs" (C=0). Exact polarity mirror of t_i64_ult_setcc.
 ; CHECK-LABEL: t_i64_uge_setcc:
-; CHECK:      cmp %r1, %r3
+; CHECK:      cmp_s %r1, %r3
 ; CHECK-NEXT: sbc.f 0, %r0, %r2
 ; CHECK-NOT:  mov.lo
 ; CHECK:      mov.hs
@@ -87,7 +87,7 @@ define i32 @t_i64_uge_setcc(i64 %a, i64 %b) {
 ; `cmp %r3, %r1` / `sbc.f 0, %r2, %r0` -- with the SAME "lo". Emitting the
 ; unswapped operands here would compute `b > a`.
 ; CHECK-LABEL: t_i64_ugt_setcc:
-; CHECK:      cmp %r3, %r1
+; CHECK:      cmp_s %r3, %r1
 ; CHECK-NEXT: sbc.f 0, %r2, %r0
 ; CHECK:      mov.lo
 define i32 @t_i64_ugt_setcc(i64 %a, i64 %b) {
@@ -98,7 +98,7 @@ define i32 @t_i64_ugt_setcc(i64 %a, i64 %b) {
 
 ; a <=u b: ULE -> UGE with operands swapped. Same swap, "hs" polarity.
 ; CHECK-LABEL: t_i64_ule_setcc:
-; CHECK:      cmp %r3, %r1
+; CHECK:      cmp_s %r3, %r1
 ; CHECK-NEXT: sbc.f 0, %r2, %r0
 ; CHECK:      mov.hs
 define i32 @t_i64_ule_setcc(i64 %a, i64 %b) {
@@ -134,7 +134,7 @@ define i32 @t_i64_ule_setcc(i64 %a, i64 %b) {
 ; one Bcc, and NO materialized boolean: no mov/mov.cc pair and no `brne`/`bbit`
 ; re-test of one. That absence is the whole point of the fold.
 ; CHECK-LABEL: t_i64_ult_br:
-; CHECK:      cmp %r1, %r3
+; CHECK:      cmp_s %r1, %r3
 ; CHECK-NEXT: sbc.f 0, %r0, %r2
 ; CHECK-NEXT: b{{lo|hs}} {{.*}}LBB
 ; CHECK-NOT:  bbit
@@ -149,7 +149,7 @@ f:
 }
 
 ; CHECK-LABEL: t_i64_uge_br:
-; CHECK:      cmp %r1, %r3
+; CHECK:      cmp_s %r1, %r3
 ; CHECK-NEXT: sbc.f 0, %r0, %r2
 ; CHECK-NEXT: b{{lo|hs}} {{.*}}LBB
 ; CHECK-NOT:  bbit
@@ -211,7 +211,7 @@ f:
 ; CHECK-LABEL: t_i64_slt_setcc:
 ; CHECK-DAG:  bxor %r0, %r0, 31
 ; CHECK-DAG:  bxor %r2, %r2, 31
-; CHECK:      cmp %r1, %r3
+; CHECK:      cmp_s %r1, %r3
 ; CHECK-NEXT: sbc.f 0, %r0, %r2
 ; CHECK:      mov.lo
 ; CHECK-NOT:  mov.lt
@@ -226,7 +226,7 @@ define i32 @t_i64_slt_setcc(i64 %a, i64 %b) {
 ; CHECK-LABEL: t_i64_sge_setcc:
 ; CHECK-DAG:  bxor %r0, %r0, 31
 ; CHECK-DAG:  bxor %r2, %r2, 31
-; CHECK:      cmp %r1, %r3
+; CHECK:      cmp_s %r1, %r3
 ; CHECK-NEXT: sbc.f 0, %r0, %r2
 ; CHECK:      mov.hs
 ; CHECK-NOT:  mov.lt
@@ -242,7 +242,7 @@ define i32 @t_i64_sge_setcc(i64 %a, i64 %b) {
 ; The bias must follow the operands onto the swapped high words.
 ; CHECK-LABEL: t_i64_sgt_setcc:
 ; CHECK:      bxor
-; CHECK:      cmp %r3, %r1
+; CHECK:      cmp_s %r3, %r1
 ; CHECK-NEXT: sbc.f 0, %r2, %r0
 ; CHECK:      mov.lo
 ; CHECK-NOT:  mov.lt
@@ -259,7 +259,7 @@ define i32 @t_i64_sgt_setcc(i64 %a, i64 %b) {
 ; CHECK-LABEL: t_i64_slt_br:
 ; CHECK-DAG:  bxor %r0, %r0, 31
 ; CHECK-DAG:  bxor %r2, %r2, 31
-; CHECK:      cmp %r1, %r3
+; CHECK:      cmp_s %r1, %r3
 ; CHECK-NEXT: sbc.f 0, %r0, %r2
 ; CHECK-NEXT: b{{lo|hs}} {{.*}}LBB
 ; CHECK-NOT:  bbit
@@ -311,7 +311,7 @@ define i32 @t_i64_slt_const(i64 %a) {
 ; CHECK-LABEL: t_i64_ult_zero:
 ; CHECK-NOT:  cmp
 ; CHECK-NOT:  sbc.f
-; CHECK:      mov %r0, 0
+; CHECK:      mov_s %r0, 0
 define i32 @t_i64_ult_zero(i64 %a) {
   %c = icmp ult i64 %a, 0
   %r = zext i1 %c to i32

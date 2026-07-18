@@ -373,7 +373,7 @@ define i32 @allones_noop(i32 %a) {
 ; --- degenerate zero mask: and %a, 0 constant-folds to 0, never a bit op ---
 define i32 @zeromask(i32 %a) {
 ; CHECK-LABEL: zeromask:
-; CHECK: mov %r0, 0
+; CHECK: mov_s %r0, 0
 ; CHECK-NOT: bmsk %r
   %r = and i32 %a, 0
   ret i32 %r

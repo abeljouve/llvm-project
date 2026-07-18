@@ -14,10 +14,10 @@
 ; ld/add/ld/add.
 define i32 @gather(ptr %in) {
 ; CHECK-LABEL: gather:
-; CHECK:       ld  %r{{[0-9]+}}, [%r0,0]
-; CHECK-NEXT:  ld  %r{{[0-9]+}}, [%r0,4]
-; CHECK-NEXT:  ld  %r{{[0-9]+}}, [%r0,8]
-; CHECK-NEXT:  ld  %r{{[0-9]+}}, [%r0,12]
+; CHECK:       ld_s %r{{[0-9]+}}, [%r0, 0]
+; CHECK-NEXT:  ld_s %r{{[0-9]+}}, [%r0, 1]
+; CHECK-NEXT:  ld_s %r{{[0-9]+}}, [%r0, 2]
+; CHECK-NEXT:  ld_s %r{{[0-9]+}}, [%r0, 3]
 ; CHECK-NEXT:  add
 entry:
   %p0 = getelementptr inbounds i32, ptr %in, i32 0
@@ -43,14 +43,14 @@ entry:
 ; together the way @gather above is clustered.
 define void @mmio(ptr %in, ptr %out) {
 ; CHECK-LABEL: mmio:
-; CHECK:       ld  %r{{[0-9]+}}, [%r0,0]
-; CHECK-NEXT:  st  %r{{[0-9]+}}, [%r1,0]
-; CHECK-NEXT:  ld  %r{{[0-9]+}}, [%r0,4]
-; CHECK-NEXT:  st  %r{{[0-9]+}}, [%r1,0]
-; CHECK-NEXT:  ld  %r{{[0-9]+}}, [%r0,8]
-; CHECK-NEXT:  st  %r{{[0-9]+}}, [%r1,0]
-; CHECK-NEXT:  ld  %r{{[0-9]+}}, [%r0,12]
-; CHECK-NEXT:  st  %r{{[0-9]+}}, [%r1,0]
+; CHECK:       ld_s %r{{[0-9]+}}, [%r0, 0]
+; CHECK-NEXT:  st_s %r{{[0-9]+}}, [%r1, 0]
+; CHECK-NEXT:  ld_s %r{{[0-9]+}}, [%r0, 1]
+; CHECK-NEXT:  st_s %r{{[0-9]+}}, [%r1, 0]
+; CHECK-NEXT:  ld_s %r{{[0-9]+}}, [%r0, 2]
+; CHECK-NEXT:  st_s %r{{[0-9]+}}, [%r1, 0]
+; CHECK-NEXT:  ld_s %r{{[0-9]+}}, [%r0, 3]
+; CHECK-NEXT:  st_s %r{{[0-9]+}}, [%r1, 0]
 entry:
   %p0 = getelementptr inbounds i32, ptr %in, i32 0
   %v0 = load volatile i32, ptr %p0, align 4

@@ -136,7 +136,7 @@ if.else:
 define i32 @range_ult_select_small_k3(i32 %x, i32 %a, i32 %b) {
 ; CHECK-LABEL: range_ult_select_small_k3:
 ; CHECK-NOT: lsr.f
-; CHECK: cmp %r0, 8
+; CHECK: cmp_s %r0, 8
 ; CHECK: mov.lo
 ; VERIFY-LABEL: range_ult_select_small_k3:
 entry:
