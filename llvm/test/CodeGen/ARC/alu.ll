@@ -1,4 +1,14 @@
-; RUN: llc -mtriple=arc < %s | FileCheck %s
+; RUN: llc -mtriple=arc -mcpu=generic < %s | FileCheck %s
+;
+; The bare CHECK prefix describes -mcpu=generic, which enables FeatureMPY and
+; FeatureSEXT and therefore really does select mpy/mpym/mpymu/sexb/sexh. The
+; ARC700 prefix covers the shipping ARC700 profiles, which have those features
+; OFF (this silicon has no 32x32 multiplier and no ARCv2 sign-extend), so MUL
+; lowers to a __mulsi3/__muldi3 libcall and the sign-extend idiom is fused into
+; the 16-bit ARCompact-base SEXB_S/SEXW_S by the size-reduction pass.
+; RUN: llc -mtriple=arc   -mcpu=arc700   < %s | FileCheck %s --check-prefix=ARC700
+; RUN: llc -mtriple=arceb -mcpu=arc700eb < %s | FileCheck %s --check-prefix=ARC700
+; RUN: llc -mtriple=arceb -mcpu=bcm55030 < %s | FileCheck %s --check-prefix=ARC700
 
 ; CHECK-LABEL: add_r
 ; CHECK: add %r0, %r{{[01]}}, %r{{[01]}}
@@ -24,6 +34,11 @@ define i32 @add_limm(i32 %a) nounwind {
 
 ; CHECK-LABEL: mpy_r
 ; CHECK: mpy %r0, %r{{[01]}}, %r{{[01]}}
+; The " %r" operand suffix on the -NOT patterns is required: a bare "mpy" would
+; match the function label "mpy_r:" itself and self-fail.
+; ARC700-LABEL: mpy_r:
+; ARC700-NOT:     mpy %r
+; ARC700:         bl @__mulsi3
 define i32 @mpy_r(i32 %a, i32 %b) nounwind {
 entry:
   %v = mul i32 %a, %b
@@ -32,6 +47,11 @@ entry:
 
 ; CHECK-LABEL: mpy_u6
 ; CHECK: mpy %r0, %r0, 10
+; x*10 strength-reduces to (x+x*2)*2 -- no libcall, and still no mpy.
+; ARC700-LABEL: mpy_u6:
+; ARC700-NOT:     mpy %r
+; ARC700:         add2 %r0, %r0, %r0
+; ARC700:         asl %r0, %r0, 1
 define i32 @mpy_u6(i32 %a) nounwind {
   %v = mul i32 %a, 10
   ret i32 %v
@@ -39,6 +59,10 @@ define i32 @mpy_u6(i32 %a) nounwind {
 
 ; CHECK-LABEL: mpy_limm
 ; CHECK: mpy %r0, %r0, 12345
+; ARC700-LABEL: mpy_limm:
+; ARC700-NOT:     mpy %r
+; ARC700:         mov{{(_s)?}} %r1, 12345
+; ARC700:         bl @__mulsi3
 define i32 @mpy_limm(i32 %a) nounwind {
   %v = mul i32 %a, 12345
   ret i32 %v
@@ -219,6 +243,12 @@ define i32 @ror_u6(i32 %a) nounwind {
 
 ; CHECK-LABEL: sexh_r
 ; CHECK: sexh %r0, %r0
+; The 32-bit sexh/sexb are ARCv2-only, but the 16-bit SEXB_S/SEXW_S are part of
+; the ARCompact base ISA, so the size-reduction pass legitimately fuses the
+; asl/asr pair into them on ARC700 even with FeatureSEXT off.
+; ARC700-LABEL: sexh_r:
+; ARC700-NOT:     sexh %r
+; ARC700:         sexw_s %r0, %r0
 define i32 @sexh_r(i32 %a) nounwind {
   %v1 = shl i32 %a, 16
   %v = ashr i32 %v1, 16
@@ -227,6 +257,9 @@ define i32 @sexh_r(i32 %a) nounwind {
 
 ; CHECK-LABEL: sexb_r
 ; CHECK: sexb %r0, %r0
+; ARC700-LABEL: sexb_r:
+; ARC700-NOT:     sexb %r
+; ARC700:         sexb_s %r0, %r0
 define i32 @sexb_r(i32 %a) nounwind {
   %v1 = shl i32 %a, 24
   %v = ashr i32 %v1, 24
@@ -236,6 +269,9 @@ define i32 @sexb_r(i32 %a) nounwind {
 ; CHECK-LABEL: mulu64
 ; CHECK-DAG: mpy %r[[REG:[0-9]+]], %r{{[01]}}, %r{{[01]}}
 ; CHECK-DAG: mpymu %r[[REG:[0-9]+]], %r{{[01]}}, %r{{[01]}}
+; ARC700-LABEL: mulu64:
+; ARC700-NOT:     mpymu %r
+; ARC700:         bl @__muldi3
 define i64 @mulu64(i32 %a, i32 %b) nounwind {
   %a64 = zext i32 %a to i64
   %b64 = zext i32 %b to i64
@@ -246,6 +282,9 @@ define i64 @mulu64(i32 %a, i32 %b) nounwind {
 ; CHECK-LABEL: muls64
 ; CHECK-DAG: mpy %r[[REG:[0-9]+]], %r{{[01]}}, %r{{[01]}}
 ; CHECK-DAG: mpym %r[[REG:[0-9]+]], %r{{[01]}}, %r{{[01]}}
+; ARC700-LABEL: muls64:
+; ARC700-NOT:     mpym %r
+; ARC700:         bl{{(\.d)?}} @__muldi3
 define i64 @muls64(i32 %a, i32 %b) nounwind {
   %a64 = sext i32 %a to i64
   %b64 = sext i32 %b to i64
