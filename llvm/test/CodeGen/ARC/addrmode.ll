@@ -1,4 +1,27 @@
-; RUN: llc -mtriple=arc < %s | FileCheck %s
+; RUN: llc -mtriple=arc -mcpu=generic < %s | FileCheck %s
+;
+; The bare CHECK prefix describes -mcpu=generic. A bare -mtriple=arc with no
+; -mcpu selects a featureless pseudo-subtarget matching no shipping
+; configuration (no MPY/SEXT/BitScan, so not `generic`; no ARCompact, so
+; ARCSizeReduction never runs, so not arc700 either). Its output for this test
+; is byte-identical to generic, so naming the real CPU loses no coverage.
+;
+; The RUN lines below extend the SAME prefix to the three shipping ARC700
+; profiles. Unlike alu.ll / brcc.ll / call.ll / ldst.ll this test is
+; deliberately NOT split, and that is not an oversight: every assertion here is
+; about address-mode folding (post-increment formation, and the rebasing of
+; sibling loads onto a post-increment result), which is feature- and
+; endianness-independent. The ARC700 output does differ -- some of these
+; stores fuse into 16-bit compact forms -- but no assertion in this file
+; observes that difference, so a second prefix would be a copy of the first and
+; would assert nothing the shared one does not. Splitting only earns its keep
+; where the subtargets genuinely disagree about what this test measures.
+;
+; The negative displacements in past_uses are the load-bearing case and have no
+; compact encoding, so they stay 32-bit on every profile.
+; RUN: llc -mtriple=arc   -mcpu=arc700   < %s | FileCheck %s
+; RUN: llc -mtriple=arceb -mcpu=arc700eb < %s | FileCheck %s
+; RUN: llc -mtriple=arceb -mcpu=bcm55030 < %s | FileCheck %s
 
 ; CHECK-LABEL: copy
 ; CHECK-NOT: add
