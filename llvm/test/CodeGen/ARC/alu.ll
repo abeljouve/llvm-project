@@ -37,7 +37,7 @@ define i32 @add_limm(i32 %a) nounwind {
 ; The " %r" operand suffix on the -NOT patterns is required: a bare "mpy" would
 ; match the function label "mpy_r:" itself and self-fail.
 ; ARC700-LABEL: mpy_r:
-; ARC700-NOT:     mpy %r
+; ARC700-NOT:     mpy{{[a-z_]*}} %r
 ; ARC700:         bl @__mulsi3
 define i32 @mpy_r(i32 %a, i32 %b) nounwind {
 entry:
@@ -49,7 +49,7 @@ entry:
 ; CHECK: mpy %r0, %r0, 10
 ; x*10 strength-reduces to (x+x*2)*2 -- no libcall, and still no mpy.
 ; ARC700-LABEL: mpy_u6:
-; ARC700-NOT:     mpy %r
+; ARC700-NOT:     mpy{{[a-z_]*}} %r
 ; ARC700:         add2 %r0, %r0, %r0
 ; ARC700:         asl %r0, %r0, 1
 define i32 @mpy_u6(i32 %a) nounwind {
@@ -60,7 +60,7 @@ define i32 @mpy_u6(i32 %a) nounwind {
 ; CHECK-LABEL: mpy_limm
 ; CHECK: mpy %r0, %r0, 12345
 ; ARC700-LABEL: mpy_limm:
-; ARC700-NOT:     mpy %r
+; ARC700-NOT:     mpy{{[a-z_]*}} %r
 ; ARC700:         mov{{(_s)?}} %r1, 12345
 ; ARC700:         bl @__mulsi3
 define i32 @mpy_limm(i32 %a) nounwind {
@@ -270,7 +270,7 @@ define i32 @sexb_r(i32 %a) nounwind {
 ; CHECK-DAG: mpy %r[[REG:[0-9]+]], %r{{[01]}}, %r{{[01]}}
 ; CHECK-DAG: mpymu %r[[REG:[0-9]+]], %r{{[01]}}, %r{{[01]}}
 ; ARC700-LABEL: mulu64:
-; ARC700-NOT:     mpymu %r
+; ARC700-NOT:     mpy{{[a-z_]*}} %r
 ; ARC700:         bl @__muldi3
 define i64 @mulu64(i32 %a, i32 %b) nounwind {
   %a64 = zext i32 %a to i64
@@ -283,7 +283,7 @@ define i64 @mulu64(i32 %a, i32 %b) nounwind {
 ; CHECK-DAG: mpy %r[[REG:[0-9]+]], %r{{[01]}}, %r{{[01]}}
 ; CHECK-DAG: mpym %r[[REG:[0-9]+]], %r{{[01]}}, %r{{[01]}}
 ; ARC700-LABEL: muls64:
-; ARC700-NOT:     mpym %r
+; ARC700-NOT:     mpy{{[a-z_]*}} %r
 ; ARC700:         bl{{(\.d)?}} @__muldi3
 define i64 @muls64(i32 %a, i32 %b) nounwind {
   %a64 = sext i32 %a to i64

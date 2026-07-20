@@ -25,7 +25,7 @@ declare i64 @llvm.readcyclecounter()
 ; The -NOT pattern must be "fls.f", not a bare "fls"/"ffs": bare "ffs" matches
 ; the substring inside ".cfi_def_cfa_offset" and self-fails.
 ; ARC700-LABEL: test_ctlz_i32:
-; ARC700-NOT:     fls.f
+; ARC700-NOT:     fls{{[a-z_.]*}} %r
 ; ARC700:         breq %r0, 0, @[[Z:.LBB[0-9_]+]]
 ; ARC700:         lsr %r0, %r0, 1
 ; ARC700:         norm %r0, %r0
@@ -41,7 +41,7 @@ define i32 @test_ctlz_i32(i32 %x) {
 ; CHECK-NEXT:  mov.eq  %r0, 32
 ; x & -x isolates the lowest set bit, then norm counts it.
 ; ARC700-LABEL: test_cttz_i32:
-; ARC700-NOT:     ffs.f
+; ARC700-NOT:     ffs{{[a-z_.]*}} %r
 ; ARC700:         rsub %r1, %r0, 0
 ; ARC700:         and_s %r0, %r1
 ; ARC700:         lsr %r0, %r0, 1
