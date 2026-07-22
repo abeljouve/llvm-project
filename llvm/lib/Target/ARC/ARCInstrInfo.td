@@ -959,7 +959,20 @@ let isBranch = 1, isTerminator = 1, isBarrier = 1 in {
 }
 
 // Call instructions.
-let isCall = 1, isBarrier = 1, Defs = [BLINK], Uses = [SP] in {
+//
+// NOT isBarrier: a call returns and falls through to the next instruction.
+// Marking one a barrier contradicts analyzeBranch, which reports "falls
+// through" for a block whose last instruction is not a terminator. The two
+// disagree as soon as a call is the last instruction in its block -- which
+// happens for every call to a noreturn callee once PEI deletes the
+// ADJCALLSTACK pseudos that used to sit after it:
+//
+//   *** Bad machine code: MBB exits via unconditional fall-through but ends
+//       with a barrier instruction! ***
+//
+// The block genuinely has no successors there; that is expressed by the empty
+// successor list, not by a barrier flag on the call.
+let isCall = 1, Defs = [BLINK], Uses = [SP] in {
   // Direct unconditional call.
   def BL : F32_BR1_BL_UCOND_FAR<(outs), (ins calltargetS25:$S25),
                       "bl\t$S25", [(ARCBranchLink tglobaladdr:$S25)]>
@@ -975,7 +988,7 @@ let isCall = 1, isBarrier = 1, Defs = [BLINK], Uses = [SP] in {
   def JL_LImm : F32_DOP_RLIMM<0b00100, 0b100010, 0, (outs), (ins i32imm:$LImm),
                               "jl\t$LImm", []>
   { let A = 0; let B = 0; }
-} // let isCall, isBarrier, Defs, Uses
+} // let isCall, Defs, Uses
 
 // Pattern to generate BL instruction.
 def : Pat<(ARCBranchLink texternalsym:$dst), (BL texternalsym:$dst)>;
@@ -1069,7 +1082,9 @@ def J_D : F32_DOP_RR<0b00100, 0b100001, 0, (outs), (ins GPR32:$C),
                      "j.d\t[$C]", []>
 { let A = 0; let B = 0; }
 
-let isCall = 1, isBarrier = 1, Defs = [BLINK], Uses = [SP] in {
+// Delay-slot call forms. NOT isBarrier, for the same reason as the plain
+// forms above -- a call falls through.
+let isCall = 1, Defs = [BLINK], Uses = [SP] in {
   def BL_D : F32_BR1_BL_UCOND_FAR<(outs), (ins calltargetS25:$S25),
                                   "bl.d\t$S25", []>
   { let N = 1; }
@@ -1310,8 +1325,8 @@ def BL_S :
   let Inst{10-0} = s13{12-2};
   let s13{1-0} = 0b00;
 
+  // NOT isBarrier -- a call falls through. See the note on BL above.
   let isCall = 1;
-  let isBarrier = 1;
 }
 
 //----------------------------------------------------------------------------
@@ -1468,17 +1483,18 @@ def GEN_BRK_S : F16_GEN_DOP_BASE<0x1f, (outs), (ins),
   let c = 0b111;
 }
 
-let isBarrier = 1 in {
-  let isBranch = 1 in {
-    def GEN_J_S : F16_GEN_SOP<0x0, "j_s\t[$b]">;
-    def GEN_J_S_D : F16_GEN_SOP<0x1, "j_s.d\t[$b]">;
-  } // let isBranch
+// The jumps are barriers; the calls are NOT (they fall through). Keeping them
+// under one shared `isBarrier` was what mislabelled jl_s / jl_s.d -- see the
+// note on BL above.
+let isBranch = 1, isBarrier = 1 in {
+  def GEN_J_S : F16_GEN_SOP<0x0, "j_s\t[$b]">;
+  def GEN_J_S_D : F16_GEN_SOP<0x1, "j_s.d\t[$b]">;
+} // let isBranch, isBarrier
 
-  let isCall = 1 in {
-    def GEN_JL_S : F16_GEN_SOP<0x2, "jl_s\t[$b]">;
-    def GEN_JL_S_D : F16_GEN_SOP<0x3, "jl_s.d\t[$b]">;
-  } // let isCall
-} // let isBarrier
+let isCall = 1 in {
+  def GEN_JL_S : F16_GEN_SOP<0x2, "jl_s\t[$b]">;
+  def GEN_JL_S_D : F16_GEN_SOP<0x3, "jl_s.d\t[$b]">;
+} // let isCall
 
 def GEN_SUB_S_NE : F16_GEN_SOP<0x6, "sub_s.ne\t$b, $b, $b">;
 

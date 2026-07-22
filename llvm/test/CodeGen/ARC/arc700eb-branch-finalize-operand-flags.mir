@@ -1,0 +1,72 @@
+# RUN: llc -mtriple=arceb-unknown-unknown-elf -mcpu=arc700eb \
+# RUN:     -run-pass=arc-branch-finalize -verify-machineinstrs -o - %s \
+# RUN:   | FileCheck %s
+
+# ARCBranchFinalize rebuilds the BRcc/CMP/SBC instructions it finalizes. Every
+# register operand must be copied with MachineInstrBuilder::add(), never
+# .addReg(MO.getReg()) -- the latter synthesizes a fresh operand and drops the
+# flags. This pass runs after register allocation, where those flags are the
+# only remaining record of liveness and the verifier checks them.
+
+--- |
+  target datalayout = "E-m:e-p:32:32-i1:8:32-i8:8:32-i16:16:32-i32:32:32-f32:32:32-i64:32-f64:32-a:0:32-n32"
+  target triple = "arceb-unknown-unknown-elf"
+
+  define void @undef_operand_survives() { ret void }
+  define void @shared_reg_kill_moves_to_the_last_reader() { ret void }
+...
+---
+# `undef` must survive. The register allocator erases the IMPLICIT_DEF behind
+# an undefined value and marks its uses `undef` instead, so dropping the flag
+# here leaves the branch reading a register nothing ever defines:
+# "Using an undefined physical register". rustc reaches this with `br i1
+# poison`, which it emits for the unreachable arm of an uninhabited match.
+name:            undef_operand_survives
+alignment:       1
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.1, %bb.2
+
+    BRcc_ru6_p %bb.2, undef $r0, 0, 2
+    BR %bb.1
+
+  bb.1:
+    J_S_BLINK implicit $blink
+
+  bb.2:
+    J_S_BLINK implicit $blink
+...
+
+# CHECK-LABEL: name: undef_operand_survives
+# CHECK: BRcc_ru6 %bb.2, undef $r0, 0, 1
+
+---
+# A `kill` on the fused i64 compare-and-branch means "last read by this ONE
+# instruction". expandBRCarry turns it into three, so the kill belongs only on
+# the last emitted reader. $r3 is here both the low-half operand (killed) and
+# the high-half one -- ordinary output -- so copying the flag verbatim would
+# retire $r3 at the `cmp` and leave the `sbc.f` reading a dead register.
+name:            shared_reg_kill_moves_to_the_last_reader
+alignment:       1
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    successors: %bb.1, %bb.2
+    liveins: $r0, $r2, $r3
+
+    BRCARRY_p %bb.2, killed $r2, killed $r3, killed $r0, $r3, 5, implicit-def $status32
+    BR %bb.1
+
+  bb.1:
+    J_S_BLINK implicit $blink
+
+  bb.2:
+    J_S_BLINK implicit $blink
+...
+
+# The cmp must NOT kill $r3 -- the sbc.f below still reads it. $r2 is not read
+# again, so its kill stays.
+# CHECK-LABEL: name: shared_reg_kill_moves_to_the_last_reader
+# CHECK:      CMP_rr killed $r2, $r3, implicit-def $status32
+# CHECK-NEXT: SBC_f_null_rrr killed $r0, $r3, implicit-def $status32, implicit $status32
