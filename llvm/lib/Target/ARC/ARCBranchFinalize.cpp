@@ -9,6 +9,22 @@
 // This pass takes existing conditional branches and expands them into longer
 // range conditional branches. It also fuses a single-bit `and` feeding an
 // in-range compare-against-zero branch into a `bbit0`/`bbit1` bit-test branch.
+//
+// OPERAND FLAGS: every rebuild below copies register operands with
+// MachineInstrBuilder::add(), never .addReg(MO.getReg()). The latter
+// synthesizes a fresh operand and silently drops the flags the old one
+// carried -- undef, kill, dead, implicit, the sub-register index. This pass
+// runs in addPreEmitPass, i.e. after register allocation, where those flags
+// are the only remaining record of liveness and the machine verifier checks
+// them. Dropping `undef` was a real bug: the register allocator erases the
+// IMPLICIT_DEF behind an undefined value and marks its uses `undef` instead,
+// so a BRcc_ru6_p on a poison condition arrived here as `undef $r0` and left
+// as a plain `$r0` that nothing defines --
+//
+//   *** Bad machine code: Using an undefined physical register ***
+//
+// on any `br i1 poison`, which rustc emits for the unreachable arm of an
+// uninhabited match.
 //===----------------------------------------------------------------------===//
 
 #include "ARCInstrInfo.h"
@@ -140,8 +156,13 @@ static bool matchSingleBitAnd(const MachineInstr &MI, Register &Dst,
 // Factored out so the liveness/shape logic can't drift between the two call
 // sites. On success, AndMI/Src/Bit describe the fusable `and` and MI's own
 // CC (EQ/NE) operand is left untouched for the caller to read.
+//
+// Src is handed back as the source MachineOperand, not a bare Register, so
+// the caller can rebuild the fused instruction with .add() and carry the
+// operand's flags across -- see the note on operand flags at the top of this
+// file.
 static bool matchBitTestBRcc(MachineInstr *MI, const TargetRegisterInfo *TRI,
-                             MachineInstr *&AndMI, Register &Src,
+                             MachineInstr *&AndMI, MachineOperand *&Src,
                              unsigned &Bit) {
   // Only the immediate compare-and-branch, comparing against 0 with EQ / NE.
   if (MI->getOpcode() != ARC::BRcc_ru6_p)
@@ -160,8 +181,8 @@ static bool matchBitTestBRcc(MachineInstr *MI, const TargetRegisterInfo *TRI,
   if (!Prev)
     return false;
 
-  Register AndDst;
-  if (!matchSingleBitAnd(*Prev, AndDst, Src, Bit) || AndDst != B)
+  Register AndDst, SrcReg;
+  if (!matchSingleBitAnd(*Prev, AndDst, SrcReg, Bit) || AndDst != B)
     return false;
 
   // B must not be needed after the branch: its only use is this compare, so
@@ -179,6 +200,7 @@ static bool matchBitTestBRcc(MachineInstr *MI, const TargetRegisterInfo *TRI,
   // holding its incoming value, which is exactly what the bit test needs.)
 
   AndMI = Prev;
+  Src = &Prev->getOperand(1);
   return true;
 }
 
@@ -230,7 +252,7 @@ static bool matchBitTestBRcc(MachineInstr *MI, const TargetRegisterInfo *TRI,
 // equivalent regardless of why the shift was emitted.
 static bool matchRangeTestBRccShift(MachineInstr *MI,
                                     const TargetRegisterInfo *TRI,
-                                    MachineInstr *&LsrMI, Register &Src,
+                                    MachineInstr *&LsrMI, MachineOperand *&Src,
                                     unsigned &K) {
   if (MI->getOpcode() != ARC::BRcc_ru6_p)
     return false;
@@ -272,7 +294,7 @@ static bool matchRangeTestBRccShift(MachineInstr *MI,
     return false;
 
   LsrMI = Prev;
-  Src = Prev->getOperand(1).getReg();
+  Src = &Prev->getOperand(1);
   K = static_cast<unsigned>(KV);
   return true;
 }
@@ -287,7 +309,7 @@ static bool matchRangeTestBRccShift(MachineInstr *MI,
 // ARCISelLowering.cpp, is likewise kept as a defensive fallback there).
 static bool matchRangeTestBRccLimm(MachineInstr *MI,
                                    const TargetRegisterInfo *TRI,
-                                   MachineInstr *&MovMI, Register &Src,
+                                   MachineInstr *&MovMI, MachineOperand *&Src,
                                    unsigned &K) {
   // Only the register-form compare-and-branch, LO (ult) or HS (uge).
   if (MI->getOpcode() != ARC::BRcc_rr_p)
@@ -324,7 +346,7 @@ static bool matchRangeTestBRccLimm(MachineInstr *MI,
     return false;
 
   MovMI = Prev;
-  Src = MI->getOperand(1).getReg();
+  Src = &MI->getOperand(1);
   K = Log2_32(V);
   return true;
 }
@@ -345,7 +367,7 @@ static bool matchRangeTestBRccLimm(MachineInstr *MI,
 // the LIMM threshold is needed here.
 static bool matchMaskZeroBRccValue(MachineInstr *MI,
                                    const TargetRegisterInfo *TRI,
-                                   MachineInstr *&BmskMI, Register &Src,
+                                   MachineInstr *&BmskMI, MachineOperand *&Src,
                                    unsigned &K) {
   if (MI->getOpcode() != ARC::BRcc_ru6_p)
     return false;
@@ -377,7 +399,7 @@ static bool matchMaskZeroBRccValue(MachineInstr *MI,
     return false;
 
   BmskMI = Prev;
-  Src = Prev->getOperand(1).getReg();
+  Src = &Prev->getOperand(1);
   K = static_cast<unsigned>(Imm.getImm());
   return true;
 }
@@ -395,7 +417,7 @@ static bool matchMaskZeroBRccValue(MachineInstr *MI,
 // check.
 static bool matchMaskZeroBRccLimm(MachineInstr *MI,
                                   const TargetRegisterInfo *TRI,
-                                  MachineInstr *&AndMI, Register &Src,
+                                  MachineInstr *&AndMI, MachineOperand *&Src,
                                   unsigned &K) {
   if (MI->getOpcode() != ARC::BRcc_ru6_p)
     return false;
@@ -430,7 +452,7 @@ static bool matchMaskZeroBRccLimm(MachineInstr *MI,
     return false;
 
   AndMI = Prev;
-  Src = Prev->getOperand(1).getReg();
+  Src = &Prev->getOperand(1);
   K = Log2_32(M + 1) - 1;
   return true;
 }
@@ -463,7 +485,7 @@ bool ARCBranchFinalize::tryFuseBBIT(MachineInstr *MI) const {
     return false;
 
   MachineInstr *AndMI;
-  Register Src;
+  MachineOperand *Src;
   unsigned Bit;
   if (!matchBitTestBRcc(MI, TRI, AndMI, Src, Bit))
     return false;
@@ -472,7 +494,7 @@ bool ARCBranchFinalize::tryFuseBBIT(MachineInstr *MI) const {
   unsigned Opc = (CC == ARCCC::NE) ? ARC::ARC_BBIT1_b_u6_s9_d
                                    : ARC::ARC_BBIT0_b_u6_s9_d;
   BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(Opc))
-      .addReg(Src)
+      .add(*Src)
       .addImm(Bit)
       .addMBB(MI->getOperand(0).getMBB());
   AndMI->eraseFromParent();
@@ -488,7 +510,7 @@ bool ARCBranchFinalize::tryFuseFlagRecycle(MachineInstr *MI) const {
     return false;
 
   MachineInstr *ProducerMI;
-  Register Src;
+  MachineOperand *Src;
   unsigned K;
 
   // Range test: try the actually-reached shift shape first, then the
@@ -501,7 +523,7 @@ bool ARCBranchFinalize::tryFuseFlagRecycle(MachineInstr *MI) const {
     int64_t CC = MI->getOperand(3).getImm();
     BuildMI(*MI->getParent(), MI, MI->getDebugLoc(),
             TII->get(ARC::ARC_LSR_z_b_u6_f))
-        .addReg(Src)
+        .add(*Src)
         .addImm(K);
     BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(ARC::Bcc))
         .addMBB(MI->getOperand(0).getMBB())
@@ -521,7 +543,7 @@ bool ARCBranchFinalize::tryFuseFlagRecycle(MachineInstr *MI) const {
     int64_t FlagCC = (CC == ARCCC::LO) ? ARCCC::EQ : ARCCC::NE;
     BuildMI(*MI->getParent(), MI, MI->getDebugLoc(),
             TII->get(ARC::ARC_LSR_z_b_u6_f))
-        .addReg(Src)
+        .add(*Src)
         .addImm(K);
     BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(ARC::Bcc))
         .addMBB(MI->getOperand(0).getMBB())
@@ -541,7 +563,7 @@ bool ARCBranchFinalize::tryFuseFlagRecycle(MachineInstr *MI) const {
     int64_t CC = MI->getOperand(3).getImm();
     BuildMI(*MI->getParent(), MI, MI->getDebugLoc(),
             TII->get(ARC::ARC_BMSK_z_b_u6_f))
-        .addReg(Src)
+        .add(*Src)
         .addImm(K);
     BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(ARC::Bcc))
         .addMBB(MI->getOperand(0).getMBB())
@@ -556,7 +578,7 @@ bool ARCBranchFinalize::tryFuseFlagRecycle(MachineInstr *MI) const {
     int64_t CC = MI->getOperand(3).getImm();
     BuildMI(*MI->getParent(), MI, MI->getDebugLoc(),
             TII->get(ARC::ARC_BMSK_z_b_u6_f))
-        .addReg(Src)
+        .add(*Src)
         .addImm(K);
     BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(ARC::Bcc))
         .addMBB(MI->getOperand(0).getMBB())
@@ -580,7 +602,11 @@ void ARCBranchFinalize::replaceWithBRcc(MachineInstr *MI) const {
     BuildMI(*MI->getParent(), MI, MI->getDebugLoc(),
             TII->get(getBRccForPseudo(MI)))
         .addMBB(MI->getOperand(0).getMBB())
-        .addReg(MI->getOperand(1).getReg())
+        // .add(), NOT .addReg(getReg()) -- see the note on operand flags at
+        // the top of this file. Dropping `undef` here produced
+        // "Using an undefined physical register" for any branch on a poison
+        // condition, e.g. an unreachable arm of a `br i1 poison`.
+        .add(MI->getOperand(1))
         .add(MI->getOperand(2))
         .addImm(getCCForBRcc(MI->getOperand(3).getImm()));
     MI->eraseFromParent();
@@ -603,7 +629,7 @@ void ARCBranchFinalize::replaceWithCmpBcc(MachineInstr *MI) const {
   // above (and for the identical SchedClass-resolution reason).
   if (ST && ST->isARCompact()) {
     MachineInstr *AndMI;
-    Register Src;
+    MachineOperand *Src;
     unsigned Bit;
     if (matchBitTestBRcc(MI, TRI, AndMI, Src, Bit)) {
       LLVM_DEBUG(dbgs() << "Replacing pseudo branch with BTST + Bcc "
@@ -614,7 +640,7 @@ void ARCBranchFinalize::replaceWithCmpBcc(MachineInstr *MI) const {
       // immediate field.
       BuildMI(*MI->getParent(), MI, MI->getDebugLoc(),
               TII->get(ARC::ARC_BTST_b_u6))
-          .addReg(Src)
+          .add(*Src)
           .addImm(Bit);
       BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(ARC::Bcc))
           .addMBB(MI->getOperand(0).getMBB())
@@ -628,7 +654,7 @@ void ARCBranchFinalize::replaceWithCmpBcc(MachineInstr *MI) const {
   LLVM_DEBUG(dbgs() << "Replacing pseudo branch with Cmp + Bcc\n");
   BuildMI(*MI->getParent(), MI, MI->getDebugLoc(),
           TII->get(getCmpForPseudo(MI)))
-      .addReg(MI->getOperand(1).getReg())
+      .add(MI->getOperand(1)) // .add(), not .addReg() -- preserve flags
       .add(MI->getOperand(2));
   BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(ARC::Bcc))
       .addMBB(MI->getOperand(0).getMBB())
@@ -698,13 +724,26 @@ void ARCBranchFinalize::expandBRCarry(MachineInstr *MI) const {
          "BRCARRY_p compares unsigned: performSetccCarryBrCombine must only "
          "ever build it with ARCCC::LO (a <u b, C=1) or ARCCC::HS (a >=u b, "
          "C=0)");
-  BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(ARC::CMP_rr))
-      .addReg(MI->getOperand(1).getReg())
-      .addReg(MI->getOperand(2).getReg());
-  BuildMI(*MI->getParent(), MI, MI->getDebugLoc(),
-          TII->get(ARC::SBC_f_null_rrr))
-      .addReg(MI->getOperand(3).getReg())
-      .addReg(MI->getOperand(4).getReg());
+  // .add(), not .addReg(getReg()) -- preserve operand flags (see the note at
+  // the top of this file).
+  MachineInstr *CmpMI =
+      BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(ARC::CMP_rr))
+          .add(MI->getOperand(1))
+          .add(MI->getOperand(2));
+  MachineInstr *SbcMI = BuildMI(*MI->getParent(), MI, MI->getDebugLoc(),
+                                TII->get(ARC::SBC_f_null_rrr))
+                            .add(MI->getOperand(3))
+                            .add(MI->getOperand(4));
+  // A `kill` on the pseudo means "last read by this ONE instruction". Now that
+  // the one instruction has become three, the kill belongs only on the last
+  // emitted reader of that register. The two halves routinely share a physreg
+  // -- `BRCARRY_p %bb, killed $r2, killed $r3, killed $r0, $r3` is ordinary
+  // output, with $r3 as both the low operand and the high one -- so copying
+  // the flag verbatim would retire $r3 at the `cmp` and leave the `sbc.f`
+  // reading a dead register ("Using an undefined physical register").
+  for (MachineOperand &MO : CmpMI->explicit_uses())
+    if (MO.isReg() && MO.isKill() && SbcMI->readsRegister(MO.getReg(), TRI))
+      MO.setIsKill(false);
   BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(ARC::Bcc))
       .addMBB(MI->getOperand(0).getMBB())
       .addImm(CC);
