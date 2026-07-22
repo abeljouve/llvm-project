@@ -203,6 +203,13 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeARCTarget() {
   initializeARCDelaySlotFillerPass(PR);
   initializeARCSizeReductionPass(PR);
   initializeARCLowOverheadLoopsPass(PR);
+  // Both of these carry INITIALIZE_PASS macros but were never handed to the
+  // registry, so their -run-pass / -stop-after / -print-after names did not
+  // resolve and neither could be driven from a MIR test in isolation --
+  // ARCOptAddrMode was also invisible to -print-after-all, which is what hid
+  // the stale kill flags it used to leave behind.
+  initializeARCOptAddrModePass(PR);
+  initializeARCBranchFinalizePass(PR);
 }
 
 TargetTransformInfo

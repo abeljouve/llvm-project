@@ -29,13 +29,6 @@
 
 using namespace llvm;
 
-namespace llvm {
-
-void initializeARCBranchFinalizePass(PassRegistry &Registry);
-FunctionPass *createARCBranchFinalizePass();
-
-} // end namespace llvm
-
 namespace {
 
 class ARCBranchFinalize : public MachineFunctionPass {

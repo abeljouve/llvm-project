@@ -1,0 +1,98 @@
+# RUN: llc -mtriple=arceb-unknown-unknown-elf -mcpu=arc700eb \
+# RUN:     -run-pass=arc-addr-mode -verify-machineinstrs -o - %s | FileCheck %s
+
+# Folding an ADD into a post-increment ld.ab/st.ab moves register uses around,
+# which invalidates kill flags the pass must then drop. Leaving one behind is
+# invalid MIR: the machine verifier reports "Using a killed virtual register",
+# and RegAllocFast -- the -O0 allocator, the only one that trusts these flags
+# rather than rebuilding liveness through LiveIntervals -- asserts "Invalid
+# kill flag". -verify-machineinstrs is what actually enforces this; the CHECK
+# lines pin the surviving code down so a future rewrite cannot pass the
+# verifier by simply declining to fold.
+
+--- |
+  target datalayout = "E-m:e-p:32:32-i1:8:32-i8:8:32-i16:16:32-i32:32:32-f32:32:32-i64:32-f64:32-a:0:32-n32"
+  target triple = "arceb-unknown-unknown-elf"
+
+  define { i8, i8 } @past_use_gains_a_use_of_the_writeback_reg(ptr %p) { ret { i8, i8 } zeroinitializer }
+  define void @hoisted_store_keeps_its_value_alive(ptr %p, i32 %v) { ret void }
+...
+---
+# The write-back register GAINS a use: fixPastUses rebases the later load off
+# the old base %0 onto %1, so the store's `killed %1` -- correct when the store
+# was the only use of the ADD result -- is no longer the last use of %1.
+#
+# This is the shape rustc emits at -O0 for a two-field struct read
+# (`{ *p, *(p+1) }`), which is why every debug build of core aborted here.
+name:            past_use_gains_a_use_of_the_writeback_reg
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+  - { id: 4, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+body:             |
+  bb.0:
+    liveins: $r0
+
+    %0:gpr32 = COPY $r0
+    %1:gpr32 = ADD_rru6 %0, 1
+    %2:gpr32 = LDB_rs9 %0, 0 :: (load (s8) from %ir.p)
+    %3:gpr32 = MOV_rs12 0
+    ST_rs9 killed %1, killed %3, 0 :: (store (s32) into `ptr null`)
+    %4:gpr32 = LDB_rs9 %0, 0 :: (load (s8) from %ir.p)
+    $r0 = COPY %2
+    $r1 = COPY %4
+    J_S_BLINK implicit $blink, implicit $r0, implicit $r1
+...
+
+# CHECK-LABEL: name: past_use_gains_a_use_of_the_writeback_reg
+# CHECK:      %2:gpr32, %1:gpr32 = LDB_AB_rs9 %0, 1
+# The store must no longer claim to kill %1 -- the rebased load below reads it.
+# CHECK-NEXT: %3:gpr32 = MOV_rs12 0
+# CHECK-NEXT: ST_rs9 %1, killed %3, 0
+# CHECK-NEXT: %4:gpr32 = LDB_rs9 %1, -1
+
+---
+# The store is HOISTED up to the ADD, above `%7 = ADD_rru6 %5, 3`. Its
+# `killed %5` was correct at the old position (last use of the stored value)
+# and is stale at the new one, because that ADD now reads %5 afterwards.
+name:            hoisted_store_keeps_its_value_alive
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+  - { id: 4, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+  - { reg: '$r1', virtual-reg: '%2' }
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    %0:gpr32 = COPY $r0
+    %2:gpr32 = COPY $r1
+    %1:gpr32 = ADD_rru6 %0, 4
+    ; A use of the ADD result before the store: blocks sinking the ADD down,
+    ; so the pass takes the hoist-the-store-up path instead.
+    %3:gpr32 = ADD_rru6 %1, 8
+    ; This reads %2 and stays put, so it ends up AFTER the hoisted store.
+    %4:gpr32 = ADD_rru6 %2, 3
+    ST_rs9 killed %2, %0, 0 :: (store (s32) into %ir.p)
+    $r0 = COPY %3
+    $r1 = COPY %4
+    J_S_BLINK implicit $blink, implicit $r0, implicit $r1
+...
+
+# CHECK-LABEL: name: hoisted_store_keeps_its_value_alive
+# The hoisted store must no longer claim to kill %2 -- the ADD below reads it.
+# CHECK:      %1:gpr32 = ST_AB_rs9 %2, %0, 4
+# CHECK-NEXT: %3:gpr32 = ADD_rru6 %1, 8
+# CHECK-NEXT: %4:gpr32 = ADD_rru6 %2, 3
