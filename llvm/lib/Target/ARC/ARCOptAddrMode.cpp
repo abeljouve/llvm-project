@@ -44,8 +44,6 @@ static cl::opt<unsigned> ArcKillAddrMode("arc-kill-addr-mode", cl::init(0),
 #define VIEW_AFTER() ((ArcKillAddrMode & 0x0008) != 0)
 #define KILL_PASS() ((ArcKillAddrMode & 0x0010) != 0)
 
-FunctionPass *createARCOptAddrMode();
-void initializeARCOptAddrModePass(PassRegistry &);
 } // end namespace llvm
 
 namespace {
@@ -267,6 +265,15 @@ MachineInstr *ARCOptAddrMode::tryToCombine(MachineInstr &Ldst) {
 
     MachineInstr *Result = Ldst.getNextNode();
     if (MoveTo == &Add) {
+      // Ldst is hoisted UP to sit right after Add, above whatever code lay
+      // between them. A `killed` flag on one of its own register uses was
+      // computed for the OLD position: it asserted "no later use of this
+      // register". At the new position that claim can be false, because any
+      // use in the skipped-over range now comes after it. Drop those flags
+      // before the move (see the kill-flag note below).
+      for (const MachineOperand &MO : Ldst.explicit_uses())
+        if (MO.isReg() && MO.getReg().isVirtual())
+          MRI->clearKillFlags(MO.getReg());
       Ldst.removeFromParent();
       Add.getParent()->insertAfter(Add.getIterator(), &Ldst);
     }
@@ -282,6 +289,36 @@ MachineInstr *ARCOptAddrMode::tryToCombine(MachineInstr &Ldst) {
     assert(NewOpcode > 0 && "No postincrement form found");
     changeToAddrMode(Ldst, NewOpcode, NewBaseReg, Add.getOperand(2));
     Add.eraseFromParent();
+
+    // The fold moves register uses around, so any kill flag on the two
+    // registers it touches is now an unchecked claim about liveness that the
+    // pass has just invalidated. Drop them -- a kill flag is an optimization
+    // hint, so clearing one is always safe, while leaving a stale one is
+    // invalid MIR ("Using a killed virtual register" per the machine
+    // verifier).
+    //
+    // NewBaseReg GAINS uses: fixPastUses rebases every past use of the old
+    // base onto it, so a use that was the last one before the fold -- and
+    // therefore carried `killed` -- is no longer last:
+    //
+    //     %1 = ADD %0, 1                    %2, %1 = LDB_AB %0, 1
+    //     %2 = LDB %0, 0            ==>     ST killed %1, %3, 0   <-- stale
+    //     ST killed %1, %3, 0               %4 = LDB %1, -1       <-- new use
+    //     %4 = LDB %0, 0
+    //
+    // MachineOperand::setReg also carries a rebased use's `killed` flag over
+    // from the old base onto NewBaseReg, which is the same defect reached
+    // from the other end.
+    //
+    // BaseReg LOSES uses (the erased ADD, plus every rebased one) and, in the
+    // hoist case, had its remaining use physically relocated.
+    //
+    // Only RegAllocFast -- the -O0 allocator -- trusts these flags, so this
+    // surfaced as an "Invalid kill flag" assertion in debug builds only.
+    // RegAllocGreedy rebuilds liveness from scratch through LiveIntervals and
+    // silently tolerated the contradiction at -O1 and above.
+    MRI->clearKillFlags(NewBaseReg);
+    MRI->clearKillFlags(B);
 
     return Result;
   }

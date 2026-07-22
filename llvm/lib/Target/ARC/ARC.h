@@ -35,6 +35,8 @@ void initializeARCDAGToDAGISelLegacyPass(PassRegistry &);
 void initializeARCDelaySlotFillerPass(PassRegistry &);
 void initializeARCSizeReductionPass(PassRegistry &);
 void initializeARCLowOverheadLoopsPass(PassRegistry &);
+void initializeARCOptAddrModePass(PassRegistry &);
+void initializeARCBranchFinalizePass(PassRegistry &);
 
 /// Whether zero-overhead hardware-loop (LP) formation is enabled. Reflects the
 /// hidden -arc-hardware-loops command-line flag, which defaults to OFF: the
