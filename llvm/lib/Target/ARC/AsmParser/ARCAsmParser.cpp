@@ -31,6 +31,7 @@
 //       j     [reg] / <expr>           (long form, no delay slot)
 //       j_s   [blink]
 //       j.d   [blink]
+//       j.f   [ilink1] / [ilink2]  (interrupt / exception return)
 //       lr / sr [aux]  (aux-register access, u6 / s12 / limm)
 //       rtie / nop / nop_s / sync / sleep / brk  (zero-operand)
 //       swi / trap0 / brk_s / unimp_s            (zero-operand)
@@ -252,6 +253,7 @@ class ARCAsmParser : public MCTargetAsmParser {
   bool emitJ(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
   bool emitJsBlink(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
   bool emitJdBlink(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
+  bool emitJfIlink(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
   bool emitLr(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
   bool emitSr(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
   bool emitPushPop(SMLoc IDLoc, StringRef Name, OperandVector &Operands,
@@ -326,6 +328,10 @@ static MCRegister matchRegisterName(StringRef Name) {
       .Case("gp", ARC::GP)
       .Case("blink", ARC::BLINK)
       .Case("ilink", ARC::ILINK)
+      // ARCompact names the two interrupt link registers ILINK1 (r29) and
+      // ILINK2 (r30); the register file models r29 as ILINK.
+      .Case("ilink1", ARC::ILINK)
+      .Case("ilink2", ARC::R30)
       .Case("pcl", ARC::R63)
       // r60 doubles as the zero-overhead-loop counter LP_COUNT. Accept the
       // architectural alias `lp_count` as a destination/source name so
@@ -1354,6 +1360,30 @@ bool ARCAsmParser::emitJdBlink(SMLoc IDLoc, OperandVector &Operands,
   return false;
 }
 
+// `j.f [ilink1]` / `j.f [ilink2]` — the ARCompact interrupt / exception
+// return: jump to ILINKn and restore STATUS32 from STATUS32_L1 / _L2. Same
+// J encoding as `j [rC]` (major 0x04, sub-opcode 0x20, P = 00) with the F
+// bit (15) set: 0x20208000 | (C << 6), i.e. 0x20208740 for ILINK1 (r29) and
+// 0x20208780 for ILINK2 (r30) -- the td defs ARC_J_ilink1 / ARC_J_ilink2,
+// which are isCodeGenOnly, so the word is emitted raw like `j.d`. The ISA
+// gives the F form only with ILINK1/2 as the target; any other register
+// raises an Instruction Error, so it is refused here.
+bool ARCAsmParser::emitJfIlink(SMLoc IDLoc, OperandVector &Operands,
+                               MCStreamer &Out) {
+  if (Operands.size() != 2)
+    return Error(IDLoc, "expected `j.f [ilink1]` or `j.f [ilink2]`");
+  auto &MemOp = static_cast<ARCOperand &>(*Operands[1]);
+  if (MemOp.Kind != ARCOperand::Memory || MemOp.getMemBase() == MCRegister() ||
+      MemOp.getMemOffset() != 0)
+    return Error(IDLoc, "expected `j.f [ilink1]` or `j.f [ilink2]`");
+  MCRegister R = MemOp.getMemBase();
+  if (R != ARC::ILINK && R != ARC::R30)
+    return Error(IDLoc, "j.f target must be ilink1 or ilink2 (any other "
+                        "register raises an Instruction Error)");
+  emitRawInsn32(Out, 0x20208000u | ((regEncoding(R) & 0x3F) << 6));
+  return false;
+}
+
 // ===========================================================================
 // Top-level dispatch
 // ===========================================================================
@@ -1473,6 +1503,8 @@ bool ARCAsmParser::matchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
     return emitJsBlink(IDLoc, Operands, Out);
   if (Name == "j.d")
     return emitJdBlink(IDLoc, Operands, Out);
+  if (Name == "j.f")
+    return emitJfIlink(IDLoc, Operands, Out);
   if (Name == "lr")
     return emitLr(IDLoc, Operands, Out);
   if (Name == "sr")
