@@ -33,6 +33,8 @@
 //       j.d   [blink]
 //       lr / sr [aux]  (aux-register access, u6 / s12 / limm)
 //       rtie / nop / nop_s / sync / sleep / brk  (zero-operand)
+//       swi / trap0 / brk_s / unimp_s            (zero-operand)
+//       sleep u6 / trap_s u6                     (u6 operand)
 //
 // Every other mnemonic returns a parse error so misuse is immediately
 // visible. The parser builds an MCInst for each accepted statement and
@@ -240,6 +242,8 @@ class ARCAsmParser : public MCTargetAsmParser {
                  MCStreamer &Out, unsigned RRR, unsigned RRU6);
   bool emitZeroOp(SMLoc IDLoc, StringRef Name, OperandVector &Operands,
                   MCStreamer &Out, unsigned Opcode);
+  bool emitSleep(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
+  bool emitTrapS(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
   bool emitBr(SMLoc IDLoc, StringRef Name, OperandVector &Operands,
               MCStreamer &Out);
   bool emitBUncond(SMLoc IDLoc, OperandVector &Operands, MCStreamer &Out);
@@ -879,10 +883,11 @@ bool ARCAsmParser::emitBitOp(SMLoc IDLoc, StringRef Name,
   return false;
 }
 
-// Zero-operand mnemonics: `rtie`, `nop`, `nop_s`. The underlying td defs
-// pin every instruction bit via `let Inst{31-0} = ...` so we just build
-// an empty MCInst and let the streamer pick the right width (4 bytes for
-// `rtie` / `nop`, 2 bytes for `nop_s`).
+// Zero-operand mnemonics: `rtie`, `nop`, `nop_s`, `sync`, `sleep`, `brk`,
+// `swi` / `trap0`, `brk_s`, `unimp_s`. The underlying td defs pin every
+// instruction bit via `let Inst{31-0} = ...` so we just build an empty
+// MCInst and let the streamer pick the right width (4 bytes for the
+// 32-bit forms, 2 bytes for `nop_s` / `brk_s` / `unimp_s`).
 bool ARCAsmParser::emitZeroOp(SMLoc IDLoc, StringRef Name,
                                OperandVector &Operands, MCStreamer &Out,
                                unsigned Opcode) {
@@ -901,6 +906,54 @@ bool ARCAsmParser::emitZeroOp(SMLoc IDLoc, StringRef Name,
                          "for interrupt return)");
   MCInst Inst;
   Inst.setOpcode(Opcode);
+  Inst.setLoc(IDLoc);
+  Out.emitInstruction(Inst, getSTI());
+  return false;
+}
+
+// Parse the single constant u6 operand of `sleep u6` / `trap_s u6`.
+// Returns true on any shape or range error; the caller reports it.
+static bool parseU6Operand(ARCOperand &Op, int64_t &V) {
+  if (Op.Kind != ARCOperand::Immediate)
+    return true;
+  auto *CE = dyn_cast<MCConstantExpr>(Op.getImmExpr());
+  if (!CE)
+    return true;
+  V = CE->getValue();
+  return !fitsInUnsigned(V, 6);
+}
+
+// `sleep` / `sleep u6` — 32-bit zero-operand instruction (major 0x04,
+// sub-opcode 0x2F, ZOP 0x3F, sub-opcode3 B = 0x01). The bare form is the
+// pinned td def ARC_SLEEP_0 (0x216F003F). The operand form uses the same
+// REG_U6IMM format (P = 01) with the u6 in the C field, bits [11:6]:
+// 0x216F003F | (u6 << 6). There is no td def carrying the operand, so the
+// word is emitted raw, like the other operand forms this parser builds by
+// hand. The register (`sleep c`, P = 00) form is not supported.
+bool ARCAsmParser::emitSleep(SMLoc IDLoc, OperandVector &Operands,
+                             MCStreamer &Out) {
+  if (Operands.size() == 1)
+    return emitZeroOp(IDLoc, "sleep", Operands, Out, ARC::ARC_SLEEP_0);
+  int64_t V = 0;
+  if (Operands.size() != 2 ||
+      parseU6Operand(static_cast<ARCOperand &>(*Operands[1]), V))
+    return Error(IDLoc, "expected `sleep` or `sleep <u6>` (constant 0..63)");
+  emitRawInsn32(Out, 0x216F003Fu | ((uint32_t)V << 6));
+  return false;
+}
+
+// `trap_s u6` — 16-bit trap (major 0x0F, sub-opcode 0x1E), u6 in bits
+// [10:5]: 0x781E | (u6 << 5). Maps onto the td def ARC_TRAP_S_u6, whose
+// encoder places the immediate operand in those bits.
+bool ARCAsmParser::emitTrapS(SMLoc IDLoc, OperandVector &Operands,
+                             MCStreamer &Out) {
+  int64_t V = 0;
+  if (Operands.size() != 2 ||
+      parseU6Operand(static_cast<ARCOperand &>(*Operands[1]), V))
+    return Error(IDLoc, "expected `trap_s <u6>` (constant 0..63)");
+  MCInst Inst;
+  Inst.setOpcode(ARC::ARC_TRAP_S_u6);
+  Inst.addOperand(MCOperand::createImm(V));
   Inst.setLoc(IDLoc);
   Out.emitInstruction(Inst, getSTI());
   return false;
@@ -1391,9 +1444,19 @@ bool ARCAsmParser::matchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
   if (Name == "sync")
     return emitZeroOp(IDLoc, Name, Operands, Out, ARC::ARC_SYNC_0);
   if (Name == "sleep")
-    return emitZeroOp(IDLoc, Name, Operands, Out, ARC::ARC_SLEEP_0);
+    return emitSleep(IDLoc, Operands, Out);
   if (Name == "brk")
     return emitZeroOp(IDLoc, Name, Operands, Out, ARC::ARC_BRK_0);
+  // `swi` and `trap0` are two names for the same ZOP encoding (sub-opcode3
+  // B = 0x02, 0x226F003F); the ARC700 documentation recommends `trap0`.
+  if (Name == "swi" || Name == "trap0")
+    return emitZeroOp(IDLoc, Name, Operands, Out, ARC::ARC_TRAP0_0);
+  if (Name == "brk_s")
+    return emitZeroOp(IDLoc, Name, Operands, Out, ARC::ARC_BRK_S_0);
+  if (Name == "unimp_s")
+    return emitZeroOp(IDLoc, Name, Operands, Out, ARC::ARC_UNIMP_S_0);
+  if (Name == "trap_s")
+    return emitTrapS(IDLoc, Operands, Out);
 
   if (Name == "breq" || Name == "brne" || Name == "brlt" || Name == "brge" ||
       Name == "brlo" || Name == "brhs")
