@@ -95,8 +95,8 @@ private:
 
   // Returns true if all instruction in \p Uses array can be adjusted
   // to accomodate increment of register \p BaseReg by \p Incr
-  bool canFixPastUses(const ArrayRef<MachineInstr *> &Uses,
-                      MachineOperand &Incr, unsigned BaseReg);
+  bool canFixPastUses(const ArrayRef<MachineInstr *> &Uses, int64_t Incr,
+                      unsigned BaseReg);
 
   // Rebase all instructions in \p Uses onto the post-increment write-back
   // register \p NewBase (= \p BaseReg + \p Incr), reducing each use's own
@@ -107,9 +107,9 @@ private:
 
   // Change instruction \p Ldst to postincrement form.
   // \p NewBase is register to hold update base value
-  // \p NewOffset is instruction's new offset
+  // \p Incr is the signed amount the base is advanced by
   void changeToAddrMode(MachineInstr &Ldst, unsigned NewOpcode,
-                        unsigned NewBase, MachineOperand &NewOffset);
+                        unsigned NewBase, int64_t Incr);
 
   bool processBasicBlock(MachineBasicBlock &MBB);
 };
@@ -144,6 +144,19 @@ static bool isAddConstantOp(const MachineInstr &MI, int64_t &Amount) {
   default:
     return false;
   }
+}
+
+// \p MI is an ADD/SUB of a register and a U6 literal that adds the signed
+// \p Amount to that register. Return true if it can be rebased onto a register
+// that already holds the old one advanced by \p Incr, and set \p NewImm to
+// the literal it then needs. The literal of a SUB is a magnitude: the signed
+// amount left to add is \p Amount - \p Incr, and the instruction can express it
+// only if that has the sign of its own opcode.
+static bool getRebasedIncrement(const MachineInstr &MI, int64_t Amount,
+                                int64_t Incr, int64_t &NewImm) {
+  int64_t NewAmount = Amount - Incr;
+  NewImm = MI.getOpcode() == ARC::SUB_rru6 ? -NewAmount : NewAmount;
+  return isValidIncrementOffset(NewImm);
 }
 
 // Return true if \p MI dominates of uses of virtual register \p VReg
@@ -254,7 +267,9 @@ MachineInstr *ARCOptAddrMode::tryToCombine(MachineInstr &Ldst) {
     if (!MoveTo)
       continue;
 
-    if (!canFixPastUses(Uses, Add.getOperand(2), B))
+    // Incr is the SIGNED increment: negative when Add is a SUB. The literal
+    // operand of Add is only its magnitude and must not be used in its place.
+    if (!canFixPastUses(Uses, Incr, B))
       continue;
 
     LLVM_DEBUG(MachineInstr *First = &Ldst; MachineInstr *Last = &Add;
@@ -288,7 +303,7 @@ MachineInstr *ARCOptAddrMode::tryToCombine(MachineInstr &Ldst) {
 
     int NewOpcode = ARC::getPostIncOpcode(Ldst.getOpcode());
     assert(NewOpcode > 0 && "No postincrement form found");
-    changeToAddrMode(Ldst, NewOpcode, NewBaseReg, Add.getOperand(2));
+    changeToAddrMode(Ldst, NewOpcode, NewBaseReg, Incr);
     Add.eraseFromParent();
 
     // The fold moves register uses around, so any kill flag on the two
@@ -405,9 +420,8 @@ ARCOptAddrMode::canJoinInstructions(MachineInstr *Ldst, MachineInstr *Add,
 }
 
 bool ARCOptAddrMode::canFixPastUses(const ArrayRef<MachineInstr *> &Uses,
-                                    MachineOperand &Incr, unsigned BaseReg) {
+                                    int64_t Incr, unsigned BaseReg) {
 
-  assert(Incr.isImm() && "Expected immediate increment");
   // Dry-run fixPastUses. After the fold the base register is post-incremented
   // by Incr *in place*, so every past use of it now observes OldBase+Incr.
   // fixPastUses rebases each such use onto the post-increment result and
@@ -417,7 +431,6 @@ bool ARCOptAddrMode::canFixPastUses(const ArrayRef<MachineInstr *> &Uses,
   // running offset, which both diverged from correct post-increment semantics
   // and mangled sibling loads/stores of the same base -- e.g. two byte loads at
   // [B,1]/[B,2] past a `+0xc` advance became [B,0xf]/[B,0xe].)
-  int64_t IncrVal = Incr.getImm();
   for (MachineInstr *MI : Uses) {
     // A volatile/atomic use of the shared base register must not have its
     // base/displacement silently renumbered -- block the whole
@@ -427,10 +440,10 @@ bool ARCOptAddrMode::canFixPastUses(const ArrayRef<MachineInstr *> &Uses,
     // uses in the array.)
     if (MI->hasOrderedMemoryRef())
       return false;
-    int64_t Amount;
+    int64_t Amount, NewImm;
     unsigned BasePos, OffPos;
     if (isAddConstantOp(*MI, Amount)) {
-      if (!isValidIncrementOffset(Amount - IncrVal))
+      if (!getRebasedIncrement(*MI, Amount, Incr, NewImm))
         return false;
     } else if (AII->getBaseAndOffsetPosition(*MI, BasePos, OffPos)) {
       // The use list is every instruction that reads BaseReg in ANY operand,
@@ -456,9 +469,9 @@ bool ARCOptAddrMode::canFixPastUses(const ArrayRef<MachineInstr *> &Uses,
       const MachineOperand &MO = MI->getOperand(OffPos);
       if (!MO.isImm())
         return false;
-      if (!isValidLoadStoreOffset(MO.getImm() - IncrVal)) {
+      if (!isValidLoadStoreOffset(MO.getImm() - Incr)) {
         LLVM_DEBUG(dbgs() << "Use cannot handle displacement "
-                          << (MO.getImm() - IncrVal) << ": " << *MI);
+                          << (MO.getImm() - Incr) << ": " << *MI);
         return false;
       }
     } else {
@@ -478,15 +491,15 @@ void ARCOptAddrMode::fixPastUses(ArrayRef<MachineInstr *> Uses,
   // address. The uses are independent direct users of the old base, so each is
   // fixed on its own -- do NOT carry a running offset between them.
   for (MachineInstr *MI : Uses) {
-    int64_t Amount;
+    int64_t Amount, NewImm;
     unsigned BasePos, OffPos;
     if (isAddConstantOp(*MI, Amount)) {
-      int64_t NewAmount = Amount - Incr;
-      assert(isValidIncrementOffset(NewAmount) &&
-             "New offset won't fit into ADD instr");
+      bool Fits = getRebasedIncrement(*MI, Amount, Incr, NewImm);
+      assert(Fits && "New offset won't fit into ADD/SUB instr");
+      (void)Fits;
       BasePos = 1;
       OffPos = 2;
-      MI->getOperand(OffPos).setImm(NewAmount);
+      MI->getOperand(OffPos).setImm(NewImm);
     } else if (AII->getBaseAndOffsetPosition(*MI, BasePos, OffPos)) {
       // BaseReg is only the value this store writes; its address does not
       // depend on BaseReg, so there is nothing to rebase (see
@@ -567,8 +580,7 @@ bool ARCOptAddrMode::canHoistLoadStoreTo(MachineInstr *Ldst, MachineInstr *To) {
 // }
 
 void ARCOptAddrMode::changeToAddrMode(MachineInstr &Ldst, unsigned NewOpcode,
-                                      unsigned NewBase,
-                                      MachineOperand &NewOffset) {
+                                      unsigned NewBase, int64_t Incr) {
   bool IsStore = Ldst.mayStore();
   unsigned BasePos, OffPos;
   MachineOperand Src = MachineOperand::CreateImm(0xDEADBEEF);
@@ -589,7 +601,10 @@ void ARCOptAddrMode::changeToAddrMode(MachineInstr &Ldst, unsigned NewOpcode,
   if (IsStore)
     Ldst.addOperand(Src);
   Ldst.addOperand(MachineOperand::CreateReg(BaseReg, false));
-  Ldst.addOperand(NewOffset);
+  // The write-back immediate is a signed S9 literal, so a decrement is
+  // expressed directly as a negative increment.
+  assert(isValidLoadStoreOffset(Incr) && "Increment won't fit into LD/ST");
+  Ldst.addOperand(MachineOperand::CreateImm(Incr));
   LLVM_DEBUG(dbgs() << "[ABAW] New Ldst: " << Ldst);
 }
 

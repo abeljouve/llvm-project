@@ -1,0 +1,401 @@
+# RUN: llc -mtriple=arceb-unknown-unknown-elf -mcpu=arc700eb \
+# RUN:     -run-pass=arc-addr-mode -verify-machineinstrs -o - %s | FileCheck %s
+
+# The pass folds a load/store and an ADD or SUB of its base register by a U6
+# literal into a post-increment ld.ab/st.ab. The literal of a SUB is a
+# magnitude: the base moves DOWN by it, so the write-back immediate of the
+# folded access is its negation, and every later use of the old base is
+# rebased by the signed amount. Using the raw literal instead advances the
+# base the wrong way. The MIR stays well formed either way, so the machine
+# verifier cannot see this; the CHECK lines are what pin it down.
+
+--- |
+  target datalayout = "E-m:e-p:32:32-i1:8:32-i8:8:32-i16:16:32-i32:32:32-f32:32:32-i64:32-f64:32-a:0:32-n32"
+  target triple = "arceb-unknown-unknown-elf"
+
+  define void @sub_after_store(ptr %buf, i8 %v) { ret void }
+  define void @sub_before_load(ptr %buf, i8 %v) { ret void }
+  define void @sub_largest_literal(ptr %buf, i8 %v) { ret void }
+  define void @add_after_store(ptr %buf, i8 %v) { ret void }
+  define void @sub_past_load_in_range(ptr %buf, i8 %v) { ret void }
+  define void @sub_past_load_out_of_range(ptr %buf, i8 %v) { ret void }
+  define void @sub_past_add_in_range(ptr %buf, i8 %v) { ret void }
+  define void @sub_past_add_out_of_range(ptr %buf, i8 %v) { ret void }
+  define void @sub_past_sub(ptr %buf, i8 %v) { ret void }
+  define void @sub_past_smaller_sub(ptr %buf, i8 %v) { ret void }
+  define void @add_past_sub_in_range(ptr %buf, i8 %v) { ret void }
+  define void @add_past_sub_out_of_range(ptr %buf, i8 %v) { ret void }
+...
+---
+# A decrement after the store: st.ab with a negative write-back.
+name:            sub_after_store
+alignment:       4
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+  - { reg: '$r1', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    %1:gpr32 = COPY $r1
+    %0:gpr32 = COPY $r0
+    STB_rs9 %1, %0, 0 :: (store (s8) into %ir.buf)
+    %2:gpr32 = SUB_rru6 %0, 4
+    $r0 = COPY %2
+    J_S_BLINK implicit $blink, implicit $r0
+...
+
+# CHECK-LABEL: name: sub_after_store
+# CHECK:      %2:gpr32 = STB_AB_rs9 %1, %0, -4 :: (store (s8) into %ir.buf)
+# CHECK-NOT:  SUB_rru6
+
+---
+# A decrement before the load, sunk down to it.
+name:            sub_before_load
+alignment:       4
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+  - { reg: '$r1', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    %1:gpr32 = COPY $r1
+    %0:gpr32 = COPY $r0
+    %2:gpr32 = SUB_rru6 %0, 4
+    %3:gpr32 = LDB_rs9 %0, 0 :: (load (s8) from %ir.buf)
+    $r0 = COPY %2
+    $r1 = COPY %3
+    J_S_BLINK implicit $blink, implicit $r0, implicit $r1
+...
+
+# CHECK-LABEL: name: sub_before_load
+# CHECK-NOT:  SUB_rru6
+# CHECK:      %3:gpr32, %2:gpr32 = LDB_AB_rs9 %0, -4 :: (load (s8) from %ir.buf)
+
+---
+# The largest U6 literal still fits the S9 write-back once negated.
+name:            sub_largest_literal
+alignment:       4
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+  - { reg: '$r1', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    %1:gpr32 = COPY $r1
+    %0:gpr32 = COPY $r0
+    STB_rs9 %1, %0, 0 :: (store (s8) into %ir.buf)
+    %2:gpr32 = SUB_rru6 %0, 63
+    $r0 = COPY %2
+    J_S_BLINK implicit $blink, implicit $r0
+...
+
+# CHECK-LABEL: name: sub_largest_literal
+# CHECK:      %2:gpr32 = STB_AB_rs9 %1, %0, -63 :: (store (s8) into %ir.buf)
+
+---
+# An increment is unchanged.
+name:            add_after_store
+alignment:       4
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+  - { reg: '$r1', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    %1:gpr32 = COPY $r1
+    %0:gpr32 = COPY $r0
+    STB_rs9 %1, %0, 0 :: (store (s8) into %ir.buf)
+    %2:gpr32 = ADD_rru6 %0, 4
+    $r0 = COPY %2
+    J_S_BLINK implicit $blink, implicit $r0
+...
+
+# CHECK-LABEL: name: add_after_store
+# CHECK:      %2:gpr32 = STB_AB_rs9 %1, %0, 4 :: (store (s8) into %ir.buf)
+
+---
+# A later access through the old base is rebased onto the write-back register,
+# which is 4 BELOW the old base: its displacement grows by 4. 251 + 4 is the
+# largest S9 displacement.
+name:            sub_past_load_in_range
+alignment:       4
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+  - { reg: '$r1', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    %1:gpr32 = COPY $r1
+    %0:gpr32 = COPY $r0
+    STB_rs9 %1, %0, 0 :: (store (s8) into %ir.buf)
+    %2:gpr32 = SUB_rru6 %0, 4
+    %3:gpr32 = LDB_rs9 %0, 251 :: (load (s8))
+    $r0 = COPY %2
+    $r1 = COPY %3
+    J_S_BLINK implicit $blink, implicit $r0, implicit $r1
+...
+
+# CHECK-LABEL: name: sub_past_load_in_range
+# CHECK:      %2:gpr32 = STB_AB_rs9 %1, %0, -4 :: (store (s8) into %ir.buf)
+# CHECK-NEXT: %3:gpr32 = LDB_rs9 %2, 255 :: (load (s8))
+
+---
+# 252 + 4 does not fit S9: the fold is declined.
+name:            sub_past_load_out_of_range
+alignment:       4
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+  - { reg: '$r1', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    %1:gpr32 = COPY $r1
+    %0:gpr32 = COPY $r0
+    STB_rs9 %1, %0, 0 :: (store (s8) into %ir.buf)
+    %2:gpr32 = SUB_rru6 %0, 4
+    %3:gpr32 = LDB_rs9 %0, 252 :: (load (s8))
+    $r0 = COPY %2
+    $r1 = COPY %3
+    J_S_BLINK implicit $blink, implicit $r0, implicit $r1
+...
+
+# CHECK-LABEL: name: sub_past_load_out_of_range
+# CHECK:      STB_rs9 %1, %0, 0
+# CHECK-NEXT: %2:gpr32 = SUB_rru6 %0, 4
+# CHECK-NEXT: %3:gpr32 = LDB_rs9 %0, 252
+
+---
+# A later ADD of the old base adds 4 more from the write-back register.
+# 59 + 4 is the largest U6 literal.
+name:            sub_past_add_in_range
+alignment:       4
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+  - { reg: '$r1', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    %1:gpr32 = COPY $r1
+    %0:gpr32 = COPY $r0
+    STB_rs9 %1, %0, 0 :: (store (s8) into %ir.buf)
+    %2:gpr32 = SUB_rru6 %0, 4
+    %3:gpr32 = ADD_rru6 %0, 59
+    $r0 = COPY %2
+    $r1 = COPY %3
+    J_S_BLINK implicit $blink, implicit $r0, implicit $r1
+...
+
+# CHECK-LABEL: name: sub_past_add_in_range
+# CHECK:      %2:gpr32 = STB_AB_rs9 %1, %0, -4 :: (store (s8) into %ir.buf)
+# CHECK-NEXT: %3:gpr32 = ADD_rru6 %2, 63
+
+---
+# 60 + 4 does not fit U6, and folding the ADD instead would leave a SUB of 64:
+# no fold at all.
+name:            sub_past_add_out_of_range
+alignment:       4
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+  - { reg: '$r1', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    %1:gpr32 = COPY $r1
+    %0:gpr32 = COPY $r0
+    STB_rs9 %1, %0, 0 :: (store (s8) into %ir.buf)
+    %2:gpr32 = SUB_rru6 %0, 4
+    %3:gpr32 = ADD_rru6 %0, 60
+    $r0 = COPY %2
+    $r1 = COPY %3
+    J_S_BLINK implicit $blink, implicit $r0, implicit $r1
+...
+
+# CHECK-LABEL: name: sub_past_add_out_of_range
+# CHECK:      STB_rs9 %1, %0, 0
+# CHECK-NEXT: %2:gpr32 = SUB_rru6 %0, 4
+# CHECK-NEXT: %3:gpr32 = ADD_rru6 %0, 60
+
+---
+# A later SUB of the old base by more than the folded decrement stays a SUB of
+# the difference.
+name:            sub_past_sub
+alignment:       4
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+  - { reg: '$r1', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    %1:gpr32 = COPY $r1
+    %0:gpr32 = COPY $r0
+    STB_rs9 %1, %0, 0 :: (store (s8) into %ir.buf)
+    %2:gpr32 = SUB_rru6 %0, 4
+    %3:gpr32 = SUB_rru6 %0, 12
+    $r0 = COPY %2
+    $r1 = COPY %3
+    J_S_BLINK implicit $blink, implicit $r0, implicit $r1
+...
+
+# CHECK-LABEL: name: sub_past_sub
+# CHECK:      %2:gpr32 = STB_AB_rs9 %1, %0, -4 :: (store (s8) into %ir.buf)
+# CHECK-NEXT: %3:gpr32 = SUB_rru6 %2, 8
+
+---
+# A later SUB by LESS than the first decrement would need an ADD from that
+# write-back register, which a SUB literal cannot express. The first SUB is
+# not folded; the second one is, and the first is rebased onto it.
+name:            sub_past_smaller_sub
+alignment:       4
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+  - { reg: '$r1', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    %1:gpr32 = COPY $r1
+    %0:gpr32 = COPY $r0
+    STB_rs9 %1, %0, 0 :: (store (s8) into %ir.buf)
+    %2:gpr32 = SUB_rru6 %0, 4
+    %3:gpr32 = SUB_rru6 %0, 1
+    $r0 = COPY %2
+    $r1 = COPY %3
+    J_S_BLINK implicit $blink, implicit $r0, implicit $r1
+...
+
+# CHECK-LABEL: name: sub_past_smaller_sub
+# CHECK:      %3:gpr32 = STB_AB_rs9 %1, %0, -1 :: (store (s8) into %ir.buf)
+# CHECK-NEXT: %2:gpr32 = SUB_rru6 %3, 3
+
+---
+# A later SUB of the old base after a folded increment subtracts 4 more.
+# 59 + 4 is the largest U6 literal.
+name:            add_past_sub_in_range
+alignment:       4
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+  - { reg: '$r1', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    %1:gpr32 = COPY $r1
+    %0:gpr32 = COPY $r0
+    STB_rs9 %1, %0, 0 :: (store (s8) into %ir.buf)
+    %2:gpr32 = ADD_rru6 %0, 4
+    %3:gpr32 = SUB_rru6 %0, 59
+    $r0 = COPY %2
+    $r1 = COPY %3
+    J_S_BLINK implicit $blink, implicit $r0, implicit $r1
+...
+
+# CHECK-LABEL: name: add_past_sub_in_range
+# CHECK:      %2:gpr32 = STB_AB_rs9 %1, %0, 4 :: (store (s8) into %ir.buf)
+# CHECK-NEXT: %3:gpr32 = SUB_rru6 %2, 63
+
+---
+# 60 + 4 does not fit U6, in either order: no fold.
+name:            add_past_sub_out_of_range
+alignment:       4
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gpr32 }
+  - { id: 1, class: gpr32 }
+  - { id: 2, class: gpr32 }
+  - { id: 3, class: gpr32 }
+liveins:
+  - { reg: '$r0', virtual-reg: '%0' }
+  - { reg: '$r1', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r0, $r1
+
+    %1:gpr32 = COPY $r1
+    %0:gpr32 = COPY $r0
+    STB_rs9 %1, %0, 0 :: (store (s8) into %ir.buf)
+    %2:gpr32 = ADD_rru6 %0, 4
+    %3:gpr32 = SUB_rru6 %0, 60
+    $r0 = COPY %2
+    $r1 = COPY %3
+    J_S_BLINK implicit $blink, implicit $r0, implicit $r1
+...
+
+# CHECK-LABEL: name: add_past_sub_out_of_range
+# CHECK:      STB_rs9 %1, %0, 0
+# CHECK-NEXT: %2:gpr32 = ADD_rru6 %0, 4
+# CHECK-NEXT: %3:gpr32 = SUB_rru6 %0, 60
