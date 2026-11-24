@@ -99,10 +99,11 @@ private:
                       MachineOperand &Incr, unsigned BaseReg);
 
   // Rebase all instructions in \p Uses onto the post-increment write-back
-  // register \p NewBase (= old base + \p Incr), reducing each use's own
+  // register \p NewBase (= \p BaseReg + \p Incr), reducing each use's own
   // displacement by \p Incr. Independent per use -- no running offset.
-  void fixPastUses(ArrayRef<MachineInstr *> Uses, unsigned NewBase,
-                   int64_t Incr);
+  // Uses that only read \p BaseReg as a stored value are left untouched.
+  void fixPastUses(ArrayRef<MachineInstr *> Uses, unsigned BaseReg,
+                   unsigned NewBase, int64_t Incr);
 
   // Change instruction \p Ldst to postincrement form.
   // \p NewBase is register to hold update base value
@@ -283,7 +284,7 @@ MachineInstr *ARCOptAddrMode::tryToCombine(MachineInstr &Ldst) {
     // Rebase past uses onto the post-increment's write-back register (the ADD
     // result), NOT the old base: after the fold that register holds base+Incr.
     unsigned NewBaseReg = Add.getOperand(0).getReg();
-    fixPastUses(Uses, NewBaseReg, Incr);
+    fixPastUses(Uses, B, NewBaseReg, Incr);
 
     int NewOpcode = ARC::getPostIncOpcode(Ldst.getOpcode());
     assert(NewOpcode > 0 && "No postincrement form found");
@@ -432,6 +433,26 @@ bool ARCOptAddrMode::canFixPastUses(const ArrayRef<MachineInstr *> &Uses,
       if (!isValidIncrementOffset(Amount - IncrVal))
         return false;
     } else if (AII->getBaseAndOffsetPosition(*MI, BasePos, OffPos)) {
+      // The use list is every instruction that reads BaseReg in ANY operand,
+      // so a store can be in it merely because BaseReg is the VALUE it
+      // stores, through an unrelated address register:
+      //
+      //     STB %v, %b, 0            %n = STB_AB %v, %b, 20
+      //     %n = ADD %b, 20    ==>
+      //     ST %b, %r, 0             ST %b, %r, 0     <-- not ST %b, %n, -20
+      //
+      // Such a use needs no fixing at all -- BaseReg is still a live SSA
+      // value after the fold -- and must not be rebased: its base operand is
+      // not BaseReg, so rewriting it would redirect the store to
+      // [BaseReg + 0] and drop the real destination. fixPastUses skips it
+      // under the same test.
+      if (MI->getOperand(BasePos).getReg() != BaseReg)
+        continue;
+      // A use that already writes BaseReg back carries an increment, not a
+      // displacement, in its immediate; it cannot be re-expressed by
+      // subtracting Incr.
+      if (AII->isPostIncrement(*MI) || AII->isPreIncrement(*MI))
+        return false;
       const MachineOperand &MO = MI->getOperand(OffPos);
       if (!MO.isImm())
         return false;
@@ -448,7 +469,8 @@ bool ARCOptAddrMode::canFixPastUses(const ArrayRef<MachineInstr *> &Uses,
 }
 
 void ARCOptAddrMode::fixPastUses(ArrayRef<MachineInstr *> Uses,
-                                 unsigned NewBase, int64_t Incr) {
+                                 unsigned BaseReg, unsigned NewBase,
+                                 int64_t Incr) {
   // NewBase is the post-increment's write-back register, which holds
   // OldBase + Incr after the folded load/store. Each remaining use of the old
   // base that is ordered after the post-increment must be rebased onto NewBase
@@ -466,6 +488,11 @@ void ARCOptAddrMode::fixPastUses(ArrayRef<MachineInstr *> Uses,
       OffPos = 2;
       MI->getOperand(OffPos).setImm(NewAmount);
     } else if (AII->getBaseAndOffsetPosition(*MI, BasePos, OffPos)) {
+      // BaseReg is only the value this store writes; its address does not
+      // depend on BaseReg, so there is nothing to rebase (see
+      // canFixPastUses).
+      if (MI->getOperand(BasePos).getReg() != BaseReg)
+        continue;
       MachineOperand &MO = MI->getOperand(OffPos);
       assert(MO.isImm() && "expected immediate operand");
       int64_t NewOffset = MO.getImm() - Incr;
