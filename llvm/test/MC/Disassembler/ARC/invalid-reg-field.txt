@@ -1,0 +1,47 @@
+# RUN: llvm-mc -triple=arc -disassemble %s 2>%t.err | FileCheck %s
+# RUN: FileCheck --check-prefix=ERR %s < %t.err
+
+# A register field holding an encoding the GPR32 class cannot represent
+# (32..63) must make the whole instruction fail to decode. Before the
+# hand-written decoders propagated that failure, the MCInst came out one
+# operand short: the printer then either read past the end of the operand
+# list (assertion in printOperand) or printed the remaining operands in the
+# wrong slots.
+
+# lr with an s12 aux index, B = 32.
+# ERR: :[[@LINE+1]]:1: warning: invalid instruction encoding
+0xaa 0x20 0x40 0x48
+
+# lr with a u6 aux index, B = 32.
+# ERR: :[[@LINE+1]]:1: warning: invalid instruction encoding
+0x6a 0x20 0xc0 0x40
+
+# mov.ne B, u6, B = 32.
+# ERR: :[[@LINE+1]]:1: warning: invalid instruction encoding
+0xca 0x20 0x62 0x40
+
+# ld A, [B, s9], base B = 32.
+# ERR: :[[@LINE+1]]:1: warning: invalid instruction encoding
+0x00 0x10 0x00 0x40
+
+# ld A, [limm], A = 32.
+# ERR: :[[@LINE+1]]:1: warning: invalid instruction encoding
+0x00 0x16 0x20 0x70 0x34 0x12 0x78 0x56
+
+# st C, [limm], C = 32.
+# ERR: :[[@LINE+1]]:1: warning: invalid instruction encoding
+0x00 0x1e 0x00 0x78 0x34 0x12 0x78 0x56
+
+# ld A, [B, limm], A = 32.
+# ERR: :[[@LINE+1]]:1: warning: invalid instruction encoding
+0x30 0x20 0xa0 0x0f 0x34 0x12 0x78 0x56
+
+# ld A, [B, limm], B = 32.
+# ERR: :[[@LINE+1]]:1: warning: invalid instruction encoding
+0x30 0x20 0x80 0x4f 0x34 0x12 0x78 0x56
+
+# The same encodings with a GPR32 register still decode.
+# CHECK: lr %r0, [33]
+0xaa 0x20 0x40 0x08
+# CHECK: ld %r1, [305419896]
+0x00 0x16 0x01 0x70 0x34 0x12 0x78 0x56

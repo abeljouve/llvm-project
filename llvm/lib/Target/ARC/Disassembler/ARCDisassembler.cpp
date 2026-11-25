@@ -23,6 +23,7 @@
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/TargetParser/Triple.h"
 
 using namespace llvm;
 using namespace llvm::MCD;
@@ -37,10 +38,14 @@ namespace {
 class ARCDisassembler : public MCDisassembler {
 public:
   std::unique_ptr<MCInstrInfo const> const MCII;
+  // Byte order of the instruction stream, from the target triple (`arc` is
+  // little-endian, `arceb` big-endian).
+  const bool IsBigEndian;
 
   ARCDisassembler(const MCSubtargetInfo &STI, MCContext &Ctx,
                   MCInstrInfo const *MCII)
-      : MCDisassembler(STI, Ctx), MCII(MCII) {}
+      : MCDisassembler(STI, Ctx), MCII(MCII),
+        IsBigEndian(!STI.getTargetTriple().isLittleEndian()) {}
 
   DecodeStatus getInstruction(MCInst &Instr, uint64_t &Size,
                               ArrayRef<uint8_t> Bytes, uint64_t Address,
@@ -49,38 +54,64 @@ public:
 
 } // end anonymous namespace
 
+// Instruction stream layout.
+//
+// ARCompact code is a stream of 16-bit parcels. A 32-bit instruction is two
+// parcels, the one holding bits [31:16] first; a long immediate (LIMM) that
+// follows an instruction is two more parcels, its bits [31:16] first. Each
+// parcel is stored in the target's byte order. So on a big-endian target
+// every 32-bit quantity is a plain big-endian word, while on a little-endian
+// target it is "middle-endian": two little-endian half-words, high half
+// first.
+//
+// The decoder tables see the logical value: the instruction in the low bits
+// and the LIMM above it (Inst{47-16} for a 16-bit instruction, Inst{63-32}
+// for a 32-bit one).
+
+static uint32_t readParcel16(ArrayRef<uint8_t> Bytes, unsigned Off,
+                             bool IsBigEndian) {
+  if (IsBigEndian)
+    return (uint32_t(Bytes[Off]) << 8) | uint32_t(Bytes[Off + 1]);
+  return uint32_t(Bytes[Off]) | (uint32_t(Bytes[Off + 1]) << 8);
+}
+
+static uint32_t readWord32(ArrayRef<uint8_t> Bytes, unsigned Off,
+                           bool IsBigEndian) {
+  return (readParcel16(Bytes, Off, IsBigEndian) << 16) |
+         readParcel16(Bytes, Off + 2, IsBigEndian);
+}
+
 static bool readInstruction32(ArrayRef<uint8_t> Bytes, uint64_t Address,
-                              uint64_t &Size, uint32_t &Insn) {
+                              uint64_t &Size, uint32_t &Insn,
+                              bool IsBigEndian) {
   Size = 4;
-  // Read 2 16-bit values, but swap hi/lo parts.
-  Insn =
-      (Bytes[0] << 16) | (Bytes[1] << 24) | (Bytes[2] << 0) | (Bytes[3] << 8);
+  Insn = readWord32(Bytes, 0, IsBigEndian);
   return true;
 }
 
 static bool readInstruction64(ArrayRef<uint8_t> Bytes, uint64_t Address,
-                              uint64_t &Size, uint64_t &Insn) {
+                              uint64_t &Size, uint64_t &Insn,
+                              bool IsBigEndian) {
   Size = 8;
-  Insn = ((uint64_t)Bytes[0] << 16) | ((uint64_t)Bytes[1] << 24) |
-         ((uint64_t)Bytes[2] << 0) | ((uint64_t)Bytes[3] << 8) |
-         ((uint64_t)Bytes[4] << 48) | ((uint64_t)Bytes[5] << 56) |
-         ((uint64_t)Bytes[6] << 32) | ((uint64_t)Bytes[7] << 40);
+  Insn = uint64_t(readWord32(Bytes, 0, IsBigEndian)) |
+         (uint64_t(readWord32(Bytes, 4, IsBigEndian)) << 32);
   return true;
 }
 
 static bool readInstruction48(ArrayRef<uint8_t> Bytes, uint64_t Address,
-                              uint64_t &Size, uint64_t &Insn) {
+                              uint64_t &Size, uint64_t &Insn,
+                              bool IsBigEndian) {
   Size = 6;
-  Insn = ((uint64_t)Bytes[0] << 0) | ((uint64_t)Bytes[1] << 8) |
-         ((uint64_t)Bytes[2] << 32) | ((uint64_t)Bytes[3] << 40) |
-         ((uint64_t)Bytes[4] << 16) | ((uint64_t)Bytes[5] << 24);
+  Insn = uint64_t(readParcel16(Bytes, 0, IsBigEndian)) |
+         (uint64_t(readWord32(Bytes, 2, IsBigEndian)) << 16);
   return true;
 }
 
 static bool readInstruction16(ArrayRef<uint8_t> Bytes, uint64_t Address,
-                              uint64_t &Size, uint32_t &Insn) {
+                              uint64_t &Size, uint32_t &Insn,
+                              bool IsBigEndian) {
   Size = 2;
-  Insn = (Bytes[0] << 0) | (Bytes[1] << 8);
+  Insn = readParcel16(Bytes, 0, IsBigEndian);
   return true;
 }
 
@@ -272,12 +303,19 @@ static unsigned decodeAField(unsigned Insn) {
   return fieldFromInstruction(Insn, 0, 6);
 }
 
+// The hand-written decoders below must fail when a register field does not
+// name a GPR32 register (encodings 32-63: extension core registers, LP_COUNT,
+// the LIMM marker, PCL). Carrying on after a failed register decode leaves
+// the MCInst one operand short of what its AsmWriter entry indexes, and the
+// printer then reads past the end of the operand list.
 static DecodeStatus DecodeMEMrs9(MCInst &Inst, unsigned Insn, uint64_t Address,
                                  const MCDisassembler *Dec) {
   // We have the 9-bit immediate in the low bits, 6-bit register in high bits.
   unsigned S9 = Insn & 0x1ff;
   unsigned R = (Insn & (0x7fff & ~0x1ff)) >> 9;
-  DecodeGPR32RegisterClass(Inst, R, Address, Dec);
+  if (DecodeGPR32RegisterClass(Inst, R, Address, Dec) !=
+      MCDisassembler::Success)
+    return MCDisassembler::Fail;
   Inst.addOperand(MCOperand::createImm(SignExtend32<9>(S9)));
   return MCDisassembler::Success;
 }
@@ -342,7 +380,9 @@ static DecodeStatus DecodeStLImmInstruction(MCInst &Inst, uint64_t Insn,
     return MCDisassembler::Fail;
   }
   SrcC = decodeCField(Insn);
-  DecodeGPR32RegisterClass(Inst, SrcC, Address, Decoder);
+  if (DecodeGPR32RegisterClass(Inst, SrcC, Address, Decoder) !=
+      MCDisassembler::Success)
+    return MCDisassembler::Fail;
   LImm = (Insn >> 32);
   Inst.addOperand(MCOperand::createImm(LImm));
   Inst.addOperand(MCOperand::createImm(0));
@@ -360,7 +400,9 @@ static DecodeStatus DecodeLdLImmInstruction(MCInst &Inst, uint64_t Insn,
     return MCDisassembler::Fail;
   }
   DstA = decodeAField(Insn);
-  DecodeGPR32RegisterClass(Inst, DstA, Address, Decoder);
+  if (DecodeGPR32RegisterClass(Inst, DstA, Address, Decoder) !=
+      MCDisassembler::Success)
+    return MCDisassembler::Fail;
   LImm = (Insn >> 32);
   Inst.addOperand(MCOperand::createImm(LImm));
   Inst.addOperand(MCOperand::createImm(0));
@@ -373,9 +415,13 @@ static DecodeStatus DecodeLdRLImmInstruction(MCInst &Inst, uint64_t Insn,
   unsigned DstA, SrcB;
   LLVM_DEBUG(dbgs() << "Decoding LdRLimm\n");
   DstA = decodeAField(Insn);
-  DecodeGPR32RegisterClass(Inst, DstA, Address, Decoder);
+  if (DecodeGPR32RegisterClass(Inst, DstA, Address, Decoder) !=
+      MCDisassembler::Success)
+    return MCDisassembler::Fail;
   SrcB = decodeBField(Insn);
-  DecodeGPR32RegisterClass(Inst, SrcB, Address, Decoder);
+  if (DecodeGPR32RegisterClass(Inst, SrcB, Address, Decoder) !=
+      MCDisassembler::Success)
+    return MCDisassembler::Fail;
   if (decodeCField(Insn) != 62) {
     LLVM_DEBUG(dbgs() << "Decoding LdRLimm found non-limm register.");
     return MCDisassembler::Fail;
@@ -416,7 +462,9 @@ static DecodeStatus DecodeCCRU6Instruction(MCInst &Inst, uint64_t Insn,
   unsigned DstB;
   LLVM_DEBUG(dbgs() << "Decoding CCRU6 instruction:\n");
   DstB = decodeBField(Insn);
-  DecodeGPR32RegisterClass(Inst, DstB, Address, Decoder);
+  if (DecodeGPR32RegisterClass(Inst, DstB, Address, Decoder) !=
+      MCDisassembler::Success)
+    return MCDisassembler::Fail;
   using Field = decltype(Insn);
   Field U6Field = fieldFromInstruction(Insn, 6, 6);
   Inst.addOperand(MCOperand::createImm(U6Field));
@@ -429,7 +477,9 @@ static DecodeStatus DecodeSOPwithRU6(MCInst &Inst, uint64_t Insn,
                                      uint64_t Address,
                                      const MCDisassembler *Decoder) {
   unsigned DstB = decodeBField(Insn);
-  DecodeGPR32RegisterClass(Inst, DstB, Address, Decoder);
+  if (DecodeGPR32RegisterClass(Inst, DstB, Address, Decoder) !=
+      MCDisassembler::Success)
+    return MCDisassembler::Fail;
   using Field = decltype(Insn);
   Field U6 = fieldFromInstruction(Insn, 6, 6);
   Inst.addOperand(MCOperand::createImm(U6));
@@ -440,7 +490,9 @@ static DecodeStatus DecodeSOPwithRS12(MCInst &Inst, uint64_t Insn,
                                       uint64_t Address,
                                       const MCDisassembler *Decoder) {
   unsigned DstB = decodeBField(Insn);
-  DecodeGPR32RegisterClass(Inst, DstB, Address, Decoder);
+  if (DecodeGPR32RegisterClass(Inst, DstB, Address, Decoder) !=
+      MCDisassembler::Success)
+    return MCDisassembler::Fail;
   using Field = decltype(Insn);
   Field Lower = fieldFromInstruction(Insn, 6, 6);
   Field Upper = fieldFromInstruction(Insn, 0, 5);
@@ -459,7 +511,10 @@ DecodeStatus ARCDisassembler::getInstruction(MCInst &Instr, uint64_t &Size,
     Size = 0;
     return Fail;
   }
-  uint8_t DecodeByte = (Bytes[1] & 0xF7) >> 3;
+  // The major opcode sits in bits [15:11] of the first parcel, i.e. in its
+  // most significant byte: the first byte on a big-endian target, the second
+  // on a little-endian one.
+  uint8_t DecodeByte = (Bytes[IsBigEndian ? 0 : 1] & 0xF7) >> 3;
   // 0x00 -> 0x07 are 32-bit instructions.
   // 0x08 -> 0x1F are 16-bit instructions.
   if (DecodeByte < 0x08) {
@@ -472,7 +527,7 @@ DecodeStatus ARCDisassembler::getInstruction(MCInst &Instr, uint64_t &Size,
     if (Bytes.size() >= 8) {
       // Attempt to decode 64-bit instruction.
       uint64_t Insn64;
-      if (!readInstruction64(Bytes, Address, Size, Insn64))
+      if (!readInstruction64(Bytes, Address, Size, Insn64, IsBigEndian))
         return Fail;
       Result =
           decodeInstruction(DecoderTable64, Instr, Insn64, Address, this, STI);
@@ -483,7 +538,7 @@ DecodeStatus ARCDisassembler::getInstruction(MCInst &Instr, uint64_t &Size,
       LLVM_DEBUG(dbgs() << "Not a 64-bit instruction, falling back to 32-bit.");
     }
     uint32_t Insn32;
-    if (!readInstruction32(Bytes, Address, Size, Insn32)) {
+    if (!readInstruction32(Bytes, Address, Size, Insn32, IsBigEndian)) {
       return Fail;
     }
     // Try ARCompact 32-bit decoder table first (separate DecoderNamespace).
@@ -499,7 +554,7 @@ DecodeStatus ARCDisassembler::getInstruction(MCInst &Instr, uint64_t &Size,
     if (Bytes.size() >= 6) {
       // Attempt to treat as instr. with limm data.
       uint64_t Insn48;
-      if (!readInstruction48(Bytes, Address, Size, Insn48))
+      if (!readInstruction48(Bytes, Address, Size, Insn48, IsBigEndian))
         return Fail;
       Result =
           decodeInstruction(DecoderTable48, Instr, Insn48, Address, this, STI);
@@ -513,7 +568,7 @@ DecodeStatus ARCDisassembler::getInstruction(MCInst &Instr, uint64_t &Size,
     }
 
     uint32_t Insn16;
-    if (!readInstruction16(Bytes, Address, Size, Insn16))
+    if (!readInstruction16(Bytes, Address, Size, Insn16, IsBigEndian))
       return Fail;
 
     // Calling the auto-generated decoder function.
