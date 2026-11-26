@@ -130,8 +130,8 @@ def ARC_FLAG_c : ARCompactInst32_3op<0b00100, 0b101001, "flag",
 
 // flag<.cc> c 00100RRR111010010RRRCCCCCC0QQQQQ.
 def ARC_FLAG_c_cc : ARCompactInst32_3op<0b00100, 0b101001, "flag",
-    (outs ), (ins GPR32:$rc),
-    "flag\t$rc", []> {
+    (outs ), (ins GPR32:$rc, ccond:$cc),
+    "flag.$cc\t$rc", []> {
   // Opcode: 0x20E90000, Mask: 0xF8FF8020
   // Operands: RC
   // Flags: C_CC
@@ -141,6 +141,10 @@ def ARC_FLAG_c_cc : ARCompactInst32_3op<0b00100, 0b101001, "flag",
   let isPredicable = 1;
   bits<6> rc;
   let Inst{11-6} = rc;
+  // Condition Q[4:0]. Without this operand the decoder dropped the
+  // condition and printed an unconditional `flag`.
+  bits<5> cc;
+  let Inst{4-0} = cc;
 }
 
 // flag u6 00100RRR011010010RRRuuuuuuRRRRRR.
@@ -158,8 +162,8 @@ def ARC_FLAG_u6 : ARCompactInst32_3op<0b00100, 0b101001, "flag",
 
 // flag<.cc> u6 00100RRR111010010RRRuuuuuu1QQQQQ.
 def ARC_FLAG_u6_cc : ARCompactInst32_3op<0b00100, 0b101001, "flag",
-    (outs ), (ins u6imm:$uimm6_20),
-    "flag\t$uimm6_20", []> {
+    (outs ), (ins u6imm:$uimm6_20, ccond:$cc),
+    "flag.$cc\t$uimm6_20", []> {
   // Opcode: 0x20E90020, Mask: 0xF8FF8020
   // Operands: UIMM6_20
   // Flags: C_CC
@@ -169,6 +173,9 @@ def ARC_FLAG_u6_cc : ARCompactInst32_3op<0b00100, 0b101001, "flag",
   let isPredicable = 1;
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
+  // Condition Q[4:0] -- see ARC_FLAG_c_cc.
+  bits<5> cc;
+  let Inst{4-0} = cc;
 }
 
 // flag s12 00100RRR101010010RRRssssssSSSSSS.
@@ -186,32 +193,29 @@ def ARC_FLAG_s12 : ARCompactInst32_3op<0b00100, 0b101001, "flag",
 }
 
 // flag limm 00100RRR001010010RRR111110RRRRRR.
-def ARC_FLAG_limm : ARCompactInst32_3op<0b00100, 0b101001, "flag",
+def ARC_FLAG_limm : ARCompactInst32Limm<0b00100, 0b101001, "flag",
     (outs ), (ins i32imm:$limm),
     "flag\t$limm", []> {
   // Opcode: 0x20290F80, Mask: 0xF8FF8FC0
   // Operands: LIMM
   // Flags: none
-  let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001010010;
   let Inst{11-6} = 0b111110;
-  // Operand(s) limm need custom disassembler.
-  let isCodeGenOnly = 1;
 }
 
 // flag<.cc> limm 00100RRR111010010RRR1111100QQQQQ.
-def ARC_FLAG_limm_cc : ARCompactInst32_3op<0b00100, 0b101001, "flag",
-    (outs ), (ins i32imm:$limm),
-    "flag\t$limm", []> {
+def ARC_FLAG_limm_cc : ARCompactInst32Limm<0b00100, 0b101001, "flag",
+    (outs ), (ins i32imm:$limm, ccond:$cc),
+    "flag.$cc\t$limm", []> {
   // Opcode: 0x20E90F80, Mask: 0xF8FF8FE0
   // Operands: LIMM
   // Flags: C_CC
-  let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b111010010;
   let Inst{11-5} = 0b1111100;
   let isPredicable = 1;
-  // Operand(s) limm need custom disassembler.
-  let isCodeGenOnly = 1;
+  // Condition Q[4:0] -- see ARC_FLAG_c_cc.
+  bits<5> cc;
+  let Inst{4-0} = cc;
 }
 
 // prefetch<.aa> b,c 00100bbbaa1100000BBBCCCCCC111110.

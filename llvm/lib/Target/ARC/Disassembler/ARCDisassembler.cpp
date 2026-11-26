@@ -529,6 +529,14 @@ DecodeStatus ARCDisassembler::getInstruction(MCInst &Instr, uint64_t &Size,
       uint64_t Insn64;
       if (!readInstruction64(Bytes, Address, Size, Insn64, IsBigEndian))
         return Fail;
+      // ARCompact LIMM forms first (separate DecoderNamespace), as for the
+      // 32-bit tables below.
+      Result = decodeInstruction(DecoderTableARCompact3264, Instr, Insn64,
+                                 Address, this, STI);
+      if (Success == Result) {
+        LLVM_DEBUG(dbgs() << "Decoded ARCompact 64-bit instruction.");
+        return Result;
+      }
       Result =
           decodeInstruction(DecoderTable64, Instr, Insn64, Address, this, STI);
       if (Success == Result) {

@@ -62,6 +62,38 @@ class ARCompactInst32_3op<bits<5> major, bits<6> subop, string mnemonic,
   let mayStore = 0;
 }
 
+// 3-operand-format instruction whose operand field holds the LIMM marker
+// (62), followed by its 32-bit long immediate. 8 bytes: the instruction word
+// in Inst{31-0}, the LIMM in Inst{63-32} -- the layout the disassembler hands
+// to the 64-bit tables and the code emitter writes for Size = 8. Decoded from
+// the ARCompact32 namespace's 64-bit table (DecoderTableARCompact3264).
+class ARCompactInst32Limm<bits<5> major, bits<6> subop, string mnemonic,
+                          dag outs, dag ins, string asmstr, list<dag> pattern>
+    : Instruction {
+  let Namespace = "ARC";
+  let Size = 8;
+  let DecoderNamespace = "ARCompact32";
+
+  field bits<64> Inst;
+  field bits<64> SoftFail = 0;
+
+  dag OutOperandList = outs;
+  dag InOperandList = ins;
+  let AsmString = asmstr;
+  let Pattern = pattern;
+  let Predicates = [IsARCompact];
+  let isPseudo = 0;
+
+  string Mnemonic = mnemonic;
+  bits<32> limm;
+  let Inst{63-32} = limm;
+  let Inst{31-27} = major;
+  let Inst{21-16} = subop;
+  let hasSideEffects = 0;
+  let mayLoad = 0;
+  let mayStore = 0;
+}
+
 // 2-operand (single-operand) ALU: major[31:27], subop1=0x2F[21:16], subop2[5:0]
 // Register B field is SPLIT: Inst{26-24} = rb{2-0} (low 3), Inst{14-12} = rb{5-3} (high 3).
 // Matches binutils insert_rb(): insn | ((value & 0x07)<<24) | (((value>>3)&0x07)<<12).
