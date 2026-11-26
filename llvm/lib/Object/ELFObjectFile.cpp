@@ -448,6 +448,13 @@ std::optional<StringRef> ELFObjectFileBase::tryGetCPUName() const {
     return StringRef("future");
   case ELF::EM_BPF:
     return StringRef("v4");
+  case ELF::EM_ARC_COMPACT:
+    // EM_ARC_COMPACT is the ARCompact ISA (ARC600/ARC700); ARCv2 objects use
+    // EM_ARC_COMPACT2. The mach bits of e_flags are often left at 0, so the
+    // machine number alone selects the CPU. The ARC backend's default
+    // ("generic") CPU lacks FeatureARCompact, which disables every
+    // ARCompact-only decoder entry (e.g. `flag`).
+    return StringRef(isLittleEndian() ? "arc700" : "arc700eb");
   default:
     return std::nullopt;
   }

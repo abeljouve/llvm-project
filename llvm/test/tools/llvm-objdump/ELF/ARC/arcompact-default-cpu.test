@@ -1,0 +1,46 @@
+## EM_ARC_COMPACT is the ARCompact ISA (ARC600/ARC700). With no --mcpu,
+## llvm-objdump must select an ARCompact CPU from the machine number alone:
+## e_flags is 0 here, as linkers commonly leave it. The backend's default CPU
+## has no ARCompact feature, so ARCompact-only encodings such as `flag` would
+## otherwise come out as <unknown>.
+
+# RUN: yaml2obj --docnum=1 %s -o %t.be
+# RUN: llvm-objdump -d %t.be | FileCheck %s --check-prefix=BE
+# RUN: llvm-objdump -d --mcpu=arc700 %t.be | FileCheck %s --check-prefix=BE
+# RUN: yaml2obj --docnum=2 %s -o %t.le
+# RUN: llvm-objdump -d %t.le | FileCheck %s --check-prefix=LE
+
+# BE:      0: 20 29 00 00 flag %r0
+# BE-NEXT: 4: 20 29 07 80 flag %r30
+# BE-NEXT: 8: 20 69 00 40 flag 1
+# BE-NOT:  <unknown>
+
+# LE:      0: 29 20 00 00 flag %r0
+# LE-NEXT: 4: 29 20 80 07 flag %r30
+# LE-NEXT: 8: 69 20 40 00 flag 1
+# LE-NOT:  <unknown>
+
+--- !ELF
+FileHeader:
+  Class:   ELFCLASS32
+  Data:    ELFDATA2MSB
+  Type:    ET_REL
+  Machine: EM_ARC_COMPACT
+Sections:
+  - Name:    .text
+    Type:    SHT_PROGBITS
+    Flags:   [ SHF_ALLOC, SHF_EXECINSTR ]
+    Content: '202900002029078020690040'
+
+## Little-endian: each 16-bit parcel is stored little-endian, high parcel first.
+--- !ELF
+FileHeader:
+  Class:   ELFCLASS32
+  Data:    ELFDATA2LSB
+  Type:    ET_REL
+  Machine: EM_ARC_COMPACT
+Sections:
+  - Name:    .text
+    Type:    SHT_PROGBITS
+    Flags:   [ SHF_ALLOC, SHF_EXECINSTR ]
+    Content: '292000002920800769204000'
