@@ -5961,7 +5961,7 @@ def ARC_BMSK_z_b_u6 : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
 // separate compare.
 def ARC_BMSK_z_b_u6_f : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
     (outs ), (ins GPR32:$rb, u6imm:$uimm6_20),
-    "bmsk.f\t$rb, $uimm6_20", []> {
+    "bmsk.f\t0, $rb, $uimm6_20", []> {
   // Opcode: 0x205B003E, Mask: 0xF8FF803F
   // Operands: ZA, RB, UIMM6_20
   // Flags: C_F (F fixed to 1)
@@ -8458,7 +8458,7 @@ def ARC_LSR_z_b_u6 : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
 // 4-byte flags-only instruction instead of an 8-byte LIMM compare.
 def ARC_LSR_z_b_u6_f : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
     (outs ), (ins GPR32:$rb, u6imm:$uimm6_20),
-    "lsr.f\t$rb, $uimm6_20", []> {
+    "lsr.f\t0, $rb, $uimm6_20", []> {
   // Opcode: 0x2849003E, Mask: 0xF8FF803F
   // Operands: ZA, RB, UIMM6_20
   // Flags: C_F (F fixed to 1)

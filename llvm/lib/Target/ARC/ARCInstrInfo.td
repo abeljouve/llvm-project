@@ -1038,9 +1038,12 @@ def J_S_BLINK : InstARC<2, (outs), (ins), "j_s\t[%blink]", [(ret)]> {
 // *before* the transfer, so its execution count is unchanged on either path.
 //
 // These forms are created exclusively by ARCDelaySlotFiller, and only once it
-// has a real instruction to put in the slot -- hence no pattern and
-// isCodeGenOnly. Selecting a .d form up front would commit to a slot blind,
-// before the passes that produce the fill candidate have even run.
+// has a real instruction to put in the slot -- hence no pattern. Selecting a
+// .d form up front would commit to a slot blind, before the passes that
+// produce the fill candidate have even run. They are NOT isCodeGenOnly, so the
+// disassembler decodes them (without them, every .d branch fell through to the
+// ARCompact table, which mis-scales the targets); TCB_D (same encoding as
+// BR_D) and J_S_BLINK_D (decoded by its own 16-bit def) stay codegen-only.
 //
 // Every encoding below is byte-verified with the reference ARC disassembler
 // (llvm-objdump misdecodes big-endian ARC and must not be used):
@@ -1053,7 +1056,7 @@ def J_S_BLINK : InstARC<2, (outs), (ins), "j_s\t[%blink]", [(ret)]> {
 //   jl [r0]  0x20220000 / jl.d [r0]  0x20230000   (sub-opcode 0x22 -> 0x23)
 //   j_s [blink]  0x7EE0 / j_s.d [blink]  0x7FE0   (2 bytes; size-neutral)
 // ---------------------------------------------------------------------------
-let isCodeGenOnly = 1, hasDelaySlot = 1 in {
+let hasDelaySlot = 1 in {
 
 let isBranch = 1, isTerminator = 1 in {
   let isBarrier = 1 in
@@ -1095,17 +1098,19 @@ let isCall = 1, Defs = [BLINK], Uses = [SP] in {
   { let A = 0; let B = 0; }
 } // let isCall
 
-let isCall = 1, isReturn = 1, isTerminator = 1, isBarrier = 1, Uses = [SP] in
+let isCall = 1, isReturn = 1, isTerminator = 1, isBarrier = 1, Uses = [SP],
+    isCodeGenOnly = 1 in
 def TCB_D : F32_BR0_UCOND_FAR<(outs), (ins tcalltargetS25:$S25), "b.d\t$S25",
                               []>
 { let N = 1; }
 
-let isReturn = 1, isTerminator = 1, isBarrier = 1, Uses = [BLINK] in
+let isReturn = 1, isTerminator = 1, isBarrier = 1, Uses = [BLINK],
+    isCodeGenOnly = 1 in
 def J_S_BLINK_D : InstARC<2, (outs), (ins), "j_s.d\t[%blink]", []> {
   let Inst{15-0} = 0b0111111111100000;
 }
 
-} // let isCodeGenOnly = 1, hasDelaySlot = 1
+} // let hasDelaySlot = 1
 
 //----------------------------------------------------------------------------
 // Compact stack-based operations.

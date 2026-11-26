@@ -39,13 +39,12 @@
 ; before LowerSELECT_CC runs (confirmed empirically, even at -O0) -- the
 ; ACTUAL DAG shape LowerSELECT_CC's LSRTEST fold sees is SETEQ/SETNE against
 ; a shifted value, not the raw SETULT/SETUGE this comment's IR is written
-; with. `lsr.f` (the auto-generated null-destination form's `.f` sibling)
-; prints with no destination operand at all, hence 2 operands (`%r0, 12`),
-; not 3.
+; with. `lsr.f` (the null-destination form's `.f` sibling) prints its
+; destination as `0` (`0, %r0, 12`).
 define i32 @range_ult_select_k12(i32 %x, i32 %a, i32 %b) {
 ; CHECK-LABEL: range_ult_select_k12:
 ; CHECK-NOT: limm
-; CHECK: lsr.f %r0, 12
+; CHECK: lsr.f 0, %r0, 12
 ; CHECK: mov.eq
 ; VERIFY-LABEL: range_ult_select_k12:
 ; NOARCOMPACT-LABEL: range_ult_select_k12:
@@ -59,7 +58,7 @@ entry:
 ; Inverse predicate (SETUGE): Z=0 -> NE, not EQ.
 define i32 @range_uge_select_k12(i32 %x, i32 %a, i32 %b) {
 ; CHECK-LABEL: range_uge_select_k12:
-; CHECK: lsr.f %r0, 12
+; CHECK: lsr.f 0, %r0, 12
 ; CHECK: mov.ne
 ; VERIFY-LABEL: range_uge_select_k12:
 entry:
@@ -77,7 +76,7 @@ entry:
 ; missed here, just a different existing DAGCombine claims it first).
 define i32 @range_ult_select_k30(i32 %x, i32 %a, i32 %b) {
 ; CHECK-LABEL: range_ult_select_k30:
-; CHECK: lsr.f %r0, 30
+; CHECK: lsr.f 0, %r0, 30
 ; CHECK: mov.eq
 ; VERIFY-LABEL: range_ult_select_k30:
 entry:
@@ -98,7 +97,7 @@ declare void @side_b()
 define void @range_ult_branch_k12(i32 %x) {
 ; CHECK-LABEL: range_ult_branch_k12:
 ; CHECK-NOT: limm
-; CHECK: lsr.f %r0, 12
+; CHECK: lsr.f 0, %r0, 12
 ; CHECK: b{{eq|ne}}
 ; VERIFY-LABEL: range_ult_branch_k12:
 ; NOARCOMPACT-LABEL: range_ult_branch_k12:
@@ -117,7 +116,7 @@ if.else:
 ; Branch consumer, inverse predicate.
 define void @range_uge_branch_k12(i32 %x) {
 ; CHECK-LABEL: range_uge_branch_k12:
-; CHECK: lsr.f %r0, 12
+; CHECK: lsr.f 0, %r0, 12
 ; CHECK: b{{eq|ne}}
 ; VERIFY-LABEL: range_uge_branch_k12:
 entry:
@@ -167,7 +166,7 @@ entry:
 define i32 @mask_eq_select_k11(i32 %x, i32 %a, i32 %b) {
 ; CHECK-LABEL: mask_eq_select_k11:
 ; CHECK-NOT: limm
-; CHECK: bmsk.f %r0, 11
+; CHECK: bmsk.f 0, %r0, 11
 ; CHECK: mov.eq
 ; VERIFY-LABEL: mask_eq_select_k11:
 ; NOARCOMPACT-LABEL: mask_eq_select_k11:
@@ -182,7 +181,7 @@ entry:
 ; NE form.
 define i32 @mask_ne_select_k11(i32 %x, i32 %a, i32 %b) {
 ; CHECK-LABEL: mask_ne_select_k11:
-; CHECK: bmsk.f %r0, 11
+; CHECK: bmsk.f 0, %r0, 11
 ; CHECK: mov.ne
 ; VERIFY-LABEL: mask_ne_select_k11:
 entry:
@@ -196,7 +195,7 @@ entry:
 ; all-ones exclusion.
 define i32 @mask_eq_select_k30(i32 %x, i32 %a, i32 %b) {
 ; CHECK-LABEL: mask_eq_select_k30:
-; CHECK: bmsk.f %r0, 30
+; CHECK: bmsk.f 0, %r0, 30
 ; CHECK: mov.eq
 ; VERIFY-LABEL: mask_eq_select_k30:
 entry:
@@ -212,7 +211,7 @@ entry:
 define void @mask_eq_branch_k11(i32 %x) {
 ; CHECK-LABEL: mask_eq_branch_k11:
 ; CHECK-NOT: limm
-; CHECK: bmsk.f %r0, 11
+; CHECK: bmsk.f 0, %r0, 11
 ; CHECK: b{{eq|ne}}
 ; VERIFY-LABEL: mask_eq_branch_k11:
 ; NOARCOMPACT-LABEL: mask_eq_branch_k11:
@@ -232,7 +231,7 @@ if.else:
 ; Branch consumer, NE.
 define void @mask_ne_branch_k11(i32 %x) {
 ; CHECK-LABEL: mask_ne_branch_k11:
-; CHECK: bmsk.f %r0, 11
+; CHECK: bmsk.f 0, %r0, 11
 ; CHECK: b{{eq|ne}}
 ; VERIFY-LABEL: mask_ne_branch_k11:
 entry:

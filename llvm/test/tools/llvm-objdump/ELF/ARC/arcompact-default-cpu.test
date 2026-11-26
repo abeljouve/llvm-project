@@ -3,6 +3,10 @@
 ## e_flags is 0 here, as linkers commonly leave it. The backend's default CPU
 ## has no ARCompact feature, so ARCompact-only encodings such as `flag` would
 ## otherwise come out as <unknown>.
+##
+## The ARCompact tables are only a fallback: an encoding the default tables
+## decode must decode exactly as without the ARCompact CPU (condition, .di,
+## scaled offsets, branch targets), so those words are checked too.
 
 # RUN: yaml2obj --docnum=1 %s -o %t.be
 # RUN: llvm-objdump -d %t.be | FileCheck %s --check-prefix=BE
@@ -10,9 +14,17 @@
 # RUN: yaml2obj --docnum=2 %s -o %t.le
 # RUN: llvm-objdump -d %t.le | FileCheck %s --check-prefix=LE
 
-# BE:      0: 20 29 00 00 flag %r0
-# BE-NEXT: 4: 20 29 07 80 flag %r30
-# BE-NEXT: 8: 20 69 00 40 flag 1
+# BE:       0: 20 29 00 00 flag %r0
+# BE-NEXT:  4: 20 29 07 80 flag %r30
+# BE-NEXT:  8: 20 69 00 40 flag 1
+# BE-NEXT:  c: 19 04 07 40 st %ilink, [%r1,4]
+# BE-NEXT: 10: 11 00 08 00 ld.di %r0, [%r1,0]
+# BE-NEXT: 14: 21 ca 02 a2 mov.ne %r1, 10
+# BE-NEXT: 18: 07 f4 ff c0 bal -12
+# BE-NEXT: 1c: 06 a2 ff e2 bne.d -350
+# BE-NEXT: 20: 0b 66 03 a0 bl.d 29540
+# BE-NEXT: 24: 28 41 87 7e lsr.f 0, %r0, 29
+# BE-NEXT: 28: 20 aa 0f ff lr %r0, [-1]
 # BE-NOT:  <unknown>
 
 # LE:      0: 29 20 00 00 flag %r0
@@ -30,7 +42,7 @@ Sections:
   - Name:    .text
     Type:    SHT_PROGBITS
     Flags:   [ SHF_ALLOC, SHF_EXECINSTR ]
-    Content: '202900002029078020690040'
+    Content: '202900002029078020690040190407401100080021ca02a207f4ffc006a2ffe20b6603a02841877e20aa0fff'
 
 ## Little-endian: each 16-bit parcel is stored little-endian, high parcel first.
 --- !ELF

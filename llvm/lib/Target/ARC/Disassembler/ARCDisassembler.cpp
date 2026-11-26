@@ -493,12 +493,11 @@ static DecodeStatus DecodeSOPwithRS12(MCInst &Inst, uint64_t Insn,
   if (DecodeGPR32RegisterClass(Inst, DstB, Address, Decoder) !=
       MCDisassembler::Success)
     return MCDisassembler::Fail;
-  using Field = decltype(Insn);
-  Field Lower = fieldFromInstruction(Insn, 6, 6);
-  Field Upper = fieldFromInstruction(Insn, 0, 5);
-  Field Sign = fieldFromInstruction(Insn, 5, 1) ? -1 : 1;
-  Field Result = Sign * ((Upper << 6) + Lower);
-  Inst.addOperand(MCOperand::createImm(Result));
+  // S[5:0] in bits [11:6], S[11:6] in bits [5:0], two's complement (not
+  // sign and magnitude: 0xfff is -1).
+  unsigned S12 = (fieldFromInstruction(Insn, 0, 6) << 6) |
+                 fieldFromInstruction(Insn, 6, 6);
+  Inst.addOperand(MCOperand::createImm(SignExtend32<12>(S12)));
   return MCDisassembler::Success;
 }
 
@@ -529,18 +528,18 @@ DecodeStatus ARCDisassembler::getInstruction(MCInst &Instr, uint64_t &Size,
       uint64_t Insn64;
       if (!readInstruction64(Bytes, Address, Size, Insn64, IsBigEndian))
         return Fail;
-      // ARCompact LIMM forms first (separate DecoderNamespace), as for the
-      // 32-bit tables below.
-      Result = decodeInstruction(DecoderTableARCompact3264, Instr, Insn64,
-                                 Address, this, STI);
-      if (Success == Result) {
-        LLVM_DEBUG(dbgs() << "Decoded ARCompact 64-bit instruction.");
-        return Result;
-      }
+      // Default (ARCv2) table first, then the ARCompact LIMM forms -- see
+      // the 32-bit tables below for the order.
       Result =
           decodeInstruction(DecoderTable64, Instr, Insn64, Address, this, STI);
       if (Success == Result) {
         LLVM_DEBUG(dbgs() << "Successfully decoded 64-bit instruction.");
+        return Result;
+      }
+      Result = decodeInstruction(DecoderTableARCompact3264, Instr, Insn64,
+                                 Address, this, STI);
+      if (Success == Result) {
+        LLVM_DEBUG(dbgs() << "Decoded ARCompact 64-bit instruction.");
         return Result;
       }
       LLVM_DEBUG(dbgs() << "Not a 64-bit instruction, falling back to 32-bit.");
@@ -549,15 +548,30 @@ DecodeStatus ARCDisassembler::getInstruction(MCInst &Instr, uint64_t &Size,
     if (!readInstruction32(Bytes, Address, Size, Insn32, IsBigEndian)) {
       return Fail;
     }
-    // Try ARCompact 32-bit decoder table first (separate DecoderNamespace).
+    // Default (ARCv2) table first, then the ARCompact one (separate
+    // DecoderNamespace, enabled by FeatureARCompact). For the encodings both
+    // tables know -- the base ALU, load/store and branch forms, which
+    // ARCompact and ARCv2 share -- the default table's defs carry the
+    // complete operand set (condition, .f, .di, scaled offsets,
+    // PC-relative targets), while many generated ARCompact defs drop part of
+    // it. The ARCompact table then supplies what the default one lacks
+    // (flag, the bit operations, ...).
+    //
+    // Not for majors 0 and 1 (Bcc/B, BLcc/BL, BRcc, BBIT): the ARCompact
+    // branch defs decode the split displacement fields without assembling
+    // and scaling them, so their targets are wrong. An undecoded word is
+    // better than a wrong branch target.
+    Result = decodeInstruction(DecoderTable32, Instr, Insn32, Address, this,
+                               STI);
+    if (Success == Result)
+      return Result;
+    if ((Insn32 >> 27) <= 1)
+      return Result;
     Result = decodeInstruction(DecoderTableARCompact3232, Instr, Insn32,
                                Address, this, STI);
-    if (Success == Result) {
+    if (Success == Result)
       LLVM_DEBUG(dbgs() << "Decoded ARCompact 32-bit instruction.");
-      return Result;
-    }
-    // Fall back to default (ARCv2) 32-bit decoder table.
-    return decodeInstruction(DecoderTable32, Instr, Insn32, Address, this, STI);
+    return Result;
   } else {
     if (Bytes.size() >= 6) {
       // Attempt to treat as instr. with limm data.

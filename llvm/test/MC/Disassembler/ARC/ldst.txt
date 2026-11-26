@@ -115,12 +115,17 @@
 
 # The following don't necessarily map to real auxilary registers, but
 # the different range of numbers helps exercise the S12 decoder.
+# S12 is two's complement, S[11:6] in bits [5:0] and S[5:0] in bits [11:6]:
+# 0x860 is S = 0x821 = -2015, not -33 (sign and magnitude).
 
-# CHECK: lr %r0, [-33]
+# CHECK: lr %r0, [-2015]
 0xaa 0x20 0x60 0x08
 
 # CHECK: lr %r0, [97]
 0xaa 0x20 0x41 0x08
 
-# CHECK: lr %r0, [-97]
+# CHECK: lr %r0, [-1951]
 0xaa 0x20 0x61 0x08
+
+# CHECK: lr %r0, [-1]
+0xaa 0x20 0xff 0x0f
