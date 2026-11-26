@@ -394,8 +394,8 @@ def ARC_ACM_b_s12 : ARCompactInst32_3op<0b00110, 0b101000, "acm",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // acm<.f> a,limm,c 0011011000101000F111CCCCCCAAAAAA.
@@ -573,8 +573,8 @@ def ARC_ADC_b_s12 : ARCompactInst32_3op<0b00100, 0b000001, "adc",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // adc<.f> a,limm,c 0010011000000001F111CCCCCCAAAAAA.
@@ -900,8 +900,8 @@ def ARC_ADCS_b_s12 : ARCompactInst32_3op<0b00101, 0b100110, "adcs",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // adcs<.f> a,limm,c 0010111000100110F111CCCCCCAAAAAA.
@@ -1227,8 +1227,8 @@ def ARC_ADD_b_s12 : ARCompactInst32_3op<0b00100, 0b000000, "add",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // add<.f> a,limm,c 0010011000000000F111CCCCCCAAAAAA.
@@ -1554,8 +1554,8 @@ def ARC_ADD1_b_s12 : ARCompactInst32_3op<0b00100, 0b010100, "add1",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // add1<.f> a,limm,c 0010011000010100F111CCCCCCAAAAAA.
@@ -1881,8 +1881,8 @@ def ARC_ADD2_b_s12 : ARCompactInst32_3op<0b00100, 0b010101, "add2",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // add2<.f> a,limm,c 0010011000010101F111CCCCCCAAAAAA.
@@ -2208,8 +2208,8 @@ def ARC_ADD3_b_s12 : ARCompactInst32_3op<0b00100, 0b010110, "add3",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // add3<.f> a,limm,c 0010011000010110F111CCCCCCAAAAAA.
@@ -2499,8 +2499,8 @@ def ARC_ADDQBS_b_s12 : ARCompactInst32_3op<0b00110, 0b100100, "addqbs",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // addqbs<.f> a,limm,c 0011011000100100F111CCCCCCAAAAAA.
@@ -2678,8 +2678,8 @@ def ARC_ADDS_b_s12 : ARCompactInst32_3op<0b00101, 0b000110, "adds",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // adds<.f> a,limm,c 0010111000000110F111CCCCCCAAAAAA.
@@ -3005,8 +3005,8 @@ def ARC_ADDSDW_b_s12 : ARCompactInst32_3op<0b00101, 0b101000, "addsdw",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // addsdw<.f> a,limm,c 0010111000101000F111CCCCCCAAAAAA.
@@ -3332,8 +3332,8 @@ def ARC_AND_b_s12 : ARCompactInst32_3op<0b00100, 0b000100, "and",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // and<.f> a,limm,c 0010011000000100F111CCCCCCAAAAAA.
@@ -3753,8 +3753,8 @@ def ARC_ASL_b_s12 : ARCompactInst32_3op<0b00101, 0b000000, "asl",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // asl<.f> b,limm 00100bbb00101111FBBB111110000000.
@@ -4109,8 +4109,8 @@ def ARC_ASLS_b_s12 : ARCompactInst32_3op<0b00101, 0b001010, "asls",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // asls<.f> a,limm,c 0010111000001010F111CCCCCCAAAAAA.
@@ -4502,8 +4502,8 @@ def ARC_ASR_b_s12 : ARCompactInst32_3op<0b00101, 0b000010, "asr",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // asr<.f> b,limm 00100bbb00101111FBBB111110000001.
@@ -4858,8 +4858,8 @@ def ARC_ASRS_b_s12 : ARCompactInst32_3op<0b00101, 0b001011, "asrs",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // asrs<.f> a,limm,c 0010111000001011F111CCCCCCAAAAAA.
@@ -5149,8 +5149,8 @@ def ARC_AVGQB_b_s12 : ARCompactInst32_3op<0b00110, 0b100011, "avgqb",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // avgqb<.f> a,limm,c 0011011000100011F111CCCCCCAAAAAA.
@@ -5328,8 +5328,8 @@ def ARC_BCLR_b_s12 : ARCompactInst32_3op<0b00100, 0b010000, "bclr",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // bclr<.f> a,limm,c 0010011000010000F111CCCCCCAAAAAA.
@@ -5655,8 +5655,8 @@ def ARC_BIC_b_s12 : ARCompactInst32_3op<0b00100, 0b000110, "bic",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // bic<.f> a,limm,c 0010011000000110F111CCCCCCAAAAAA.
@@ -6012,8 +6012,8 @@ def ARC_BMSK_b_s12 : ARCompactInst32_3op<0b00100, 0b010011, "bmsk",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // bmsk<.f> a,limm,c 0010011000010011F111CCCCCCAAAAAA.
@@ -6339,8 +6339,8 @@ def ARC_BSET_b_s12 : ARCompactInst32_3op<0b00100, 0b001111, "bset",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // bset<.f> a,limm,c 0010011000001111F111CCCCCCAAAAAA.
@@ -6638,8 +6638,8 @@ def ARC_BTST_b_s12 : ARCompactInst32_3op<0b00100, 0b010001, "btst",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
   let isCompare = 1;
   let Defs = [STATUS32];
 }
@@ -6911,8 +6911,8 @@ def ARC_BXOR_b_s12 : ARCompactInst32_3op<0b00100, 0b010010, "bxor",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // bxor<.f> a,limm,c 0010011000010010F111CCCCCCAAAAAA.
@@ -7202,8 +7202,8 @@ def ARC_CLAMP_b_s12 : ARCompactInst32_3op<0b00110, 0b101010, "clamp",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // clamp<.f> a,limm,c 0011011000101010F111CCCCCCAAAAAA.
@@ -7335,8 +7335,8 @@ def ARC_CMP_b_s12 : ARCompactInst32_3op<0b00100, 0b001100, "cmp",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // cmp limm,c 00100110000011001111CCCCCC000000.
@@ -7588,8 +7588,8 @@ def ARC_DIVAW_b_s12 : ARCompactInst32_3op<0b00101, 0b001000, "divaw",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // divaw<.f> a,limm,c 0010111000001000F111CCCCCCAAAAAA.
@@ -8069,8 +8069,8 @@ def ARC_FXTR_b_s12 : ARCompactInst32_3op<0b00110, 0b100110, "fxtr",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // fxtr<.f> a,limm,c 0011011000100110F111CCCCCCAAAAAA.
@@ -8212,8 +8212,8 @@ def ARC_IADDR_b_s12 : ARCompactInst32_3op<0b00110, 0b100111, "iaddr",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // iaddr<.f> a,limm,c 0011011000100111F111CCCCCCAAAAAA.
@@ -8509,8 +8509,8 @@ def ARC_LSR_b_s12 : ARCompactInst32_3op<0b00101, 0b000001, "lsr",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // lsr<.f> b,limm 00100bbb00101111FBBB111110000010.
@@ -8865,8 +8865,8 @@ def ARC_MAX_b_s12 : ARCompactInst32_3op<0b00100, 0b001000, "max",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // max<.f> a,limm,c 0010011000001000F111CCCCCCAAAAAA.
@@ -9192,8 +9192,8 @@ def ARC_MIN_b_s12 : ARCompactInst32_3op<0b00100, 0b001001, "min",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // min<.f> a,limm,c 0010011000001001F111CCCCCCAAAAAA.
@@ -9536,8 +9536,8 @@ def ARC_MOV_b_s12 : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // mov<.f> 0,s12 0010011010001010F111ssssssSSSSSS.
@@ -9551,8 +9551,8 @@ def ARC_MOV_z_s12 : ARCompactInst32_3op<0b00100, 0b001010, "mov",
   let Inst{14-12} = 0b111;
   let Defs = [STATUS32];
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // mov<.f> b,limm 00100bbb00001010FBBB111110RRRRRR.
@@ -10300,8 +10300,8 @@ def ARC_OR_b_s12 : ARCompactInst32_3op<0b00100, 0b000101, "or",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // or<.f> a,limm,c 0010011000000101F111CCCCCCAAAAAA.
@@ -10591,8 +10591,8 @@ def ARC_PKQB_b_s12 : ARCompactInst32_3op<0b00110, 0b100000, "pkqb",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // pkqb<.f> a,limm,c 0011011000100000F111CCCCCCAAAAAA.
@@ -10724,8 +10724,8 @@ def ARC_RCMP_b_s12 : ARCompactInst32_3op<0b00100, 0b001101, "rcmp",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // rcmp limm,c 00100110000011011111CCCCCC000000.
@@ -11244,8 +11244,8 @@ def ARC_ROR_b_s12 : ARCompactInst32_3op<0b00101, 0b000011, "ror",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // ror<.f> b,limm 00100bbb00101111FBBB111110000011.
@@ -11703,8 +11703,8 @@ def ARC_RSUB_b_s12 : ARCompactInst32_3op<0b00100, 0b001110, "rsub",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // rsub<.f> a,limm,c 0010011000001110F111CCCCCCAAAAAA.
@@ -12125,8 +12125,8 @@ def ARC_SBC_b_s12 : ARCompactInst32_3op<0b00100, 0b000011, "sbc",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // sbc<.f> a,limm,c 0010011000000011F111CCCCCCAAAAAA.
@@ -12452,8 +12452,8 @@ def ARC_SBCS_b_s12 : ARCompactInst32_3op<0b00101, 0b100111, "sbcs",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // sbcs<.f> a,limm,c 0010111000100111F111CCCCCCAAAAAA.
@@ -12933,8 +12933,8 @@ def ARC_SFXTR_b_s12 : ARCompactInst32_3op<0b00110, 0b101001, "sfxtr",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // sfxtr<.f> a,limm,c 0011011000101001F111CCCCCCAAAAAA.
@@ -13112,8 +13112,8 @@ def ARC_SUB_b_s12 : ARCompactInst32_3op<0b00100, 0b000010, "sub",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // sub<.f> a,limm,c 0010011000000010F111CCCCCCAAAAAA.
@@ -13439,8 +13439,8 @@ def ARC_SUB1_b_s12 : ARCompactInst32_3op<0b00100, 0b010111, "sub1",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // sub1<.f> a,limm,c 0010011000010111F111CCCCCCAAAAAA.
@@ -13766,8 +13766,8 @@ def ARC_SUB2_b_s12 : ARCompactInst32_3op<0b00100, 0b011000, "sub2",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // sub2<.f> a,limm,c 0010011000011000F111CCCCCCAAAAAA.
@@ -14093,8 +14093,8 @@ def ARC_SUB3_b_s12 : ARCompactInst32_3op<0b00100, 0b011001, "sub3",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // sub3<.f> a,limm,c 0010011000011001F111CCCCCCAAAAAA.
@@ -14420,8 +14420,8 @@ def ARC_SUBS_b_s12 : ARCompactInst32_3op<0b00101, 0b000111, "subs",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // subs<.f> a,limm,c 0010111000000111F111CCCCCCAAAAAA.
@@ -14761,8 +14761,8 @@ def ARC_SUBSDW_b_s12 : ARCompactInst32_3op<0b00101, 0b101001, "subsdw",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // subsdw<.f> a,limm,c 0010111000101001F111CCCCCCAAAAAA.
@@ -15232,8 +15232,8 @@ def ARC_TST_b_s12 : ARCompactInst32_3op<0b00100, 0b001011, "tst",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // tst limm,c 00100110000010111111CCCCCC000000.
@@ -15449,8 +15449,8 @@ def ARC_UPKQB_b_s12 : ARCompactInst32_3op<0b00110, 0b100001, "upkqb",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // upkqb<.f> a,limm,c 0011011000100001F111CCCCCCAAAAAA.
@@ -15628,8 +15628,8 @@ def ARC_XOR_b_s12 : ARCompactInst32_3op<0b00100, 0b000111, "xor",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // xor<.f> a,limm,c 0010011000000111F111CCCCCCAAAAAA.
@@ -15919,8 +15919,8 @@ def ARC_XPKQB_b_s12 : ARCompactInst32_3op<0b00110, 0b100010, "xpkqb",
   let Inst{26-24} = rb{2-0};
   let Inst{14-12} = rb{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // xpkqb<.f> a,limm,c 0011011000100010F111CCCCCCAAAAAA.

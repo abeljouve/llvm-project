@@ -209,7 +209,13 @@ def u12imm : Operand<i32>, PatLeaf<(imm), [{ return isUInt<12>(N->getZExtValue()
 def s3imm  : Operand<i32>, PatLeaf<(imm), [{ return isInt<3>(N->getSExtValue()); }]>;
 def s6imm  : Operand<i32>, PatLeaf<(imm), [{ return isInt<6>(N->getSExtValue()); }]>;
 def s9imm  : Operand<i32>, PatLeaf<(imm), [{ return isInt<9>(N->getSExtValue()); }]>;
-def s12imm : Operand<i32>, PatLeaf<(imm), [{ return isInt<12>(N->getSExtValue()); }]>;
+// REG_S12IMM operand. The instruction holds S[5:0] in Inst{11-6} and S[11:6]
+// in Inst{5-0} (ARCompact PRM, REG_S12IMM format; binutils SIMM12_20), so
+// every def binds `Inst{11-6} = simm12_20{5-0}; Inst{5-0} = simm12_20{11-6}`.
+// The value is two's complement: decode it sign-extended.
+def s12imm : Operand<i32>, PatLeaf<(imm), [{ return isInt<12>(N->getSExtValue()); }]> {
+  let DecoderMethod = "DecodeSignedOperand<12>";
+}
 
 // Aligned immediates
 def u5imm_a32 : Operand<i32>;

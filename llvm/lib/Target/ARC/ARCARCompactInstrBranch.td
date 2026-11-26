@@ -1104,8 +1104,8 @@ def ARC_J_s12 : ARCompactInstJump<0b00100, "j",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101000000;
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // j.D s12 00100RRR101000010RRRssssssSSSSSS.
@@ -1119,8 +1119,8 @@ def ARC_J_s12_d : ARCompactInstJump<0b00100, "j",
   let Inst{23-15} = 0b101000010;
   let hasDelaySlot = 1;
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // j u6 00100RRR011000000RRRuuuuuuRRRRRR.
@@ -1278,8 +1278,8 @@ def ARC_JL_s12 : ARCompactInstJump<0b00100, "jl",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101000100;
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // jl.D s12 00100RRR101000110RRRssssssSSSSSS.
@@ -1293,8 +1293,8 @@ def ARC_JL_s12_d : ARCompactInstJump<0b00100, "jl",
   let Inst{23-15} = 0b101000110;
   let hasDelaySlot = 1;
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // jl u6 00100RRR011000100RRRuuuuuuRRRRRR.

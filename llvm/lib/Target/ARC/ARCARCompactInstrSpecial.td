@@ -181,8 +181,8 @@ def ARC_FLAG_s12 : ARCompactInst32_3op<0b00100, 0b101001, "flag",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101010010;
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // flag limm 00100RRR001010010RRR111110RRRRRR.
@@ -434,8 +434,8 @@ def ARC_LR_b_c : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001010100;
   bits<6> rb_chk;
-  let Inst{26-24} = rb_chk{5-3};
-  let Inst{14-12} = rb_chk{2-0};
+  let Inst{26-24} = rb_chk{2-0};
+  let Inst{14-12} = rb_chk{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -477,8 +477,8 @@ def ARC_LR_b_u6 : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   let Inst{23-15} = 0b011010100;
   let Inst{5-0} = 0b000000;
   bits<6> rb_chk;
-  let Inst{26-24} = rb_chk{5-3};
-  let Inst{14-12} = rb_chk{2-0};
+  let Inst{26-24} = rb_chk{2-0};
+  let Inst{14-12} = rb_chk{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -520,11 +520,11 @@ def ARC_LR_b_s12 : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101010100;
   bits<6> rb_chk;
-  let Inst{26-24} = rb_chk{5-3};
-  let Inst{14-12} = rb_chk{2-0};
+  let Inst{26-24} = rb_chk{2-0};
+  let Inst{14-12} = rb_chk{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // lr 0,s12 00100110101010100111ssssssSSSSSS.
@@ -543,8 +543,8 @@ def ARC_LR_z_s12 : ARCompactInst32_3op<0b00100, 0b101010, "lr",
   let hasSideEffects = 1;
   let Inst{31-12} = 0b00100110101010100111;
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // lr b,limm 00100bbb001010100BBB111110RRRRRR.
@@ -786,8 +786,8 @@ def ARC_SR_b_c : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b001010110;
   bits<6> rb_chk;
-  let Inst{26-24} = rb_chk{5-3};
-  let Inst{14-12} = rb_chk{2-0};
+  let Inst{26-24} = rb_chk{2-0};
+  let Inst{14-12} = rb_chk{5-3};
   bits<6> rc;
   let Inst{11-6} = rc;
 }
@@ -807,8 +807,8 @@ def ARC_SR_b_u6 : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   let Inst{23-15} = 0b011010110;
   let Inst{5-0} = 0b000000;
   bits<6> rb_chk;
-  let Inst{26-24} = rb_chk{5-3};
-  let Inst{14-12} = rb_chk{2-0};
+  let Inst{26-24} = rb_chk{2-0};
+  let Inst{14-12} = rb_chk{5-3};
   bits<6> uimm6_20;
   let Inst{11-6} = uimm6_20;
 }
@@ -827,11 +827,11 @@ def ARC_SR_b_s12 : ARCompactInst32_3op<0b00100, 0b101011, "sr",
   let Inst{31-27} = 0b00100;
   let Inst{23-15} = 0b101010110;
   bits<6> rb_chk;
-  let Inst{26-24} = rb_chk{5-3};
-  let Inst{14-12} = rb_chk{2-0};
+  let Inst{26-24} = rb_chk{2-0};
+  let Inst{14-12} = rb_chk{5-3};
   bits<12> simm12_20;
-  let Inst{11-6} = simm12_20{11-6};
-  let Inst{5-0} = simm12_20{5-0};
+  let Inst{11-6} = simm12_20{5-0};
+  let Inst{5-0} = simm12_20{11-6};
 }
 
 // sr limm,c 00100110001010110111CCCCCCRRRRRR.
