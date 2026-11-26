@@ -279,6 +279,22 @@ BitVector ARCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   Reserved.set(ARC::BLINK);
   Reserved.set(ARC::FP);
 
+  // r30 is ILINK2 on ARCompact (ARC600/ARC700), the link register of the
+  // level-2 interrupts: the core writes the return address into it on every
+  // level-2 interrupt entry, at any instruction boundary, and on the ARC700
+  // measured on silicon it also does so on exception entry. A value the
+  // allocator or the scavenger kept in r30 would be overwritten as soon as
+  // either is taken. Only ARCv2 made r30 a general-purpose register.
+  //
+  // Reserved unconditionally, as ILINK (r29) above, rather than behind
+  // isARCompact(): every processor defined in ARC.td except `generic` is
+  // ARCompact, nothing here targets ARCv2, and `generic` is what a build
+  // without -mcpu gets, so a gate would quietly leave such a build exposed.
+  // Code that names the register still assembles and keeps its meaning:
+  // `j.f [ilink2]` and an explicit `st r30, [...]` in inline asm are explicit
+  // operands, which a reserved register allows.
+  Reserved.set(ARC::R30);
+
   // Nothing above r31 is a register the compiler may hand out:
   //  - r32-r59 are the ARCompact extension core registers, and this core
   //    implements none of them;

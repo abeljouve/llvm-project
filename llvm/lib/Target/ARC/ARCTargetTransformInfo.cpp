@@ -248,8 +248,10 @@ void ARCTTIImpl::getUnrollingPreferences(
   // 10-clock load, so an unroll factor that spills makes the loop SLOWER. The
   // realistic single-accumulator clustered reduction has peak pressure
   // ~= k load temps + accumulator + pointer + counter ~= k + 3; the empirical
-  // spill cliff on this backend (26 allocatable GPRs: R0..R24 and R30) is at 22
-  // simultaneously-live temps. MaxCount = 8 -> peak ~11, less than half the
+  // spill cliff was measured at 22 simultaneously-live temps when this backend
+  // had 26 allocatable GPRs (R0..R24 and R30). R30 (ILINK2) is now reserved,
+  // which leaves 25 (R0..R24); the cliff was not measured again and is
+  // expected about one temp lower. MaxCount = 8 -> peak ~11, less than half the
   // allocatable file and far under the cliff, so spills stay at 0 with
   // comfortable headroom for the enclosing function's own registers. The
   // generic LoopUnroll pass does not model register pressure itself, so this
