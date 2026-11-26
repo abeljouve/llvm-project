@@ -1,0 +1,71 @@
+# RUN: llc -mtriple=arceb-unknown-unknown-elf -mcpu=bcm55030 \
+# RUN:     -run-pass=prologepilog -verify-machineinstrs -o - %s | FileCheck %s
+
+# A frame access beyond the S9 range takes its address in a scratch register
+# found by the register scavenger. The scavenger's first try,
+# FindUnusedReg, walks every member of GPR32, and GPR32 lists r32-r63 so that
+# the encoder and the disassembler know them. The allocation order leaves
+# them out, but FindUnusedReg does not use it: with r0-r24 and r30 all live it
+# returned r32, an extension core register this core does not implement, and
+# the store through it never reached its stack slot.
+#
+# With every register above r31 reserved, FindUnusedReg finds nothing and the
+# scavenger spills an ordinary register around the access instead.
+
+--- |
+  target datalayout = "E-m:e-p:32:32-i1:8:32-i8:8:32-i16:16:32-i32:32:32-f32:32:32-i64:32-f64:32-a:0:32-n32"
+  target triple = "arceb-unknown-unknown-elf"
+
+  define void @far_store_all_live() { ret void }
+...
+---
+name:            far_store_all_live
+alignment:       4
+tracksRegLiveness: true
+liveins:
+  - { reg: '$r0' }
+  - { reg: '$r1' }
+  - { reg: '$r2' }
+  - { reg: '$r3' }
+  - { reg: '$r4' }
+  - { reg: '$r5' }
+  - { reg: '$r6' }
+  - { reg: '$r7' }
+  - { reg: '$r8' }
+  - { reg: '$r9' }
+  - { reg: '$r10' }
+  - { reg: '$r11' }
+  - { reg: '$r12' }
+  - { reg: '$r13' }
+  - { reg: '$r14' }
+  - { reg: '$r15' }
+  - { reg: '$r16' }
+  - { reg: '$r17' }
+  - { reg: '$r18' }
+  - { reg: '$r19' }
+  - { reg: '$r20' }
+  - { reg: '$r21' }
+  - { reg: '$r22' }
+  - { reg: '$r23' }
+  - { reg: '$r24' }
+  - { reg: '$r30' }
+stack:
+  # Laid out first, so it ends up farthest from SP, past the S9 range.
+  - { id: 0, size: 4, alignment: 4 }
+  - { id: 1, size: 1024, alignment: 4 }
+body:             |
+  bb.0:
+    liveins: $r0, $r1, $r2, $r3, $r4, $r5, $r6, $r7, $r8, $r9, $r10, $r11, $r12, $r13, $r14, $r15, $r16, $r17, $r18, $r19, $r20, $r21, $r22, $r23, $r24, $r30, $blink
+
+    ST_rs9 $r13, %stack.0, 0 :: (store (s32) into %stack.0)
+    J_S_BLINK implicit $blink, implicit $r0, implicit $r1, implicit $r2, implicit $r3, implicit $r4, implicit $r5, implicit $r6, implicit $r7, implicit $r8, implicit $r9, implicit $r10, implicit $r11, implicit $r12, implicit $r13, implicit $r14, implicit $r15, implicit $r16, implicit $r17, implicit $r18, implicit $r19, implicit $r20, implicit $r21, implicit $r22, implicit $r23, implicit $r24, implicit $r30
+...
+
+# CHECK-LABEL: name: far_store_all_live
+# CHECK-NOT:   $r{{(3[2-9]|[4-6][0-9])}}
+# CHECK:       ST_rs9 killed [[SAVED:\$r[0-9]+]], $sp, [[SLOT:-?[0-9]+]]
+# CHECK-NEXT:  [[SAVED]] = ADD_rrlimm $sp, {{[0-9]+}}
+# CHECK-NEXT:  ST_rs9 $r13, killed [[SAVED]], 0
+# CHECK-NEXT:  [[SAVED]] = LD_rs9 $sp, [[SLOT]]
+# CHECK-NOT:   $r{{(3[2-9]|[4-6][0-9])}}
+# CHECK:       J_S_BLINK

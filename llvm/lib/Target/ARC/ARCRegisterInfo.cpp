@@ -279,15 +279,23 @@ BitVector ARCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   Reserved.set(ARC::BLINK);
   Reserved.set(ARC::FP);
 
-  // r60 doubles as the zero-overhead-loop counter LP_COUNT. When LP formation
-  // is enabled, ARCLowOverheadLoops writes `mov lp_count, count` (a def of r60)
-  // in a loop preheader post-RA; the counter is then owned by the hardware
-  // loop engine and must not alias any allocated value. Reserve r60 so the
-  // allocator never places a live value there. Only when the flag is on: with
-  // it off, no LP is emitted and r60 stays an ordinary allocatable GPR (no
-  // codegen change).
-  if (ARCEnableHardwareLoops())
-    Reserved.set(ARC::R60);
+  // Nothing above r31 is a register the compiler may hand out:
+  //  - r32-r59 are the ARCompact extension core registers, and this core
+  //    implements none of them;
+  //  - r60 is LP_COUNT. When LP formation is enabled, ARCLowOverheadLoops
+  //    writes `mov lp_count, count` in a loop preheader post-RA (an explicit
+  //    def, which a reserved register still allows); the counter is then owned
+  //    by the loop engine and must not alias an allocated value;
+  //  - r61 is reserved, r62 the long-immediate encoding, r63 PCL.
+  // They sit in GPR32 so the encoder and the disassembler know them, and the
+  // allocation order (AltOrders) leaves them out, but anything that walks the
+  // class itself does not. The register scavenger's FindUnusedReg does: once
+  // r0-r31 were all live it returned r32 as the base of a far frame access
+  // (`add r32,sp,0x180 ; st r13,[r32,0]`), and on silicon that store never
+  // reached its stack slot.
+  for (MCPhysReg R : ARC::GPR32RegClass)
+    if (getEncodingValue(R) >= 32)
+      Reserved.set(R);
 
   return Reserved;
 }
